@@ -9,6 +9,22 @@ Mainly, we want to support the rich dynamic database view in notion.
 We want pages to support arbitrary metadata properties (for the database view).
 The body of pages will simply be a markdown document.
 
+### Property Types
+
+For each property type, it's important to be a target for filtering and sorting,
+so throwing these values into a JSON field becomes pretty unergonomic for those
+use-cases in SQL.
+
+With that in mind, we'll support these property types:
+
+- boolean (checkbox)
+- int
+- float
+- string
+- multi-string (like tags)
+- date
+- datetime
+
 ## Project Tracking
 
 I want to try to make something that is better than notion at software project
@@ -76,6 +92,8 @@ should work like a link in the frontend. Additionally, if there is page content
 # Roadmap
 
 Things I'm not building yet, but a dumping ground for ideas.
+
+- formulaic properties
 
 # Tech Notes
 

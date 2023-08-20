@@ -2,46 +2,29 @@ use super::models;
 use ammonia::clean;
 
 mod private {
-    /// All components must implement a sanitize method to sanitize inputs of type
-    /// String or &str.
-    ///
-    /// As a general practice, the only inputs to a component that should be
-    /// excluded from sanitization is a `dyn Component` (where a component receives
-    /// another component as an input).
-    ///
-    /// In this case, the sanitization responsibility is deferred to that
-    /// component's implementation.
     pub trait ComponentInternal {
         fn sanitize(&self) -> Self;
-        // Hm, now this guy has to be able to mutate `self` as well, if we want to
-        // be able to call render methods of i.e, `props.children` from within
-        // this method... not great
         fn render_internal(sanitized: &Self) -> String;
     }
 }
 
 pub trait Component: private::ComponentInternal + Sized + Clone {
-    // I would prefer this to take ownership of self, so that this becomes
-    // sort of FnOnce type of thing... that would avoid always needing to
-    // initialize components as mutable all over the place, but not a super
-    // huge deal
     fn render(&self) -> String {
-        let r = self.sanitize();
-        Self::render_internal(&r)
+        let sanitized_self = self.sanitize();
+        Self::render_internal(&sanitized_self)
     }
 }
 
 #[derive(Clone)]
 pub struct Page<T>
 where
-    // TODO: I can remove + Clone here
-    T: Component + Clone,
+    T: Component,
 {
     pub title: String,
     pub children: Box<T>,
 }
 
-impl<T> Component for Page<T> where T: Component + Clone {}
+impl<T> Component for Page<T> where T: Component {}
 impl<T> private::ComponentInternal for Page<T>
 where
     T: Component,
