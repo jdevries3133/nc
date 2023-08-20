@@ -90,8 +90,9 @@ pub async fn get_collection(
 
 #[derive(Deserialize)]
 pub struct CpQuery {
-    page: Option<i32>
+    page: Option<i32>,
 }
+#[axum_macros::debug_handler]
 pub async fn collection_pages(
     State(AppState { db }): State<AppState>,
     Query(CpQuery { page }): Query<CpQuery>,
@@ -99,5 +100,5 @@ pub async fn collection_pages(
 ) -> Result<impl IntoResponse, ServerError> {
     let pages = db_ops::list_collection_pages(&db, collection_id, page).await?;
 
-    Ok(format!("{:?}", pages))
+    Ok(components::DbView { pages: &pages }.render())
 }

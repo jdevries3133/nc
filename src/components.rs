@@ -1,15 +1,19 @@
 use super::models;
 use ammonia::clean;
-use anyhow::Result;
 
 mod private {
     pub trait ComponentInternal {
+        /// Return a copy of the struct, where any string members have been
+        /// sanitized for HTML interpolation with ammonia.
         fn sanitize(&self) -> Self;
+        /// This internal render method receives the result above the above
+        /// sanitize function (see blanket implementation for Component::render)
         fn render_internal(sanitized: &Self) -> String;
     }
 }
 
 pub trait Component: private::ComponentInternal + Sized + Clone {
+    /// Render the component to a string
     fn render(&self) -> String {
         let sanitized_self = self.sanitize();
         Self::render_internal(&sanitized_self)
@@ -233,11 +237,112 @@ impl private::ComponentInternal for Collection {
     fn render_internal(sanitized: &Self) -> String {
         format!(
             r#"
-            <h1>{name}</h1>
+            <h1 class="serif text-xl my-4">{name}</h1>
             <main hx-trigger="load" hx-get="/collection/{id}/pages">Loading Pages...</main>
         "#,
             id = sanitized.id,
             name = sanitized.name
         )
+    }
+}
+
+#[derive(Clone)]
+pub struct DbView<'a> {
+    pub pages: &'a Vec<models::PageSummary>,
+}
+impl Component for DbView<'_> {}
+impl private::ComponentInternal for DbView<'_> {
+    fn sanitize(&self) -> Self {
+        self.clone()
+    }
+    fn render_internal(sanitized: &Self) -> String {
+        let pages: String = sanitized
+            .pages
+            .iter()
+            .map(|p| PageRow { page: p }.render())
+            .collect();
+        format!(
+            r#"
+            <div class="flex flex-col w-full overflow-y-scroll">
+                {}
+            </div>
+            "#,
+            pages
+        )
+    }
+}
+
+#[derive(Clone)]
+pub struct PageRow<'a> {
+    page: &'a models::PageSummary,
+}
+impl Component for PageRow<'_> {}
+impl<'a> private::ComponentInternal for PageRow<'a> {
+    fn sanitize(&self) -> Self {
+        self.clone()
+    }
+    fn render_internal(sanitized: &Self) -> String {
+        format!(
+            r#"
+            <div class="flex gap-2">
+                <div class="w-64 truncate">{title}</div>
+                {other_props}
+            </div>
+            "#,
+            title = sanitized.page.title,
+            other_props = sanitized
+                .page
+                .props
+                .iter()
+                .map(|p| Prop { prop: p.clone() }.render())
+                .collect::<String>()
+        )
+    }
+}
+
+#[derive(Clone)]
+pub struct Prop {
+    prop: models::Prop,
+}
+impl Component for Prop {}
+impl private::ComponentInternal for Prop {
+    fn sanitize(&self) -> Self {
+        match &self.prop.value {
+            models::PropVal::String(v) => {
+                let clean_pv = models::PropVal::String(models::PvStr {
+                    value: clean(&v.value),
+                });
+                Prop {
+                    prop: models::Prop {
+                        page_id: self.prop.page_id,
+                        prop_id: self.prop.prop_id,
+                        value: clean_pv,
+                    },
+                }
+            }
+            _ => self.clone(),
+        }
+    }
+    fn render_internal(sanitized: &Self) -> String {
+        match &sanitized.prop.value {
+            models::PropVal::Float(v) => {
+                format!(r#"<div class="w-12">{}</div>"#, v.value)
+            }
+            models::PropVal::Boolean(v) => {
+                format!(r#"<div class="w-12">{}</div>"#, v.value)
+            }
+            models::PropVal::String(v) => {
+                format!(r#"<div class="w-12">{}</div>"#, v.value)
+            }
+            models::PropVal::Int(v) => {
+                format!(r#"<div class="w-12">{}</div>"#, v.value)
+            }
+            models::PropVal::DateTime(v) => {
+                format!(r#"<div class="w-18">{}</div>"#, v.value)
+            }
+            models::PropVal::Date(v) => {
+                format!(r#"<div class="w-18">{}</div>"#, v.value)
+            }
+        }
     }
 }

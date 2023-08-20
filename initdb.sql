@@ -119,7 +119,7 @@ insert into property (name, type_id) values
 ;
 insert into page (title, collection_id) values
     ('Build multi-string support', 1),
-    ('Get started on git integration', 1)
+    ('Get started on git integration. This is a really long ticket with a long title; gee, so many words. I wonder if our layout can support this?', 1)
 ;
 insert into propval_bool (value, page_id, prop_id) values
     (false, 1, 3),
