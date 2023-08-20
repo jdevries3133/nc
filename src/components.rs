@@ -234,7 +234,7 @@ impl private::ComponentInternal for Collection {
         format!(
             r#"
             <h1>{name}</h1>
-            <main hx-trigger="load" hx-get="/collection/{id}/page-list">Loading Pages...</main>
+            <main hx-trigger="load" hx-get="/collection/{id}/pages">Loading Pages...</main>
         "#,
             id = sanitized.id,
             name = sanitized.name

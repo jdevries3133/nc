@@ -65,7 +65,7 @@ create table propval_int(
 );
 
 create table propval_float(
-    value bigint not null,
+    value float not null,
 
     page_id int not null references page(id) on delete cascade,
     prop_id int not null references property(id) on delete cascade,
