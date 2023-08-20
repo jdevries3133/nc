@@ -42,7 +42,9 @@ async fn create_pg_pool() -> sqlx::Pool<sqlx::Postgres> {
     )[..];
 
     PgPoolOptions::new()
-        .max_connections(32)
+        // Postgres default max connections is 100, and we'll take 'em
+        // https://www.postgresql.org/docs/current/runtime-config-connection.html
+        .max_connections(80)
         .connect(db_url)
         .await
         .expect("pool to be able to connect")
