@@ -1,5 +1,6 @@
 use super::models;
 use ammonia::clean;
+use anyhow::Result;
 
 mod private {
     pub trait ComponentInternal {
@@ -190,7 +191,7 @@ impl private::ComponentInternal for ItemList {
         };
 
         if items_clone.len() != 0 {
-        [items, hx_get_infinite_scroll].join("")
+            [items, hx_get_infinite_scroll].join("")
         } else {
             "".to_string()
         }
@@ -212,6 +213,31 @@ impl private::ComponentInternal for InfiniteScroll {
         format!(
             r#"<div hx-trigger="revealed" hx-swap="outerHTML" hx-get="{}" />"#,
             sanitized.next_href
+        )
+    }
+}
+
+#[derive(Clone)]
+pub struct Collection {
+    pub id: i32,
+    pub name: String,
+}
+impl Component for Collection {}
+impl private::ComponentInternal for Collection {
+    fn sanitize(&self) -> Self {
+        Collection {
+            id: self.id,
+            name: clean(&self.name),
+        }
+    }
+    fn render_internal(sanitized: &Self) -> String {
+        format!(
+            r#"
+            <h1>{name}</h1>
+            <main hx-trigger="load" hx-get="/collection/{id}/page-list">Loading Pages...</main>
+        "#,
+            id = sanitized.id,
+            name = sanitized.name
         )
     }
 }

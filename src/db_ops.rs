@@ -88,3 +88,14 @@ pub async fn delete_item(db: &PgPool, id: i32) -> Result<()> {
 
     Ok(())
 }
+
+pub async fn get_collection_name(db: &PgPool, id: i32) -> Result<String> {
+    struct QRes {
+        name: String,
+    }
+    let res = query_as!(QRes, "select name from collection where id = $1", id)
+        .fetch_one(db)
+        .await?;
+
+    Ok(res.name)
+}
