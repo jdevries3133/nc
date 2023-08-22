@@ -294,161 +294,54 @@ impl<'a> private::ComponentInternal for PageRow<'a> {
                 .page
                 .props
                 .iter()
-                .map(|p| Prop { prop: p.clone() }.render())
+                .map(|prop| Prop { prop }.render())
                 .collect::<String>()
         )
     }
 }
 
 #[derive(Clone)]
-pub struct Prop {
-    prop: models::Prop,
-}
-impl Component for Prop {}
-impl private::ComponentInternal for Prop {
-    fn sanitize(&self) -> Self {
-        match &self.prop.value {
-            models::PropVal::Str(v) => {
-                let clean_pv = models::PropVal::Str(models::PvStr {
-                    value: clean(&v.value),
-                });
-                Prop {
-                    prop: models::Prop {
-                        page_id: self.prop.page_id,
-                        prop_id: self.prop.prop_id,
-                        value: clean_pv,
-                    },
-                }
-            }
-            _ => self.clone(),
-        }
-    }
-    fn render_internal(sanitized: &Self) -> String {
-        match &sanitized.prop.value {
-            models::PropVal::Float(v) => {
-                format!(r#"<div class="w-12">{}</div>"#, v.value)
-            }
-            models::PropVal::Bool(v) => {
-                format!(
-                    r#"
-                    <div
-                        class="w-12"
-                        hx-get="/propval/1/prop/{prop_id}/page/{page_id}"
-                    >
-                        {value}
-                    </div>
-                    "#,
-                    value = v.value,
-                    page_id = sanitized.prop.page_id,
-                    prop_id = sanitized.prop.prop_id
-                )
-            }
-            models::PropVal::Str(v) => {
-                format!(
-                    r#"
-                    <div
-                        class="w-12"
-                        hx-get="/propval/4/prop/{prop_id}/page/{page_id}"
-                    >
-                        {value}
-                    </div>
-                    "#,
-                    value = v.value,
-                    page_id = sanitized.prop.page_id,
-                    prop_id = sanitized.prop.prop_id
-                )
-            }
-            models::PropVal::Int(v) => {
-                format!(
-                    r#"
-                    <div
-                        class="w-12"
-                        hx-get="/propval/2/prop/{prop_id}/page/{page_id}"
-                    >
-                        {value}
-                    </div>
-                    "#,
-                    value = v.value,
-                    page_id = sanitized.prop.page_id,
-                    prop_id = sanitized.prop.prop_id
-                )
-            }
-            models::PropVal::DateTime(v) => {
-                format!(
-                    r#"
-                    <div
-                        class="w-12"
-                        hx-get="/propval/7/prop/{prop_id}/page/{page_id}"
-                    >
-                        {value}
-                    </div>
-                    "#,
-                    value = v.value,
-                    page_id = sanitized.prop.page_id,
-                    prop_id = sanitized.prop.prop_id
-                )
-            }
-            models::PropVal::Date(v) => {
-                format!(
-                    r#"
-                    <div
-                        class="w-12"
-                        hx-get="/propval/6/prop/{prop_id}/page/{page_id}"
-                    >
-                        {value}
-                    </div>
-                    "#,
-                    value = v.value,
-                    page_id = sanitized.prop.page_id,
-                    prop_id = sanitized.prop.prop_id
-                )
-            }
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct EditProp<'a> {
+pub struct Prop<'a> {
     pub prop: &'a models::Prop,
 }
-impl Component for EditProp<'_> {}
-impl private::ComponentInternal for EditProp<'_> {
+impl Component for Prop<'_> {}
+impl private::ComponentInternal for Prop<'_> {
     fn sanitize(&self) -> Self {
         self.clone()
     }
     fn render_internal(sanitized: &Self) -> String {
         match &sanitized.prop.value {
-            models::PropVal::Int(v) => EditIntProp {
+            models::PropVal::Int(v) => Int {
                 value: v.value,
                 page_id: sanitized.prop.page_id,
                 prop_id: sanitized.prop.prop_id,
             }
             .render(),
-            models::PropVal::Bool(v) => EditBoolProp {
+            models::PropVal::Bool(v) => Bool {
                 value: v.value,
                 page_id: sanitized.prop.page_id,
                 prop_id: sanitized.prop.prop_id,
             }
             .render(),
-            models::PropVal::Float(v) => EditFloatProp {
+            models::PropVal::Float(v) => Float {
                 value: v.value,
                 page_id: sanitized.prop.page_id,
                 prop_id: sanitized.prop.prop_id,
             }
             .render(),
-            models::PropVal::Str(v) => EditStrProp {
+            models::PropVal::Str(v) => Str {
                 value: v.value.clone(),
                 page_id: sanitized.prop.page_id,
                 prop_id: sanitized.prop.prop_id,
             }
             .render(),
-            models::PropVal::Date(v) => EditDateProp {
+            models::PropVal::Date(v) => Date {
                 value: v.value,
                 page_id: sanitized.prop.page_id,
                 prop_id: sanitized.prop.prop_id,
             }
             .render(),
-            models::PropVal::DateTime(v) => EditDatetimeProp {
+            models::PropVal::DateTime(v) => DateTime {
                 value: v.value,
                 page_id: sanitized.prop.page_id,
                 prop_id: sanitized.prop.prop_id,
@@ -459,13 +352,13 @@ impl private::ComponentInternal for EditProp<'_> {
 }
 
 #[derive(Clone)]
-pub struct EditIntProp {
+pub struct Int {
     pub value: i64,
     pub page_id: i32,
     pub prop_id: i32,
 }
-impl Component for EditIntProp {}
-impl private::ComponentInternal for EditIntProp {
+impl Component for Int {}
+impl private::ComponentInternal for Int {
     fn sanitize(&self) -> Self {
         self.clone()
     }
@@ -475,13 +368,13 @@ impl private::ComponentInternal for EditIntProp {
 }
 
 #[derive(Clone)]
-pub struct EditBoolProp {
+pub struct Bool {
     pub value: bool,
     pub page_id: i32,
     pub prop_id: i32,
 }
-impl Component for EditBoolProp {}
-impl private::ComponentInternal for EditBoolProp {
+impl Component for Bool {}
+impl private::ComponentInternal for Bool {
     fn sanitize(&self) -> Self {
         self.clone()
     }
@@ -491,13 +384,13 @@ impl private::ComponentInternal for EditBoolProp {
 }
 
 #[derive(Clone)]
-pub struct EditFloatProp {
+pub struct Float {
     pub value: f64,
     pub page_id: i32,
     pub prop_id: i32,
 }
-impl Component for EditFloatProp {}
-impl private::ComponentInternal for EditFloatProp {
+impl Component for Float {}
+impl private::ComponentInternal for Float {
     fn sanitize(&self) -> Self {
         self.clone()
     }
@@ -507,15 +400,15 @@ impl private::ComponentInternal for EditFloatProp {
 }
 
 #[derive(Clone)]
-pub struct EditStrProp {
+pub struct Str {
     pub value: String,
     pub page_id: i32,
     pub prop_id: i32,
 }
-impl Component for EditStrProp {}
-impl private::ComponentInternal for EditStrProp {
+impl Component for Str {}
+impl private::ComponentInternal for Str {
     fn sanitize(&self) -> Self {
-        EditStrProp {
+        Str {
             page_id: self.page_id,
             prop_id: self.prop_id,
             value: clean(&self.value),
@@ -527,13 +420,13 @@ impl private::ComponentInternal for EditStrProp {
 }
 
 #[derive(Clone)]
-pub struct EditDateProp {
+pub struct Date {
     pub value: chrono::NaiveDate,
     pub page_id: i32,
     pub prop_id: i32,
 }
-impl Component for EditDateProp {}
-impl private::ComponentInternal for EditDateProp {
+impl Component for Date {}
+impl private::ComponentInternal for Date {
     fn sanitize(&self) -> Self {
         self.clone()
     }
@@ -543,13 +436,13 @@ impl private::ComponentInternal for EditDateProp {
 }
 
 #[derive(Clone)]
-pub struct EditDatetimeProp {
+pub struct DateTime {
     pub value: chrono::DateTime<chrono::Utc>,
     pub page_id: i32,
     pub prop_id: i32,
 }
-impl Component for EditDatetimeProp {}
-impl private::ComponentInternal for EditDatetimeProp {
+impl Component for DateTime {}
+impl private::ComponentInternal for DateTime {
     fn sanitize(&self) -> Self {
         self.clone()
     }

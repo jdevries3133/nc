@@ -1,5 +1,5 @@
 use super::models;
-use anyhow::{bail, Result};
+use anyhow::{Result};
 use chrono::prelude::*;
 use futures::try_join;
 use sqlx::{postgres::PgPool, query, query_as};
@@ -285,85 +285,4 @@ async fn get_propvals(
     datetimes.iter().for_each(|b| output.push(b.create_prop()));
 
     Ok(output)
-}
-
-pub async fn get_prop(
-    db: &PgPool,
-    type_id: i32,
-    prop_id: i32,
-    page_id: i32,
-) -> Result<models::Prop> {
-    let prop = if type_id == 1 {
-        query_as!(
-            QresBool,
-            "select prop_id, page_id, value from propval_bool
-            where prop_id = $1 and page_id = $2",
-            prop_id,
-            page_id
-        )
-        .fetch_one(db)
-        .await?
-        .create_prop()
-    } else if type_id == 2 {
-        query_as!(
-            QresInt,
-            "select prop_id, page_id, value from propval_int
-            where prop_id = $1 and page_id = $2",
-            prop_id,
-            page_id
-        )
-        .fetch_one(db)
-        .await?
-        .create_prop()
-    } else if type_id == 3 {
-        query_as!(
-            QresFloat,
-            "select prop_id, page_id, value from propval_float
-            where prop_id = $1 and page_id = $2",
-            prop_id,
-            page_id
-        )
-        .fetch_one(db)
-        .await?
-        .create_prop()
-    } else if type_id == 4 {
-        query_as!(
-            QresStr,
-            "select prop_id, page_id, value from propval_str
-            where prop_id = $1 and page_id = $2",
-            prop_id,
-            page_id
-        )
-        .fetch_one(db)
-        .await?
-        .create_prop()
-    } else if type_id == 5 {
-        bail!("multi-string is not yet supported")
-    } else if type_id == 6 {
-        query_as!(
-            QresDate,
-            "select prop_id, page_id, value from propval_date
-            where prop_id = $1 and page_id = $2",
-            prop_id,
-            page_id
-        )
-        .fetch_one(db)
-        .await?
-        .create_prop()
-    } else if type_id == 7 {
-        query_as!(
-            QresDatetime,
-            "select prop_id, page_id, value from propval_datetime
-            where prop_id = $1 and page_id = $2",
-            prop_id,
-            page_id
-        )
-        .fetch_one(db)
-        .await?
-        .create_prop()
-    } else {
-        bail!("unsupported type id {}", type_id);
-    };
-
-    Ok(prop)
 }
