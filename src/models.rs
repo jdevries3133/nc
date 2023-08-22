@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use sqlx::{Pool, Postgres};
 
 #[derive(Clone, Debug)]
@@ -40,10 +40,10 @@ pub struct PvDateTime {
 
 #[derive(Clone, Debug)]
 pub enum PropVal {
-    Boolean(PvBool),
+    Bool(PvBool),
     Int(PvInt),
     Float(PvFloat),
-    String(PvStr),
+    Str(PvStr),
     Date(PvDate),
     DateTime(PvDateTime),
 }

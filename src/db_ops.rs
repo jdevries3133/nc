@@ -1,5 +1,5 @@
 use super::models;
-use anyhow::Result;
+use anyhow::{bail, Result};
 use chrono::prelude::*;
 use futures::try_join;
 use sqlx::{postgres::PgPool, query, query_as};
@@ -148,7 +148,7 @@ pub async fn list_collection_pages(
             id: p.id,
             title: p.title.clone(),
             props: if let Some(pv) = pv_map.get(&p.id) {
-                pv.iter().cloned().collect()
+                pv.to_vec()
             } else {
                 vec![]
             },
@@ -157,8 +157,54 @@ pub async fn list_collection_pages(
 }
 
 trait IntoProp {
-    fn into_prop(&self) -> models::Prop;
+    fn create_prop(&self) -> models::Prop;
 }
+macro_rules! def_propval_query_result {
+    ($struct_name:ident, $type_name:ty, $pv_enum_variant_name:ident, $pv_model_name:ident) => {
+        struct $struct_name {
+            page_id: i32,
+            prop_id: i32,
+            value: $type_name,
+        }
+        impl IntoProp for $struct_name {
+            fn create_prop(&self) -> models::Prop {
+                models::Prop {
+                    page_id: self.page_id,
+                    prop_id: self.prop_id,
+                    value: models::PropVal::$pv_enum_variant_name(
+                        models::$pv_model_name {
+                            value: self.value.clone(),
+                        },
+                    ),
+                }
+            }
+        }
+    };
+}
+
+def_propval_query_result!(QresBool, bool, Bool, PvBool);
+def_propval_query_result!(QresInt, i64, Int, PvInt);
+def_propval_query_result!(QresFloat, f64, Float, PvFloat);
+def_propval_query_result!(QresStr, String, Str, PvStr);
+def_propval_query_result!(QresDate, chrono::NaiveDate, Date, PvDate);
+
+struct QresDatetime<Tz: TimeZone> {
+    page_id: i32,
+    prop_id: i32,
+    value: chrono::DateTime<Tz>,
+}
+impl<Tz: TimeZone> IntoProp for QresDatetime<Tz> {
+    fn create_prop(&self) -> models::Prop {
+        models::Prop {
+            page_id: self.page_id,
+            prop_id: self.prop_id,
+            value: models::PropVal::DateTime(models::PvDateTime {
+                value: self.value.with_timezone(&Utc),
+            }),
+        }
+    }
+}
+
 async fn get_propvals(
     db: &PgPool,
     page_ids: Vec<i32>,
@@ -168,22 +214,6 @@ async fn get_propvals(
     // hairy area in terms of dealing with propval dynamism (especially since
     // write paths can probably be more granular). I'm going to slog through
     // for now!
-    struct QresBool {
-        page_id: i32,
-        prop_id: i32,
-        value: bool,
-    }
-    impl IntoProp for QresBool {
-        fn into_prop(&self) -> models::Prop {
-            models::Prop {
-                page_id: self.page_id,
-                prop_id: self.prop_id,
-                value: models::PropVal::Boolean(models::PvBool {
-                    value: self.value,
-                }),
-            }
-        }
-    }
     let bools = query_as!(
         QresBool,
         "
@@ -194,22 +224,6 @@ async fn get_propvals(
     )
     .fetch_all(db);
 
-    struct QresInt {
-        page_id: i32,
-        prop_id: i32,
-        value: i64,
-    }
-    impl IntoProp for QresInt {
-        fn into_prop(&self) -> models::Prop {
-            models::Prop {
-                page_id: self.page_id,
-                prop_id: self.prop_id,
-                value: models::PropVal::Int(models::PvInt {
-                    value: self.value,
-                }),
-            }
-        }
-    }
     let ints = query_as!(
         QresInt,
         "
@@ -219,22 +233,6 @@ async fn get_propvals(
     )
     .fetch_all(db);
 
-    struct QresFloat {
-        page_id: i32,
-        prop_id: i32,
-        value: f64,
-    }
-    impl IntoProp for QresFloat {
-        fn into_prop(&self) -> models::Prop {
-            models::Prop {
-                page_id: self.page_id,
-                prop_id: self.prop_id,
-                value: models::PropVal::Float(models::PvFloat {
-                    value: self.value,
-                }),
-            }
-        }
-    }
     let floats = query_as!(
         QresFloat,
         "
@@ -245,22 +243,6 @@ async fn get_propvals(
     )
     .fetch_all(db);
 
-    struct QresStr {
-        page_id: i32,
-        prop_id: i32,
-        value: String,
-    }
-    impl IntoProp for QresStr {
-        fn into_prop(&self) -> models::Prop {
-            models::Prop {
-                page_id: self.page_id,
-                prop_id: self.prop_id,
-                value: models::PropVal::String(models::PvStr {
-                    value: self.value.clone(),
-                }),
-            }
-        }
-    }
     let strs = query_as!(
         QresStr,
         "
@@ -271,22 +253,6 @@ async fn get_propvals(
     )
     .fetch_all(db);
 
-    struct QresDate {
-        page_id: i32,
-        prop_id: i32,
-        value: chrono::NaiveDate,
-    }
-    impl IntoProp for QresDate {
-        fn into_prop(&self) -> models::Prop {
-            models::Prop {
-                page_id: self.page_id,
-                prop_id: self.prop_id,
-                value: models::PropVal::Date(models::PvDate {
-                    value: self.value,
-                }),
-            }
-        }
-    }
     let dates = query_as!(
         QresDate,
         "
@@ -297,22 +263,6 @@ async fn get_propvals(
     )
     .fetch_all(db);
 
-    struct QresDatetime<Tz: TimeZone> {
-        page_id: i32,
-        prop_id: i32,
-        value: chrono::DateTime<Tz>,
-    }
-    impl<Tz: TimeZone> IntoProp for QresDatetime<Tz> {
-        fn into_prop(&self) -> models::Prop {
-            models::Prop {
-                page_id: self.page_id,
-                prop_id: self.prop_id,
-                value: models::PropVal::DateTime(models::PvDateTime {
-                    value: self.value.with_timezone(&Utc),
-                }),
-            }
-        }
-    }
     let datetimes = query_as!(
         QresDatetime,
         "
@@ -327,12 +277,93 @@ async fn get_propvals(
         try_join!(bools, ints, floats, strs, dates, datetimes)?;
 
     let mut output: Vec<models::Prop> = vec![];
-    bools.iter().for_each(|b| output.push(b.into_prop()));
-    ints.iter().for_each(|b| output.push(b.into_prop()));
-    floats.iter().for_each(|b| output.push(b.into_prop()));
-    strs.iter().for_each(|b| output.push(b.into_prop()));
-    dates.iter().for_each(|b| output.push(b.into_prop()));
-    datetimes.iter().for_each(|b| output.push(b.into_prop()));
+    bools.iter().for_each(|b| output.push(b.create_prop()));
+    ints.iter().for_each(|b| output.push(b.create_prop()));
+    floats.iter().for_each(|b| output.push(b.create_prop()));
+    strs.iter().for_each(|b| output.push(b.create_prop()));
+    dates.iter().for_each(|b| output.push(b.create_prop()));
+    datetimes.iter().for_each(|b| output.push(b.create_prop()));
 
     Ok(output)
+}
+
+pub async fn get_prop(
+    db: &PgPool,
+    type_id: i32,
+    prop_id: i32,
+    page_id: i32,
+) -> Result<models::Prop> {
+    let prop = if type_id == 1 {
+        query_as!(
+            QresBool,
+            "select prop_id, page_id, value from propval_bool
+            where prop_id = $1 and page_id = $2",
+            prop_id,
+            page_id
+        )
+        .fetch_one(db)
+        .await?
+        .create_prop()
+    } else if type_id == 2 {
+        query_as!(
+            QresInt,
+            "select prop_id, page_id, value from propval_int
+            where prop_id = $1 and page_id = $2",
+            prop_id,
+            page_id
+        )
+        .fetch_one(db)
+        .await?
+        .create_prop()
+    } else if type_id == 3 {
+        query_as!(
+            QresFloat,
+            "select prop_id, page_id, value from propval_float
+            where prop_id = $1 and page_id = $2",
+            prop_id,
+            page_id
+        )
+        .fetch_one(db)
+        .await?
+        .create_prop()
+    } else if type_id == 4 {
+        query_as!(
+            QresStr,
+            "select prop_id, page_id, value from propval_str
+            where prop_id = $1 and page_id = $2",
+            prop_id,
+            page_id
+        )
+        .fetch_one(db)
+        .await?
+        .create_prop()
+    } else if type_id == 5 {
+        bail!("multi-string is not yet supported")
+    } else if type_id == 6 {
+        query_as!(
+            QresDate,
+            "select prop_id, page_id, value from propval_date
+            where prop_id = $1 and page_id = $2",
+            prop_id,
+            page_id
+        )
+        .fetch_one(db)
+        .await?
+        .create_prop()
+    } else if type_id == 7 {
+        query_as!(
+            QresDatetime,
+            "select prop_id, page_id, value from propval_datetime
+            where prop_id = $1 and page_id = $2",
+            prop_id,
+            page_id
+        )
+        .fetch_one(db)
+        .await?
+        .create_prop()
+    } else {
+        bail!("unsupported type id {}", type_id);
+    };
+
+    Ok(prop)
 }

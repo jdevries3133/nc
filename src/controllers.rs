@@ -102,3 +102,11 @@ pub async fn collection_pages(
 
     Ok(components::DbView { pages: &pages }.render())
 }
+
+pub async fn get_propval_form(
+    State(AppState { db }): State<AppState>,
+    Path((pv_type_id, prop_id, page_id)): Path<(i32, i32, i32)>,
+) -> Result<impl IntoResponse, ServerError> {
+    let prop = db_ops::get_prop(&db, pv_type_id, prop_id, page_id).await?;
+    Ok(components::EditProp { prop: &prop }.render())
+}

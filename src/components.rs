@@ -194,7 +194,7 @@ impl private::ComponentInternal for ItemList {
             "".to_string()
         };
 
-        if items_clone.len() != 0 {
+        if !items_clone.is_empty() {
             [items, hx_get_infinite_scroll].join("")
         } else {
             "".to_string()
@@ -308,8 +308,8 @@ impl Component for Prop {}
 impl private::ComponentInternal for Prop {
     fn sanitize(&self) -> Self {
         match &self.prop.value {
-            models::PropVal::String(v) => {
-                let clean_pv = models::PropVal::String(models::PvStr {
+            models::PropVal::Str(v) => {
+                let clean_pv = models::PropVal::Str(models::PvStr {
                     value: clean(&v.value),
                 });
                 Prop {
@@ -328,21 +328,232 @@ impl private::ComponentInternal for Prop {
             models::PropVal::Float(v) => {
                 format!(r#"<div class="w-12">{}</div>"#, v.value)
             }
-            models::PropVal::Boolean(v) => {
-                format!(r#"<div class="w-12">{}</div>"#, v.value)
+            models::PropVal::Bool(v) => {
+                format!(
+                    r#"
+                    <div
+                        class="w-12"
+                        hx-get="/propval/1/prop/{prop_id}/page/{page_id}"
+                    >
+                        {value}
+                    </div>
+                    "#,
+                    value = v.value,
+                    page_id = sanitized.prop.page_id,
+                    prop_id = sanitized.prop.prop_id
+                )
             }
-            models::PropVal::String(v) => {
-                format!(r#"<div class="w-12">{}</div>"#, v.value)
+            models::PropVal::Str(v) => {
+                format!(
+                    r#"
+                    <div
+                        class="w-12"
+                        hx-get="/propval/4/prop/{prop_id}/page/{page_id}"
+                    >
+                        {value}
+                    </div>
+                    "#,
+                    value = v.value,
+                    page_id = sanitized.prop.page_id,
+                    prop_id = sanitized.prop.prop_id
+                )
             }
             models::PropVal::Int(v) => {
-                format!(r#"<div class="w-12">{}</div>"#, v.value)
+                format!(
+                    r#"
+                    <div
+                        class="w-12"
+                        hx-get="/propval/2/prop/{prop_id}/page/{page_id}"
+                    >
+                        {value}
+                    </div>
+                    "#,
+                    value = v.value,
+                    page_id = sanitized.prop.page_id,
+                    prop_id = sanitized.prop.prop_id
+                )
             }
             models::PropVal::DateTime(v) => {
-                format!(r#"<div class="w-18">{}</div>"#, v.value)
+                format!(
+                    r#"
+                    <div
+                        class="w-12"
+                        hx-get="/propval/7/prop/{prop_id}/page/{page_id}"
+                    >
+                        {value}
+                    </div>
+                    "#,
+                    value = v.value,
+                    page_id = sanitized.prop.page_id,
+                    prop_id = sanitized.prop.prop_id
+                )
             }
             models::PropVal::Date(v) => {
-                format!(r#"<div class="w-18">{}</div>"#, v.value)
+                format!(
+                    r#"
+                    <div
+                        class="w-12"
+                        hx-get="/propval/6/prop/{prop_id}/page/{page_id}"
+                    >
+                        {value}
+                    </div>
+                    "#,
+                    value = v.value,
+                    page_id = sanitized.prop.page_id,
+                    prop_id = sanitized.prop.prop_id
+                )
             }
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct EditProp<'a> {
+    pub prop: &'a models::Prop,
+}
+impl Component for EditProp<'_> {}
+impl private::ComponentInternal for EditProp<'_> {
+    fn sanitize(&self) -> Self {
+        self.clone()
+    }
+    fn render_internal(sanitized: &Self) -> String {
+        match &sanitized.prop.value {
+            models::PropVal::Int(v) => EditIntProp {
+                value: v.value,
+                page_id: sanitized.prop.page_id,
+                prop_id: sanitized.prop.prop_id,
+            }
+            .render(),
+            models::PropVal::Bool(v) => EditBoolProp {
+                value: v.value,
+                page_id: sanitized.prop.page_id,
+                prop_id: sanitized.prop.prop_id,
+            }
+            .render(),
+            models::PropVal::Float(v) => EditFloatProp {
+                value: v.value,
+                page_id: sanitized.prop.page_id,
+                prop_id: sanitized.prop.prop_id,
+            }
+            .render(),
+            models::PropVal::Str(v) => EditStrProp {
+                value: v.value.clone(),
+                page_id: sanitized.prop.page_id,
+                prop_id: sanitized.prop.prop_id,
+            }
+            .render(),
+            models::PropVal::Date(v) => EditDateProp {
+                value: v.value,
+                page_id: sanitized.prop.page_id,
+                prop_id: sanitized.prop.prop_id,
+            }
+            .render(),
+            models::PropVal::DateTime(v) => EditDatetimeProp {
+                value: v.value,
+                page_id: sanitized.prop.page_id,
+                prop_id: sanitized.prop.prop_id,
+            }
+            .render(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct EditIntProp {
+    pub value: i64,
+    pub page_id: i32,
+    pub prop_id: i32,
+}
+impl Component for EditIntProp {}
+impl private::ComponentInternal for EditIntProp {
+    fn sanitize(&self) -> Self {
+        self.clone()
+    }
+    fn render_internal(sanitized: &Self) -> String {
+        format!("edit int {}", sanitized.value)
+    }
+}
+
+#[derive(Clone)]
+pub struct EditBoolProp {
+    pub value: bool,
+    pub page_id: i32,
+    pub prop_id: i32,
+}
+impl Component for EditBoolProp {}
+impl private::ComponentInternal for EditBoolProp {
+    fn sanitize(&self) -> Self {
+        self.clone()
+    }
+    fn render_internal(sanitized: &Self) -> String {
+        format!("edit bool {}", sanitized.value)
+    }
+}
+
+#[derive(Clone)]
+pub struct EditFloatProp {
+    pub value: f64,
+    pub page_id: i32,
+    pub prop_id: i32,
+}
+impl Component for EditFloatProp {}
+impl private::ComponentInternal for EditFloatProp {
+    fn sanitize(&self) -> Self {
+        self.clone()
+    }
+    fn render_internal(sanitized: &Self) -> String {
+        format!("edit float {}", sanitized.value)
+    }
+}
+
+#[derive(Clone)]
+pub struct EditStrProp {
+    pub value: String,
+    pub page_id: i32,
+    pub prop_id: i32,
+}
+impl Component for EditStrProp {}
+impl private::ComponentInternal for EditStrProp {
+    fn sanitize(&self) -> Self {
+        EditStrProp {
+            page_id: self.page_id,
+            prop_id: self.prop_id,
+            value: clean(&self.value),
+        }
+    }
+    fn render_internal(sanitized: &Self) -> String {
+        format!("edit str {}", sanitized.value)
+    }
+}
+
+#[derive(Clone)]
+pub struct EditDateProp {
+    pub value: chrono::NaiveDate,
+    pub page_id: i32,
+    pub prop_id: i32,
+}
+impl Component for EditDateProp {}
+impl private::ComponentInternal for EditDateProp {
+    fn sanitize(&self) -> Self {
+        self.clone()
+    }
+    fn render_internal(sanitized: &Self) -> String {
+        format!("edit date {}", sanitized.value)
+    }
+}
+
+#[derive(Clone)]
+pub struct EditDatetimeProp {
+    pub value: chrono::DateTime<chrono::Utc>,
+    pub page_id: i32,
+    pub prop_id: i32,
+}
+impl Component for EditDatetimeProp {}
+impl private::ComponentInternal for EditDatetimeProp {
+    fn sanitize(&self) -> Self {
+        self.clone()
+    }
+    fn render_internal(sanitized: &Self) -> String {
+        format!("edit datetime {}", sanitized.value)
     }
 }
