@@ -5,7 +5,6 @@ use super::{
 use anyhow::Result;
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
     response::IntoResponse,
     Form,
 };
@@ -83,7 +82,7 @@ pub async fn get_collection(
 ) -> Result<impl IntoResponse, ServerError> {
     let name = db_ops::get_collection_name(&db, id).await?;
     Ok(components::Page {
-        title: format!("Workspace ({})", name),
+        title: format!("Workspace ({name})"),
         children: Box::new(components::Collection { id, name }),
     }
     .render())
@@ -93,15 +92,13 @@ pub async fn get_collection(
 pub struct CpQuery {
     page: Option<i32>,
 }
-#[axum_macros::debug_handler]
 pub async fn collection_pages(
     State(AppState { db }): State<AppState>,
     Query(CpQuery { page }): Query<CpQuery>,
     Path(collection_id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let pages = db_ops::list_collection_pages(&db, collection_id, page).await?;
-
-    Ok(components::DbView { pages: &pages }.render())
+    panic!("todo");
+    Ok("")
 }
 
 #[derive(Deserialize)]
@@ -114,7 +111,7 @@ pub async fn save_pv_bool(
     Path((page_id, prop_id)): Path<(i32, i32)>,
     Form(PvbForm { value }): Form<PvbForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let mut pvb = models::PvBool2::get(
+    let mut pvb = models::PvBool::get(
         &db,
         db_ops::PropValueIdentifier { prop_id, page_id },
     )

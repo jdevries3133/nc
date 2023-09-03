@@ -4,7 +4,7 @@ DB_CONTAINER_NAME := "nc_db"
 
 build: setup
 	pnpm run build
-	cargo build
+	cargo build --release
 
 setup:
 	[[ ! -f ./src/htmx-1.9.4.vendor.js ]] \

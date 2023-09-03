@@ -1,8 +1,7 @@
-use chrono::{DateTime, NaiveDate, Utc};
 use sqlx::PgPool;
 
 #[derive(Clone)]
-pub struct PvBool2 {
+pub struct PvBool {
     pub value: bool,
     pub page_id: i32,
     pub prop_id: i32,
@@ -18,53 +17,4 @@ pub struct Item {
     pub id: Option<i32>,
     pub title: String,
     pub is_completed: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct PvBool {
-    pub value: bool,
-}
-#[derive(Clone, Debug)]
-pub struct PvInt {
-    pub value: i64,
-}
-#[derive(Clone, Debug)]
-pub struct PvFloat {
-    pub value: f64,
-}
-#[derive(Clone, Debug)]
-pub struct PvStr {
-    pub value: String,
-}
-#[derive(Clone, Debug)]
-pub struct PvDate {
-    pub value: NaiveDate,
-}
-#[derive(Clone, Debug)]
-pub struct PvDateTime {
-    pub value: DateTime<Utc>,
-}
-
-#[derive(Clone, Debug)]
-pub enum PropVal {
-    Bool(PvBool),
-    Int(PvInt),
-    Float(PvFloat),
-    Str(PvStr),
-    Date(PvDate),
-    DateTime(PvDateTime),
-}
-
-#[derive(Clone, Debug)]
-pub struct Prop {
-    pub page_id: i32,
-    pub prop_id: i32,
-    pub value: PropVal,
-}
-
-#[derive(Clone, Debug)]
-pub struct PageSummary {
-    pub id: i32,
-    pub title: String,
-    pub props: Vec<Prop>,
 }
