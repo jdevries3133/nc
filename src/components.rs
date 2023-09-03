@@ -379,7 +379,20 @@ impl private::ComponentInternal for Bool {
         self.clone()
     }
     fn render_internal(sanitized: &Self) -> String {
-        format!("edit bool {}", sanitized.value)
+        let checked_state = if sanitized.value { "checked" } else { "" };
+        let page_id = sanitized.page_id;
+        let prop_id = sanitized.prop_id;
+        format!(
+            r#"
+                <input
+                    hx-post="/page/{page_id}/prop/{prop_id}"
+                    hx-swap="outerHTML"
+                    name="value"
+                    type="checkbox"
+                    {checked_state}
+                />
+            "#
+        )
     }
 }
 

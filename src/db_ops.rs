@@ -1,5 +1,5 @@
 use super::models;
-use anyhow::{Result};
+use anyhow::Result;
 use chrono::prelude::*;
 use futures::try_join;
 use sqlx::{postgres::PgPool, query, query_as};

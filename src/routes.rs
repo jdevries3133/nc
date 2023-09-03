@@ -9,4 +9,8 @@ pub fn get_routes() -> Router<models::AppState> {
         .route("/item/:id", delete(controllers::delete_todo))
         .route("/collection/:id", get(controllers::get_collection))
         .route("/collection/:id/pages", get(controllers::collection_pages))
+        .route(
+            "/page/:page_id/prop/:prop_id",
+            post(controllers::save_propval),
+        )
 }

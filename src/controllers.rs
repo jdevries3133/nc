@@ -102,3 +102,10 @@ pub async fn collection_pages(
 
     Ok(components::DbView { pages: &pages }.render())
 }
+
+pub async fn save_propval(
+    State(AppState { db }): State<AppState>,
+    Path((page_id, prop_id)): Path<(i32, i32)>,
+) -> Result<impl IntoResponse, ServerError> {
+    let prop = db_ops::get_collection_name
+}
