@@ -1,10 +1,11 @@
 use super::{
-    components, components::Component, db_ops, errors::ServerError, models,
-    models::AppState,
+    components, components::Component, db_ops, db_ops::DbModel,
+    errors::ServerError, models, models::AppState,
 };
 use anyhow::Result;
 use axum::{
     extract::{Path, Query, State},
+    http::StatusCode,
     response::IntoResponse,
     Form,
 };
@@ -103,9 +104,26 @@ pub async fn collection_pages(
     Ok(components::DbView { pages: &pages }.render())
 }
 
-pub async fn save_propval(
+#[derive(Deserialize)]
+pub struct PvbForm {
+    value: Option<String>,
+}
+
+pub async fn save_pv_bool(
     State(AppState { db }): State<AppState>,
     Path((page_id, prop_id)): Path<(i32, i32)>,
+    Form(PvbForm { value }): Form<PvbForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let prop = db_ops::get_collection_name
+    let mut pvb = models::PvBool2::get(
+        &db,
+        db_ops::PropValueIdentifier { prop_id, page_id },
+    )
+    .await?;
+    let new_val = value.is_some();
+    if new_val != pvb.value {
+        pvb.value = value.is_some();
+        pvb.save(&db).await?;
+    }
+
+    Ok(pvb.render())
 }

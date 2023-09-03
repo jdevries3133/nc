@@ -1,18 +1,13 @@
 use super::models;
 use ammonia::clean;
 
-mod private {
-    pub trait ComponentInternal {
-        /// Return a copy of the struct, where any string members have been
-        /// sanitized for HTML interpolation with ammonia.
-        fn sanitize(&self) -> Self;
-        /// This internal render method receives the result above the above
-        /// sanitize function (see blanket implementation for Component::render)
-        fn render_internal(sanitized: &Self) -> String;
-    }
-}
-
-pub trait Component: private::ComponentInternal + Sized + Clone {
+pub trait Component: Sized + Clone {
+    /// Return a copy of the struct, where any string members have been
+    /// sanitized for HTML interpolation with ammonia.
+    fn sanitize(&self) -> Self;
+    /// This internal render method receives the result above the above
+    /// sanitize function (see blanket implementation for Component::render)
+    fn render_internal(sanitized: &Self) -> String;
     /// Render the component to a string
     fn render(&self) -> String {
         let sanitized_self = self.sanitize();
@@ -29,8 +24,7 @@ where
     pub children: Box<T>,
 }
 
-impl<T> Component for Page<T> where T: Component {}
-impl<T> private::ComponentInternal for Page<T>
+impl<T> Component for Page<T>
 where
     T: Component,
 {
@@ -72,8 +66,7 @@ where
 
 #[derive(Default, Clone)]
 pub struct TodoHome {}
-impl Component for TodoHome {}
-impl private::ComponentInternal for TodoHome {
+impl Component for TodoHome {
     fn sanitize(&self) -> Self {
         TodoHome::default()
     }
@@ -112,8 +105,7 @@ impl private::ComponentInternal for TodoHome {
 pub struct Item {
     pub item: models::Item,
 }
-impl Component for Item {}
-impl private::ComponentInternal for Item {
+impl Component for Item {
     fn sanitize(&self) -> Self {
         Item {
             item: models::Item {
@@ -171,8 +163,7 @@ pub struct ItemList {
     pub items: Vec<models::Item>,
     pub next_page: Option<i32>,
 }
-impl Component for ItemList {}
-impl private::ComponentInternal for ItemList {
+impl Component for ItemList {
     fn sanitize(&self) -> Self {
         // Item component will sanitize
         self.clone()
@@ -206,8 +197,7 @@ impl private::ComponentInternal for ItemList {
 pub struct InfiniteScroll {
     pub next_href: String,
 }
-impl Component for InfiniteScroll {}
-impl private::ComponentInternal for InfiniteScroll {
+impl Component for InfiniteScroll {
     fn sanitize(&self) -> Self {
         InfiniteScroll {
             next_href: clean(&self.next_href),
@@ -226,8 +216,7 @@ pub struct Collection {
     pub id: i32,
     pub name: String,
 }
-impl Component for Collection {}
-impl private::ComponentInternal for Collection {
+impl Component for Collection {
     fn sanitize(&self) -> Self {
         Collection {
             id: self.id,
@@ -250,8 +239,7 @@ impl private::ComponentInternal for Collection {
 pub struct DbView<'a> {
     pub pages: &'a Vec<models::PageSummary>,
 }
-impl Component for DbView<'_> {}
-impl private::ComponentInternal for DbView<'_> {
+impl Component for DbView<'_> {
     fn sanitize(&self) -> Self {
         self.clone()
     }
@@ -276,8 +264,7 @@ impl private::ComponentInternal for DbView<'_> {
 pub struct PageRow<'a> {
     page: &'a models::PageSummary,
 }
-impl Component for PageRow<'_> {}
-impl<'a> private::ComponentInternal for PageRow<'a> {
+impl Component for PageRow<'_> {
     fn sanitize(&self) -> Self {
         self.clone()
     }
@@ -304,8 +291,7 @@ impl<'a> private::ComponentInternal for PageRow<'a> {
 pub struct Prop<'a> {
     pub prop: &'a models::Prop,
 }
-impl Component for Prop<'_> {}
-impl private::ComponentInternal for Prop<'_> {
+impl Component for Prop<'_> {
     fn sanitize(&self) -> Self {
         self.clone()
     }
@@ -317,7 +303,7 @@ impl private::ComponentInternal for Prop<'_> {
                 prop_id: sanitized.prop.prop_id,
             }
             .render(),
-            models::PropVal::Bool(v) => Bool {
+            models::PropVal::Bool(v) => models::PvBool2 {
                 value: v.value,
                 page_id: sanitized.prop.page_id,
                 prop_id: sanitized.prop.prop_id,
@@ -357,8 +343,7 @@ pub struct Int {
     pub page_id: i32,
     pub prop_id: i32,
 }
-impl Component for Int {}
-impl private::ComponentInternal for Int {
+impl Component for Int {
     fn sanitize(&self) -> Self {
         self.clone()
     }
@@ -367,14 +352,7 @@ impl private::ComponentInternal for Int {
     }
 }
 
-#[derive(Clone)]
-pub struct Bool {
-    pub value: bool,
-    pub page_id: i32,
-    pub prop_id: i32,
-}
-impl Component for Bool {}
-impl private::ComponentInternal for Bool {
+impl Component for models::PvBool2 {
     fn sanitize(&self) -> Self {
         self.clone()
     }
@@ -385,7 +363,7 @@ impl private::ComponentInternal for Bool {
         format!(
             r#"
                 <input
-                    hx-post="/page/{page_id}/prop/{prop_id}"
+                    hx-post="/page/{page_id}/prop/{prop_id}/bool"
                     hx-swap="outerHTML"
                     name="value"
                     type="checkbox"
@@ -402,8 +380,7 @@ pub struct Float {
     pub page_id: i32,
     pub prop_id: i32,
 }
-impl Component for Float {}
-impl private::ComponentInternal for Float {
+impl Component for Float {
     fn sanitize(&self) -> Self {
         self.clone()
     }
@@ -418,8 +395,7 @@ pub struct Str {
     pub page_id: i32,
     pub prop_id: i32,
 }
-impl Component for Str {}
-impl private::ComponentInternal for Str {
+impl Component for Str {
     fn sanitize(&self) -> Self {
         Str {
             page_id: self.page_id,
@@ -438,8 +414,7 @@ pub struct Date {
     pub page_id: i32,
     pub prop_id: i32,
 }
-impl Component for Date {}
-impl private::ComponentInternal for Date {
+impl Component for Date {
     fn sanitize(&self) -> Self {
         self.clone()
     }
@@ -454,8 +429,7 @@ pub struct DateTime {
     pub page_id: i32,
     pub prop_id: i32,
 }
-impl Component for DateTime {}
-impl private::ComponentInternal for DateTime {
+impl Component for DateTime {
     fn sanitize(&self) -> Self {
         self.clone()
     }

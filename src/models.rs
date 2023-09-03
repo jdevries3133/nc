@@ -1,9 +1,16 @@
 use chrono::{DateTime, NaiveDate, Utc};
-use sqlx::{Pool, Postgres};
+use sqlx::PgPool;
+
+#[derive(Clone)]
+pub struct PvBool2 {
+    pub value: bool,
+    pub page_id: i32,
+    pub prop_id: i32,
+}
 
 #[derive(Clone, Debug)]
 pub struct AppState {
-    pub db: Pool<Postgres>,
+    pub db: PgPool,
 }
 
 #[derive(Default, Clone, Debug)]

@@ -1,9 +1,56 @@
 use super::models;
 use anyhow::Result;
+use async_trait::async_trait;
 use chrono::prelude::*;
 use futures::try_join;
 use sqlx::{postgres::PgPool, query, query_as};
 use std::collections::HashMap;
+
+#[async_trait]
+pub trait DbModel<T>: Sized {
+    async fn get(db: &PgPool, identifier: T) -> Result<Self>;
+    async fn save(&self, db: &PgPool) -> Result<()>;
+}
+
+pub struct PropValueIdentifier {
+    pub page_id: i32,
+    pub prop_id: i32,
+}
+
+#[async_trait]
+impl DbModel<PropValueIdentifier> for models::PvBool2 {
+    async fn get(db: &PgPool, identifier: PropValueIdentifier) -> Result<Self> {
+        struct Qres {
+            value: bool,
+        }
+        let res = query_as!(
+            Qres,
+            "select value from propval_bool
+            where page_id = $1 and prop_id = $2",
+            identifier.page_id,
+            identifier.prop_id
+        )
+        .fetch_one(db)
+        .await?;
+        Ok(models::PvBool2 {
+            prop_id: identifier.prop_id,
+            page_id: identifier.page_id,
+            value: res.value,
+        })
+    }
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            "update propval_bool set value = $1
+            where page_id = $2 and prop_id = $3",
+            self.value,
+            self.page_id,
+            self.prop_id
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+}
 
 pub async fn get_items(
     db: &PgPool,
