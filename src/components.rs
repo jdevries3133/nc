@@ -1,40 +1,19 @@
 use super::models;
 use ammonia::clean;
 
-pub trait Component: Sized + Clone {
-    /// Return a copy of the struct, where any string members have been
-    /// sanitized for HTML interpolation with ammonia.
-    fn sanitize(&self) -> Self;
-    /// This internal render method receives the result above the above
-    /// sanitize function (see blanket implementation for Component::render)
-    fn render_internal(sanitized: &Self) -> String;
-    /// Render the component to a string
-    fn render(&self) -> String {
-        let sanitized_self = self.sanitize();
-        Self::render_internal(&sanitized_self)
-    }
+pub trait Component {
+    /// Render the component to a HTML string. By convention, the
+    /// implementation should sanitize all string properties at render-time
+    fn render(&self) -> String;
 }
 
-#[derive(Clone)]
-pub struct Page<T>
-where
-    T: Component,
-{
+pub struct Page {
     pub title: String,
-    pub children: Box<T>,
+    pub children: Box<dyn Component>,
 }
 
-impl<T> Component for Page<T>
-where
-    T: Component,
-{
-    fn sanitize(&self) -> Page<T> {
-        Page {
-            title: clean(&self.title),
-            children: self.children.clone(),
-        }
-    }
-    fn render_internal(sanitized: &Page<T>) -> String {
+impl Component for Page {
+    fn render(&self) -> String {
         // note: we'll get a compiler error here until the tailwind build occurs.
         // Make sure you use `make build` in the Makefile to get both to happen
         // together
@@ -58,19 +37,16 @@ where
             "#,
             tailwind = tailwind,
             htmx = htmx,
-            title = sanitized.title,
-            body_html = sanitized.children.render()
+            title = clean(&self.title),
+            body_html = self.children.render()
         )
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct TodoHome {}
 impl Component for TodoHome {
-    fn sanitize(&self) -> Self {
-        TodoHome::default()
-    }
-    fn render_internal(_: &TodoHome) -> String {
+    fn render(&self) -> String {
         r##"
         <main class="flex items-center justify-center">
             <div class="max-w-md p-2 m-2 bg-indigo-50 rounded shadow">
@@ -101,27 +77,17 @@ impl Component for TodoHome {
     }
 }
 
-#[derive(Clone)]
 pub struct Item {
     pub item: models::Item,
 }
 impl Component for Item {
-    fn sanitize(&self) -> Self {
-        Item {
-            item: models::Item {
-                title: clean(&self.item.title),
-                id: self.item.id,
-                is_completed: self.item.is_completed,
-            },
-        }
-    }
-    fn render_internal(sanitized: &Item) -> String {
-        let checked_state = if sanitized.item.is_completed {
+    fn render(&self) -> String {
+        let checked_state = if self.item.is_completed {
             "checked"
         } else {
             ""
         };
-        let id_str = if let Some(id) = sanitized.item.id {
+        let id_str = if let Some(id) = self.item.id {
             format!("{}", id)
         } else {
             "".to_string()
@@ -152,31 +118,26 @@ impl Component for Item {
             </form>
             "#,
             id = id_str,
-            title = sanitized.item.title,
+            title = clean(&self.item.title),
             checked_state = checked_state
         )
     }
 }
 
-#[derive(Clone)]
 pub struct ItemList {
     pub items: Vec<models::Item>,
     pub next_page: Option<i32>,
 }
 impl Component for ItemList {
-    fn sanitize(&self) -> Self {
-        // Item component will sanitize
-        self.clone()
-    }
-    fn render_internal(sanitized: &ItemList) -> String {
-        let mut items_clone = sanitized.items.clone();
+    fn render(&self) -> String {
+        let mut items_clone = self.items.clone();
         items_clone.sort_by_key(|i| i.is_completed);
         let items = items_clone
             .iter()
             .map(|i| Item { item: i.clone() }.render())
             .collect::<Vec<String>>()
             .join("");
-        let hx_get_infinite_scroll = if let Some(page) = sanitized.next_page {
+        let hx_get_infinite_scroll = if let Some(page) = self.next_page {
             InfiniteScroll {
                 next_href: format!("/item?page={}", page),
             }
@@ -193,56 +154,60 @@ impl Component for ItemList {
     }
 }
 
-#[derive(Clone)]
 pub struct InfiniteScroll {
     pub next_href: String,
 }
 impl Component for InfiniteScroll {
-    fn sanitize(&self) -> Self {
-        InfiniteScroll {
-            next_href: clean(&self.next_href),
-        }
-    }
-    fn render_internal(sanitized: &Self) -> String {
+    fn render(&self) -> String {
         format!(
             r#"<div hx-trigger="revealed" hx-swap="outerHTML" hx-get="{}" />"#,
-            sanitized.next_href
+            clean(&self.next_href)
         )
     }
 }
 
-#[derive(Clone)]
 pub struct Collection {
     pub id: i32,
     pub name: String,
 }
 impl Component for Collection {
-    fn sanitize(&self) -> Self {
-        Collection {
-            id: self.id,
-            name: clean(&self.name),
-        }
-    }
-    fn render_internal(sanitized: &Self) -> String {
+    fn render(&self) -> String {
         format!(
             r#"
             <h1 class="serif text-xl my-4">{name}</h1>
             <main hx-trigger="load" hx-get="/collection/{id}/pages">Loading Pages...</main>
         "#,
-            id = sanitized.id,
-            name = sanitized.name
+            id = self.id,
+            name = clean(&self.name)
+        )
+    }
+}
+
+impl Component for models::Page {
+    fn render(&self) -> String {
+        format!(
+            r#"
+                <div class="flex gap-2">
+                    <div class="w-64 truncate">{title}</div>
+                    {other_props}
+                </div>
+            "#,
+            title = clean(&self.title),
+            other_props = self
+                .props
+                .iter()
+                .map(|p| p.render())
+                .collect::<Vec<String>>()
+                .join("")
         )
     }
 }
 
 impl Component for models::PvBool {
-    fn sanitize(&self) -> Self {
-        self.clone()
-    }
-    fn render_internal(sanitized: &Self) -> String {
-        let checked_state = if sanitized.value { "checked" } else { "" };
-        let page_id = sanitized.page_id;
-        let prop_id = sanitized.prop_id;
+    fn render(&self) -> String {
+        let checked_state = if self.value { "checked" } else { "" };
+        let page_id = self.page_id;
+        let prop_id = self.prop_id;
         format!(
             r#"
                 <input

@@ -97,8 +97,14 @@ pub async fn collection_pages(
     Query(CpQuery { page }): Query<CpQuery>,
     Path(collection_id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    panic!("todo");
-    Ok("")
+    let pages =
+        db_ops::list_pages(&db, collection_id, page.unwrap_or(0)).await?;
+
+    Ok(pages
+        .iter()
+        .map(|p| p.render())
+        .collect::<Vec<String>>()
+        .join(""))
 }
 
 #[derive(Deserialize)]
@@ -111,11 +117,9 @@ pub async fn save_pv_bool(
     Path((page_id, prop_id)): Path<(i32, i32)>,
     Form(PvbForm { value }): Form<PvbForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let mut pvb = models::PvBool::get(
-        &db,
-        db_ops::PropValueIdentifier { prop_id, page_id },
-    )
-    .await?;
+    let mut pvb =
+        models::PvBool::get(&db, db_ops::PvGetQuery { prop_id, page_id })
+            .await?;
     let new_val = value.is_some();
     if new_val != pvb.value {
         pvb.value = value.is_some();

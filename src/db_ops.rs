@@ -1,22 +1,39 @@
-use super::models;
+use super::{models, models::Prop};
 use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::{postgres::PgPool, query, query_as};
+use std::collections::HashMap;
 
 #[async_trait]
-pub trait DbModel<T>: Sized {
-    async fn get(db: &PgPool, identifier: T) -> Result<Self>;
+pub trait DbModel<GetQuery, ListQuery> {
+    async fn get(db: &PgPool, query: GetQuery) -> Result<Self>
+    where
+        Self: Sized;
+    async fn list(db: &PgPool, query: ListQuery) -> Result<Vec<Self>>
+    where
+        Self: Sized;
     async fn save(&self, db: &PgPool) -> Result<()>;
 }
 
-pub struct PropValueIdentifier {
+pub struct PvGetQuery {
     pub page_id: i32,
     pub prop_id: i32,
 }
 
+/// We are generally going to want to get all the props for a small set of
+/// pages. For typical display purposes, we'd be gathering all prop values for
+/// a set of 100 pages at a time.
+///
+/// Later, we can add `prop_ids: Vec<i32>` here as well, which would basically
+/// allow the user to select a subset of columns, but we don't need that for
+/// now.
+pub struct PvListQuery {
+    pub page_ids: Vec<i32>,
+}
+
 #[async_trait]
-impl DbModel<PropValueIdentifier> for models::PvBool {
-    async fn get(db: &PgPool, identifier: PropValueIdentifier) -> Result<Self> {
+impl DbModel<PvGetQuery, PvListQuery> for models::PvBool {
+    async fn get(db: &PgPool, identifier: PvGetQuery) -> Result<Self> {
         struct Qres {
             value: bool,
         }
@@ -35,6 +52,16 @@ impl DbModel<PropValueIdentifier> for models::PvBool {
             value: res.value,
         })
     }
+    async fn list(db: &PgPool, query: PvListQuery) -> Result<Vec<Self>> {
+        Ok(query_as!(
+            Self,
+            "select page_id, prop_id, value from propval_bool
+            where page_id = any($1)",
+            &query.page_ids
+        )
+        .fetch_all(db)
+        .await?)
+    }
     async fn save(&self, db: &PgPool) -> Result<()> {
         query!(
             "update propval_bool set value = $1
@@ -47,6 +74,50 @@ impl DbModel<PropValueIdentifier> for models::PvBool {
         .await?;
         Ok(())
     }
+}
+
+pub async fn list_pages(
+    db: &PgPool,
+    collection_id: i32,
+    page_number: i32,
+) -> Result<Vec<models::Page>> {
+    let page_size = 100;
+    let offset = page_number * page_size;
+    struct Pages {
+        id: i32,
+        title: String,
+        collection_id: i32,
+    }
+    let pages = query_as!(
+        Pages,
+        "select id, title, collection_id from page
+        where collection_id = $1
+        limit $2 offset $3
+        ",
+        collection_id,
+        i64::from(page_size),
+        i64::from(offset)
+    )
+    .fetch_all(db)
+    .await?;
+    let pv_query = PvListQuery {
+        page_ids: pages.iter().map(|p| p.id).collect(),
+    };
+    let bool_props = models::PvBool::list(db, pv_query).await?;
+
+    Ok(pages
+        .iter()
+        .map(|page| models::Page {
+            id: page.id,
+            collection_id: page.collection_id,
+            title: page.title.clone(),
+            props: bool_props
+                .iter()
+                .filter(|pr| pr.page_id == page.id)
+                .map(|pr| Box::new(pr.clone()) as _)
+                .collect(),
+        })
+        .collect())
 }
 
 pub async fn get_items(
