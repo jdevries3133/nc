@@ -187,7 +187,7 @@ impl Component for models::Page {
     fn render(&self) -> String {
         format!(
             r#"
-                <div class="flex gap-2">
+                <div class="flex gap-2 my-1 items-center">
                     <div class="w-64 truncate">{title}</div>
                     {other_props}
                 </div>
@@ -216,6 +216,26 @@ impl Component for models::PvBool {
                     name="value"
                     type="checkbox"
                     {checked_state}
+                />
+            "#
+        )
+    }
+}
+
+impl Component for models::PvInt {
+    fn render(&self) -> String {
+        let page_id = self.page_id;
+        let prop_id = self.prop_id;
+        let value = self.value;
+        format!(
+            r#"
+                <input
+                    class="rounded text-sm w-24"
+                    hx-post="/page/{page_id}/prop/{prop_id}/int"
+                    hx-swap="outerHTML"
+                    name="value"
+                    type="number"
+                    value={value}
                 />
             "#
         )

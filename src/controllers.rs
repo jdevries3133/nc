@@ -118,7 +118,7 @@ pub async fn save_pv_bool(
     Form(PvbForm { value }): Form<PvbForm>,
 ) -> Result<impl IntoResponse, ServerError> {
     let mut pvb =
-        models::PvBool::get(&db, db_ops::PvGetQuery { prop_id, page_id })
+        models::PvBool::get(&db, &db_ops::PvGetQuery { prop_id, page_id })
             .await?;
     let new_val = value.is_some();
     if new_val != pvb.value {
@@ -127,4 +127,26 @@ pub async fn save_pv_bool(
     }
 
     Ok(pvb.render())
+}
+
+#[derive(Deserialize)]
+pub struct PvIntForm {
+    value: Option<i64>,
+}
+pub async fn save_pv_int(
+    State(AppState { db }): State<AppState>,
+    Path((page_id, prop_id)): Path<(i32, i32)>,
+    Form(PvIntForm { value }): Form<PvIntForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    let mut existing =
+        models::PvInt::get(&db, &db_ops::PvGetQuery { prop_id, page_id })
+            .await?;
+
+    if let Some(v) = value {
+        if v != existing.value {
+            existing.value = v;
+            existing.save(&db).await?;
+        }
+    };
+    Ok(existing.render())
 }

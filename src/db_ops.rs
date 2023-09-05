@@ -2,14 +2,13 @@ use super::{models, models::Prop};
 use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::{postgres::PgPool, query, query_as};
-use std::collections::HashMap;
 
 #[async_trait]
 pub trait DbModel<GetQuery, ListQuery> {
-    async fn get(db: &PgPool, query: GetQuery) -> Result<Self>
+    async fn get(db: &PgPool, query: &GetQuery) -> Result<Self>
     where
         Self: Sized;
-    async fn list(db: &PgPool, query: ListQuery) -> Result<Vec<Self>>
+    async fn list(db: &PgPool, query: &ListQuery) -> Result<Vec<Self>>
     where
         Self: Sized;
     async fn save(&self, db: &PgPool) -> Result<()>;
@@ -33,26 +32,18 @@ pub struct PvListQuery {
 
 #[async_trait]
 impl DbModel<PvGetQuery, PvListQuery> for models::PvBool {
-    async fn get(db: &PgPool, identifier: PvGetQuery) -> Result<Self> {
-        struct Qres {
-            value: bool,
-        }
-        let res = query_as!(
-            Qres,
-            "select value from propval_bool
+    async fn get(db: &PgPool, query: &PvGetQuery) -> Result<Self> {
+        Ok(query_as!(
+            Self,
+            "select page_id, prop_id, value from propval_bool
             where page_id = $1 and prop_id = $2",
-            identifier.page_id,
-            identifier.prop_id
+            query.page_id,
+            query.prop_id
         )
         .fetch_one(db)
-        .await?;
-        Ok(models::PvBool {
-            prop_id: identifier.prop_id,
-            page_id: identifier.page_id,
-            value: res.value,
-        })
+        .await?)
     }
-    async fn list(db: &PgPool, query: PvListQuery) -> Result<Vec<Self>> {
+    async fn list(db: &PgPool, query: &PvListQuery) -> Result<Vec<Self>> {
         Ok(query_as!(
             Self,
             "select page_id, prop_id, value from propval_bool
@@ -65,6 +56,43 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PvBool {
     async fn save(&self, db: &PgPool) -> Result<()> {
         query!(
             "update propval_bool set value = $1
+            where page_id = $2 and prop_id = $3",
+            self.value,
+            self.page_id,
+            self.prop_id
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl DbModel<PvGetQuery, PvListQuery> for models::PvInt {
+    async fn get(db: &PgPool, query: &PvGetQuery) -> Result<Self> {
+        Ok(query_as!(
+            Self,
+            "select page_id, prop_id, value from propval_int
+            where page_id = $1 and prop_id = $2",
+            query.page_id,
+            query.prop_id
+        )
+        .fetch_one(db)
+        .await?)
+    }
+    async fn list(db: &PgPool, query: &PvListQuery) -> Result<Vec<Self>> {
+        Ok(query_as!(
+            Self,
+            "select page_id, prop_id, value from propval_int
+            where page_id = any($1)",
+            &query.page_ids
+        )
+        .fetch_all(db)
+        .await?)
+    }
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            "update propval_int set value = $1
             where page_id = $2 and prop_id = $3",
             self.value,
             self.page_id,
@@ -103,19 +131,36 @@ pub async fn list_pages(
     let pv_query = PvListQuery {
         page_ids: pages.iter().map(|p| p.id).collect(),
     };
-    let bool_props = models::PvBool::list(db, pv_query).await?;
+    let bool_props = models::PvBool::list(db, &pv_query).await?;
+    let int_props = models::PvInt::list(db, &pv_query).await?;
 
     Ok(pages
         .iter()
-        .map(|page| models::Page {
-            id: page.id,
-            collection_id: page.collection_id,
-            title: page.title.clone(),
-            props: bool_props
+        .map(|page| {
+            // #feelsbad
+            let my_bools = bool_props
                 .iter()
-                .filter(|pr| pr.page_id == page.id)
-                .map(|pr| Box::new(pr.clone()) as _)
-                .collect(),
+                .filter(|p| p.page_id == page.id)
+                .map(|p| p.clone())
+                .collect::<Vec<models::PvBool>>();
+            let my_ints = int_props
+                .iter()
+                .filter(|p| p.page_id == page.id)
+                .map(|p| p.clone())
+                .collect::<Vec<models::PvInt>>();
+            let mut all: Vec<Box<dyn Prop>> = vec![];
+            for b in my_bools {
+                all.push(Box::new(b));
+            }
+            for i in my_ints {
+                all.push(Box::new(i));
+            }
+            models::Page {
+                id: page.id,
+                collection_id: page.collection_id,
+                title: page.title.clone(),
+                props: all,
+            }
         })
         .collect())
 }

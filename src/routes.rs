@@ -13,4 +13,8 @@ pub fn get_routes() -> Router<models::AppState> {
             "/page/:page_id/prop/:prop_id/bool",
             post(controllers::save_pv_bool),
         )
+        .route(
+            "/page/:page_id/prop/:prop_id/int",
+            post(controllers::save_pv_int),
+        )
 }
