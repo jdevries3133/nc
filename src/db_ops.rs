@@ -2,6 +2,7 @@ use super::{models, models::Prop};
 use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::{postgres::PgPool, query, query_as};
+use std::collections::HashMap;
 
 #[async_trait]
 pub trait DbModel<GetQuery, ListQuery> {
@@ -128,39 +129,39 @@ pub async fn list_pages(
     )
     .fetch_all(db)
     .await?;
+
     let pv_query = PvListQuery {
         page_ids: pages.iter().map(|p| p.id).collect(),
     };
     let bool_props = models::PvBool::list(db, &pv_query).await?;
     let int_props = models::PvInt::list(db, &pv_query).await?;
 
+    // Let's build a hash map where the key is the page ID, and the value is
+    // Vec<Box<dyn Prop>>, creating a set of prop-values for each page
+    let mut prop_map: HashMap<i32, Vec<Box<dyn Prop>>> = HashMap::new();
+
+    macro_rules! insert {
+        ($propset:ident) => {
+            for item in $propset {
+                if let Some(existing) = prop_map.get_mut(&item.page_id) {
+                    existing.push(Box::new(item));
+                } else {
+                    prop_map.insert(item.page_id, vec![Box::new(item)]);
+                }
+            }
+        };
+    }
+
+    insert!(bool_props);
+    insert!(int_props);
+
     Ok(pages
         .iter()
-        .map(|page| {
-            // #feelsbad
-            let my_bools = bool_props
-                .iter()
-                .filter(|p| p.page_id == page.id)
-                .map(|p| p.clone())
-                .collect::<Vec<models::PvBool>>();
-            let my_ints = int_props
-                .iter()
-                .filter(|p| p.page_id == page.id)
-                .map(|p| p.clone())
-                .collect::<Vec<models::PvInt>>();
-            let mut all: Vec<Box<dyn Prop>> = vec![];
-            for b in my_bools {
-                all.push(Box::new(b));
-            }
-            for i in my_ints {
-                all.push(Box::new(i));
-            }
-            models::Page {
-                id: page.id,
-                collection_id: page.collection_id,
-                title: page.title.clone(),
-                props: all,
-            }
+        .map(|page| models::Page {
+            id: page.id,
+            collection_id: page.collection_id,
+            title: page.title.clone(),
+            props: prop_map.remove(&page.id).unwrap_or_else(|| vec![]),
         })
         .collect())
 }
