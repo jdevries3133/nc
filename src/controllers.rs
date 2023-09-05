@@ -1,6 +1,6 @@
 use super::{
     components, components::Component, db_ops, db_ops::DbModel,
-    errors::ServerError, models, models::AppState,
+    errors::ServerError, htmx, models, models::AppState,
 };
 use anyhow::Result;
 use axum::{
@@ -149,4 +149,47 @@ pub async fn save_pv_int(
         }
     };
     Ok(existing.render())
+}
+
+pub async fn new_page_form(
+    Path(collection_id): Path<i32>,
+) -> impl IntoResponse {
+    let form = components::NewPage {
+        collection_id,
+        page_id: None,
+        title: None,
+    };
+    components::Page {
+        children: Box::new(form),
+        title: "New Page".to_string(),
+    }
+    .render()
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PageForm {
+    pub id: Option<i32>,
+    pub title: String,
+}
+pub async fn handle_page_submission(
+    State(AppState { db }): State<AppState>,
+    Path(collection_id): Path<i32>,
+    Form(form): Form<PageForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    if let Some(id) = form.id {
+        models::Page {
+            id,
+            collection_id,
+            title: form.title,
+            props: Vec::new(),
+        }
+        .save(&db)
+        .await?;
+    } else {
+        db_ops::create_page(&db, collection_id, &form.title).await?;
+    }
+    Ok((
+        htmx::redirect(&format!("/collection/{collection_id}")),
+        "OK",
+    ))
 }

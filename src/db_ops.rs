@@ -5,7 +5,7 @@ use sqlx::{postgres::PgPool, query, query_as};
 use std::collections::HashMap;
 
 #[async_trait]
-pub trait DbModel<GetQuery, ListQuery> {
+pub trait DbModel<GetQuery, ListQuery>: Sync + Send {
     async fn get(db: &PgPool, query: &GetQuery) -> Result<Self>
     where
         Self: Sized;
@@ -105,6 +105,27 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PvInt {
     }
 }
 
+#[async_trait]
+impl DbModel<(), ()> for models::Page {
+    async fn get(db: &PgPool, query: &()) -> Result<Self> {
+        todo!()
+    }
+    async fn list(db: &PgPool, query: &()) -> Result<Vec<Self>> {
+        todo!()
+    }
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            "update page set title = $1 where id = $2",
+            self.title,
+            self.id
+        )
+        .execute(db)
+        .await?;
+
+        Ok(())
+    }
+}
+
 pub async fn list_pages(
     db: &PgPool,
     collection_id: i32,
@@ -161,7 +182,7 @@ pub async fn list_pages(
             id: page.id,
             collection_id: page.collection_id,
             title: page.title.clone(),
-            props: prop_map.remove(&page.id).unwrap_or_else(|| vec![]),
+            props: prop_map.remove(&page.id).unwrap_or_default(),
         })
         .collect())
 }
@@ -262,4 +283,14 @@ pub async fn get_collection_name(db: &PgPool, id: i32) -> Result<String> {
         .await?;
 
     Ok(res.name)
+}
+
+pub async fn create_page(db: &PgPool, collection_id: i32, title: &str) -> Result<()> {
+    query!(
+        "insert into page (collection_id, title) values ($1, $2)",
+        collection_id,
+        title
+    ).execute(db).await?;
+
+    Ok(())
 }

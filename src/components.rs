@@ -175,7 +175,8 @@ impl Component for Collection {
         format!(
             r#"
             <h1 class="serif text-xl my-4">{name}</h1>
-            <main hx-trigger="load" hx-get="/collection/{id}/pages">Loading Pages...</main>
+            <a class="link" href="/collection/{id}/page/new">Create Page</a>
+            <main hx-trigger="load" hx-get="/collection/{id}/page">Loading Pages...</main>
         "#,
             id = self.id,
             name = clean(&self.name)
@@ -238,6 +239,38 @@ impl Component for models::PvInt {
                     value={value}
                 />
             "#
+        )
+    }
+}
+
+pub struct NewPage {
+    pub collection_id: i32,
+    pub page_id: Option<i32>,
+    pub title: Option<String>,
+}
+impl Component for NewPage {
+    fn render(&self) -> String {
+        let cid = self.collection_id;
+        let page_id = if let Some(pid) = self.page_id {
+            format!(r#"<input type="hidden" name="id" value="{pid}" />"#)
+        } else {
+            "".to_string()
+        };
+        let title = if let Some(t) = &self.title {
+            clean(t)
+        } else {
+            "".to_string()
+        };
+        format!(
+            r#"
+                <form hx-post="/collection/{cid}/page">
+                    <h1 class="text-xl">New Page</h1>
+                    <label for="title">Title</label>
+                    <input class="rounded" type="text" name="title" id="title" value="{title}" />
+                    {page_id}
+                    <button>Save</button>
+                </form>
+            "#,
         )
     }
 }

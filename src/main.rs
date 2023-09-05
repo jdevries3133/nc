@@ -7,6 +7,7 @@ mod components;
 mod controllers;
 mod db_ops;
 mod errors;
+mod htmx;
 mod middleware;
 mod models;
 mod routes;
