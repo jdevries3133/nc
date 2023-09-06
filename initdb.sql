@@ -31,7 +31,8 @@ create table property(
     id serial primary key,
     name varchar(255) not null,
 
-    type_id int not null references property_type(id)
+    type_id int not null references property_type(id),
+    collection_id int not null references collection(id)
 );
 
 create table page(
@@ -112,10 +113,10 @@ create table propval_multistr__value(
 -- Starter Data
 
 insert into collection (name) values ('Default Collection');
-insert into property (name, type_id) values
-    ('Sprint Number', 2),
-    ('Due Date', 6),
-    ('Completed', 1)
+insert into property (name, type_id, collection_id) values
+    ('Sprint Number', 2, 1),
+    ('Due Date', 6, 1),
+    ('Completed', 1, 1)
 ;
 insert into page (title, collection_id) values
     ('Build multi-string support', 1),
