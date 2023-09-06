@@ -4,15 +4,14 @@ use super::{
 };
 use sqlx::PgPool;
 
-pub trait Prop:
+/// A PropVal implementation corresponds with each `propval_*` table in the
+/// database. It provides generic mechanisms for dealing with values on page
+/// properties.
+pub trait PropVal:
     components::Component + DbModel<PvGetQuery, PvListQuery> + std::fmt::Debug
 {
     fn get_page_id(&self) -> i32;
     fn get_prop_id(&self) -> i32;
-    fn eq(&self, other: Box<dyn Prop>) -> bool {
-        self.get_page_id() == other.get_page_id()
-            && self.get_prop_id() == other.get_prop_id()
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -22,7 +21,7 @@ pub struct PvBool {
     pub prop_id: i32,
 }
 
-impl Prop for PvBool {
+impl PropVal for PvBool {
     fn get_page_id(&self) -> i32 {
         self.page_id
     }
@@ -38,7 +37,7 @@ pub struct PvInt {
     pub prop_id: i32,
 }
 
-impl Prop for PvInt {
+impl PropVal for PvInt {
     fn get_page_id(&self) -> i32 {
         self.page_id
     }
@@ -52,7 +51,7 @@ pub struct Page {
     pub id: i32,
     pub collection_id: i32,
     pub title: String,
-    pub props: Vec<Box<dyn Prop>>,
+    pub props: Vec<Box<dyn PropVal>>,
 }
 
 #[derive(Clone, Debug)]

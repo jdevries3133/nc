@@ -1,4 +1,4 @@
-use super::{models, models::Prop};
+use super::{models, models::PropVal};
 use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::{postgres::PgPool, query, query_as};
@@ -107,10 +107,10 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PvInt {
 
 #[async_trait]
 impl DbModel<(), ()> for models::Page {
-    async fn get(db: &PgPool, query: &()) -> Result<Self> {
+    async fn get(_db: &PgPool, _query: &()) -> Result<Self> {
         todo!()
     }
-    async fn list(db: &PgPool, query: &()) -> Result<Vec<Self>> {
+    async fn list(_db: &PgPool, _query: &()) -> Result<Vec<Self>> {
         todo!()
     }
     async fn save(&self, db: &PgPool) -> Result<()> {
@@ -159,7 +159,7 @@ pub async fn list_pages(
 
     // Let's build a hash map where the key is the page ID, and the value is
     // Vec<Box<dyn Prop>>, creating a set of prop-values for each page
-    let mut prop_map: HashMap<i32, Vec<Box<dyn Prop>>> = HashMap::new();
+    let mut prop_map: HashMap<i32, Vec<Box<dyn PropVal>>> = HashMap::new();
 
     macro_rules! insert {
         ($propset:ident) => {
@@ -285,12 +285,18 @@ pub async fn get_collection_name(db: &PgPool, id: i32) -> Result<String> {
     Ok(res.name)
 }
 
-pub async fn create_page(db: &PgPool, collection_id: i32, title: &str) -> Result<()> {
+pub async fn create_page(
+    db: &PgPool,
+    collection_id: i32,
+    title: &str,
+) -> Result<()> {
     query!(
         "insert into page (collection_id, title) values ($1, $2)",
         collection_id,
         title
-    ).execute(db).await?;
+    )
+    .execute(db)
+    .await?;
 
     Ok(())
 }
