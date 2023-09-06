@@ -4,6 +4,7 @@ use sqlx::postgres::PgPoolOptions;
 use std::{env, net::SocketAddr};
 
 mod components;
+mod config;
 mod controllers;
 mod db_ops;
 mod errors;

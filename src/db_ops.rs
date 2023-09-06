@@ -1,5 +1,5 @@
-use super::{models, models::PropVal};
-use anyhow::Result;
+use super::{config, models, models::PropVal};
+use anyhow::{bail, Result};
 use async_trait::async_trait;
 use sqlx::{postgres::PgPool, query, query_as};
 use std::collections::HashMap;
@@ -56,8 +56,9 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PvBool {
     }
     async fn save(&self, db: &PgPool) -> Result<()> {
         query!(
-            "update propval_bool set value = $1
-            where page_id = $2 and prop_id = $3",
+            "insert into propval_bool (value, page_id, prop_id) values ($1, $2, $3)
+            on conflict (page_id, prop_id)
+            do update set value = $1",
             self.value,
             self.page_id,
             self.prop_id
@@ -93,8 +94,9 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PvInt {
     }
     async fn save(&self, db: &PgPool) -> Result<()> {
         query!(
-            "update propval_int set value = $1
-            where page_id = $2 and prop_id = $3",
+            "insert into propval_int (value, page_id, prop_id) values ($1, $2, $3)
+            on conflict (page_id, prop_id)
+            do update set value = $1",
             self.value,
             self.page_id,
             self.prop_id
@@ -151,24 +153,27 @@ pub async fn list_pages(
     .fetch_all(db)
     .await?;
 
+    let collection_prop_set = get_prop_set(db, collection_id).await?;
     let pv_query = PvListQuery {
         page_ids: pages.iter().map(|p| p.id).collect(),
     };
     let bool_props = models::PvBool::list(db, &pv_query).await?;
     let int_props = models::PvInt::list(db, &pv_query).await?;
 
-    // Let's build a hash map where the key is the page ID, and the value is
-    // Vec<Box<dyn Prop>>, creating a set of prop-values for each page
-    let mut prop_map: HashMap<i32, Vec<Box<dyn PropVal>>> = HashMap::new();
+    // Let's build a hash map to facilitate applying this blob of all prop
+    // values for all pages in the collection into an ordered set of prop values
+    // for each page being rendered.
+    //
+    // The keys of the hash map will be a tuple of `(page_id, prop_id)`. This
+    // is the natural key for all prop-values, allowing us to lookup arbitrary
+    // prop values by identifier as we perform an outer loop over pages and
+    // an inner loop over props.
+    let mut prop_map: HashMap<(i32, i32), Box<dyn PropVal>> = HashMap::new();
 
     macro_rules! insert {
         ($propset:ident) => {
             for item in $propset {
-                if let Some(existing) = prop_map.get_mut(&item.page_id) {
-                    existing.push(Box::new(item));
-                } else {
-                    prop_map.insert(item.page_id, vec![Box::new(item)]);
-                }
+                prop_map.insert((item.page_id, item.prop_id), Box::new(item));
             }
         };
     }
@@ -178,11 +183,27 @@ pub async fn list_pages(
 
     Ok(pages
         .iter()
-        .map(|page| models::Page {
-            id: page.id,
-            collection_id: page.collection_id,
-            title: page.title.clone(),
-            props: prop_map.remove(&page.id).unwrap_or_default(),
+        .map(|page| {
+            let mut props = vec![];
+            for collection_prop in &collection_prop_set[..] {
+                if let Some(existing) =
+                    prop_map.remove(&(page.id, collection_prop.id))
+                {
+                    props.push(existing)
+                } else {
+                    props.push(models::get_default(
+                        collection_prop.type_id.clone(),
+                        page.id,
+                        collection_prop.id,
+                    ))
+                }
+            }
+            models::Page {
+                props,
+                id: page.id,
+                collection_id: page.collection_id,
+                title: page.title.clone(),
+            }
         })
         .collect())
 }
@@ -299,4 +320,38 @@ pub async fn create_page(
     .await?;
 
     Ok(())
+}
+
+pub async fn get_prop_set(
+    db: &PgPool,
+    collection_id: i32,
+) -> Result<Vec<models::Prop>> {
+    struct Qres {
+        id: i32,
+        type_id: i32,
+        collection_id: i32,
+        name: String,
+    }
+    let props = query_as!(
+        Qres,
+        "select id, type_id, collection_id, name
+        from property
+        where collection_id = $1",
+        collection_id
+    )
+    .fetch_all(db)
+    .await?;
+    if props.len() > config::PROP_SET_MAX {
+        bail!("Collection {collection_id} has too many props");
+    } else {
+        Ok(props
+            .iter()
+            .map(|p| models::Prop {
+                id: p.id,
+                collection_id: p.collection_id,
+                type_id: models::propval_type_from_int(p.type_id),
+                name: p.name.clone(),
+            })
+            .collect())
+    }
 }

@@ -119,7 +119,15 @@ pub async fn save_pv_bool(
 ) -> Result<impl IntoResponse, ServerError> {
     let mut pvb =
         models::PvBool::get(&db, &db_ops::PvGetQuery { prop_id, page_id })
-            .await?;
+            .await
+            // I'm interpreting an error as 'not found' which is not ideal; I
+            // should probably return Result<Option<T>>, but I'll punt that
+            // refactor for later
+            .unwrap_or(models::PvBool {
+                page_id,
+                prop_id,
+                value: false,
+            });
     let new_val = value.is_some();
     if new_val != pvb.value {
         pvb.value = value.is_some();
@@ -140,7 +148,11 @@ pub async fn save_pv_int(
 ) -> Result<impl IntoResponse, ServerError> {
     let mut existing =
         models::PvInt::get(&db, &db_ops::PvGetQuery { prop_id, page_id })
-            .await?;
+            .await.unwrap_or(models::PvInt {
+                page_id,
+                prop_id,
+                value: 0
+            });
 
     if let Some(v) = value {
         if v != existing.value {

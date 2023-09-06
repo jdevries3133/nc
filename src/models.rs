@@ -4,6 +4,61 @@ use super::{
 };
 use sqlx::PgPool;
 
+pub struct Prop {
+    pub id: i32,
+    pub type_id: PropValTypes,
+    pub collection_id: i32,
+    pub name: String,
+}
+
+/// This is only really used for adapting from `property.type_id` in the
+/// database to one of our `Pv*` structs
+#[derive(Clone, Debug)]
+pub enum PropValTypes {
+    Bool = 1,
+    Int = 2,
+    Float = 3,
+    Str = 4,
+    MultiString = 5,
+    Date = 6,
+    DateTime = 7,
+}
+
+/// Will panic if an invalid PropValTypes is passed in
+pub fn propval_type_from_int(int: i32) -> PropValTypes {
+    match int {
+        1 => PropValTypes::Bool,
+        2 => PropValTypes::Int,
+        3 => PropValTypes::Float,
+        4 => PropValTypes::Str,
+        5 => PropValTypes::MultiString,
+        6 => PropValTypes::Date,
+        7 => PropValTypes::DateTime,
+        _ => panic!("invalid prop-type {int}"),
+    }
+}
+
+/// Get the `dyn PropVal` default value for any prop type
+pub fn get_default(
+    pv_type: PropValTypes,
+    page_id: i32,
+    prop_id: i32,
+) -> Box<dyn PropVal> {
+    match pv_type {
+        PropValTypes::Bool => Box::new(PvBool {
+            page_id,
+            prop_id,
+            value: false,
+        }),
+        PropValTypes::Int => Box::new(PvInt {
+            page_id,
+            prop_id,
+            value: 0,
+        }),
+        _ => todo!("type {pv_type:?} not implemented"),
+    }
+}
+
 /// A PropVal implementation corresponds with each `propval_*` table in the
 /// database. It provides generic mechanisms for dealing with values on page
 /// properties.
