@@ -2,6 +2,7 @@ use super::{
     components,
     db_ops::{DbModel, PvGetQuery, PvListQuery},
 };
+use async_trait::async_trait;
 use sqlx::PgPool;
 
 pub struct Prop {
@@ -62,9 +63,27 @@ pub fn get_default(
 /// A PropVal implementation corresponds with each `propval_*` table in the
 /// database. It provides generic mechanisms for dealing with values on page
 /// properties.
+#[async_trait]
 pub trait PropVal:
     components::Component + DbModel<PvGetQuery, PvListQuery> + std::fmt::Debug
 {
+    /// Get the existing database model using the `DbModel::get` method. If any
+    /// error occurs (which is most likely caused by the row not currently
+    /// existing), return a default model instead.
+
+    // Implementers are a bit leaky, because it's possible that i.e, we get a
+    // network error connecting to the database, and then read that as "does
+    // not exist" and give the default back instead of propagating back the
+    // underlying error. Fixing this is a bit tricky because I decided my
+    // `DbModel::get` method would return `Result<T>` instead of
+    // `Result<Option<T>>`, so there is no disambiguation between an error
+    // (including not found), versus another type of error. So, I'll accept
+    // the leakiness now, deferring a refactor to `Result<Option<T>>` in the
+    // `DbModel` trait for later, which, when corrected, would affect all
+    // implementation of this function.
+    async fn get_or_init(db: &PgPool, query: &PvGetQuery) -> Self
+    where
+        Self: Sized;
     fn get_page_id(&self) -> i32;
     fn get_prop_id(&self) -> i32;
 }
@@ -76,7 +95,18 @@ pub struct PvBool {
     pub prop_id: i32,
 }
 
+#[async_trait]
 impl PropVal for PvBool {
+    async fn get_or_init(db: &PgPool, query: &PvGetQuery) -> Self
+    where
+        Self: Sized,
+    {
+        PvBool::get(db, query).await.unwrap_or(PvBool {
+            page_id: query.page_id,
+            prop_id: query.prop_id,
+            value: false,
+        })
+    }
     fn get_page_id(&self) -> i32 {
         self.page_id
     }
@@ -92,7 +122,18 @@ pub struct PvInt {
     pub prop_id: i32,
 }
 
+#[async_trait]
 impl PropVal for PvInt {
+    async fn get_or_init(db: &PgPool, query: &PvGetQuery) -> Self
+    where
+        Self: Sized,
+    {
+        PvInt::get(db, query).await.unwrap_or(PvInt {
+            page_id: query.page_id,
+            prop_id: query.prop_id,
+            value: 0,
+        })
+    }
     fn get_page_id(&self) -> i32 {
         self.page_id
     }
