@@ -107,13 +107,42 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PvInt {
     }
 }
 
+pub struct GetPageQuery {
+    pub id: i32,
+}
+
+pub struct ListPageQuery {
+    pub collection_id: i32,
+    pub page_number: i32,
+}
+
 #[async_trait]
-impl DbModel<(), ()> for models::Page {
-    async fn get(_db: &PgPool, _query: &()) -> Result<Self> {
-        todo!()
+impl DbModel<GetPageQuery, ListPageQuery> for models::Page {
+    /// Note: `Page.props` are not selected by this query yet; we're returning
+    /// an empty vec for now.
+    async fn get(db: &PgPool, query: &GetPageQuery) -> Result<Self> {
+        struct Qres {
+            id: i32,
+            collection_id: i32,
+            title: String,
+        }
+        let res = query_as!(
+            Qres,
+            "select id, collection_id, title from page where id = $1",
+            query.id
+        )
+        .fetch_one(db)
+        .await?;
+
+        Ok(Self {
+            id: res.id,
+            title: res.title,
+            collection_id: res.collection_id,
+            props: vec![],
+        })
     }
-    async fn list(_db: &PgPool, _query: &()) -> Result<Vec<Self>> {
-        todo!()
+    async fn list(db: &PgPool, query: &ListPageQuery) -> Result<Vec<Self>> {
+        list_pages(db, query.collection_id, query.page_number).await
     }
     async fn save(&self, db: &PgPool) -> Result<()> {
         query!(
