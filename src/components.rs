@@ -175,8 +175,8 @@ impl Component for Collection {
         format!(
             r#"
             <h1 class="serif text-xl my-4">{name}</h1>
-            <a class="link" href="/collection/{id}/page/new">Create Page</a>
-            <main hx-trigger="load" hx-get="/collection/{id}/page">Loading Pages...</main>
+            <a class="link" href="/collection/{id}/new-page">Create Page</a>
+            <main hx-trigger="load" hx-get="/collection/{id}/list-pages">Loading Pages...</main>
         "#,
             id = self.id,
             name = clean(&self.name)
@@ -263,7 +263,7 @@ impl Component for NewPage {
         };
         format!(
             r#"
-                <form hx-post="/collection/{cid}/page">
+                <form hx-post="/collection/{cid}">
                     <h1 class="text-xl">New Page</h1>
                     <label for="title">Title</label>
                     <input class="rounded" type="text" name="title" id="title" value="{title}" />
@@ -271,6 +271,24 @@ impl Component for NewPage {
                     <button>Save</button>
                 </form>
             "#,
+        )
+    }
+}
+
+pub struct BlockEditor {}
+impl Component for BlockEditor {
+    fn render(&self) -> String {
+        let id = uuid::Uuid::new_v4();
+        format!(
+            r#"
+            <textarea id="{id}">heyo</textarea>
+
+            <script>
+                const el = document.getElementById("{id}");
+                console.log(el)
+            </script>
+
+        "#
         )
     }
 }

@@ -175,6 +175,16 @@ pub async fn new_page_form(
     .render()
 }
 
+pub async fn existing_page_form(
+    State(AppState { db }): State<AppState>,
+    Path(page_id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let page =
+        models::Page::get(&db, &db_ops::GetPageQuery { id: page_id }).await?;
+
+    Ok(page.render())
+}
+
 #[derive(Debug, Deserialize)]
 pub struct PageForm {
     pub id: Option<i32>,
@@ -198,7 +208,12 @@ pub async fn handle_page_submission(
         db_ops::create_page(&db, collection_id, &form.title).await?;
     }
     Ok((
+        axum::http::StatusCode::CREATED,
         htmx::redirect(&format!("/collection/{collection_id}")),
         "OK",
     ))
+}
+
+pub async fn new_block_form() -> impl IntoResponse {
+    components::BlockEditor {}.render()
 }
