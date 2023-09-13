@@ -217,7 +217,3 @@ pub async fn handle_page_submission(
         "OK",
     ))
 }
-
-pub async fn new_block_form() -> impl IntoResponse {
-    components::BlockEditor {}.render()
-}

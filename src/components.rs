@@ -274,21 +274,3 @@ impl Component for NewPage {
         )
     }
 }
-
-pub struct BlockEditor {}
-impl Component for BlockEditor {
-    fn render(&self) -> String {
-        let id = uuid::Uuid::new_v4();
-        format!(
-            r#"
-            <textarea id="{id}">heyo</textarea>
-
-            <script>
-                const el = document.getElementById("{id}");
-                console.log(el)
-            </script>
-
-        "#
-        )
-    }
-}
