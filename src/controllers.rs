@@ -182,7 +182,11 @@ pub async fn existing_page_form(
     let page =
         models::Page::get(&db, &db_ops::GetPageQuery { id: page_id }).await?;
 
-    Ok(page.render())
+    Ok(components::Page {
+        title: format!("{}", page.title),
+        children: Box::new(page),
+    }
+    .render())
 }
 
 #[derive(Debug, Deserialize)]
