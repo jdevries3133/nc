@@ -18,4 +18,5 @@ pub fn get_routes() -> Router<models::AppState> {
         .route("/page/:page_id/content",            post(controllers::handle_content_submission))
         .route("/page/:page_id/prop/:prop_id/bool", post(controllers::save_pv_bool))
         .route("/page/:page_id/prop/:prop_id/int",  post(controllers::save_pv_int))
+        .route("/static/htmx-1.9.4",                get(controllers::get_htmx_js))
 }

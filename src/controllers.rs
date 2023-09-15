@@ -10,6 +10,7 @@ use super::{
 use anyhow::Result;
 use axum::{
     extract::{Path, Query, State},
+    http::{HeaderMap, HeaderValue},
     response::IntoResponse,
     Form,
 };
@@ -21,6 +22,21 @@ pub async fn root() -> impl IntoResponse {
         children: Box::new(components::TodoHome {}),
     }
     .render()
+}
+
+pub async fn get_htmx_js() -> impl IntoResponse {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        "content-type",
+        HeaderValue::from_str("text/javascript")
+            .expect("We can insert text/javascript headers"),
+    );
+    headers.insert(
+        "cache-control",
+        HeaderValue::from_str("Cache-Control: public, max-age=31536000")
+            .expect("we can set cache control header"),
+    );
+    (headers, include_str!("./htmx-1.9.4.vendor.js"))
 }
 
 #[derive(Deserialize)]
@@ -84,13 +100,18 @@ pub async fn delete_todo(
 pub async fn get_collection(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, ServerError> {
     let name = db_ops::get_collection_name(&db, id).await?;
-    Ok(components::Page {
-        title: format!("Workspace ({name})"),
-        children: Box::new(components::Collection { id, name }),
-    }
-    .render())
+    Ok(if headers.contains_key("Hx-Request") {
+        components::Collection { id, name }.render()
+    } else {
+        components::Page {
+            title: format!("Workspace ({name})"),
+            children: Box::new(components::Collection { id, name }),
+        }
+        .render()
+    })
 }
 
 #[derive(Deserialize)]
@@ -158,33 +179,41 @@ pub async fn save_pv_int(
 
 pub async fn new_page_form(
     Path(collection_id): Path<i32>,
+    headers: HeaderMap,
 ) -> impl IntoResponse {
     let form = components::NewPage {
         collection_id,
         page_id: None,
         title: None,
     };
-    components::Page {
-        children: Box::new(form),
-        title: "New Page".to_string(),
+    if headers.contains_key("Hx-Request") {
+        form.render()
+    } else {
+        components::Page {
+            children: Box::new(form),
+            title: "New Page".to_string(),
+        }
+        .render()
     }
-    .render()
 }
 
 pub async fn existing_page_form(
     State(AppState { db }): State<AppState>,
     Path(page_id): Path<i32>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, ServerError> {
     let page =
         models::Page::get(&db, &db_ops::GetPageQuery { id: page_id }).await?;
 
-    let html = components::Page {
-        title: format!("{}", page.title),
-        children: Box::new(components::PageOverview { page: &page }),
-    }
-    .render();
-
-    Ok(html)
+    Ok(if headers.contains_key("Hx-Request") {
+        components::PageOverview { page: &page }.render()
+    } else {
+        components::Page {
+            title: format!("{}", page.title),
+            children: Box::new(components::PageOverview { page: &page }),
+        }
+        .render()
+    })
 }
 
 #[derive(Deserialize)]

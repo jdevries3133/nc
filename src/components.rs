@@ -19,7 +19,6 @@ impl Component for Page<'_> {
         // Make sure you use `make build` in the Makefile to get both to happen
         // together
         let tailwind = include_str!("./tailwind.generated.css");
-        let htmx = include_str!("./htmx-1.9.4.vendor.js");
         format!(
             r#"
             <html>
@@ -30,14 +29,13 @@ impl Component for Page<'_> {
                         {tailwind}
                     </style>
                 </head>
-                <body class="dark:bg-indigo-1000 dark:text-white mt-2 ml-2 sm:mt-8 sm:ml-8">
+                <body hx-boost="true" class="dark:bg-indigo-1000 dark:text-white mt-2 ml-2 sm:mt-8 sm:ml-8">
                     {body_html}
-                    <script>{htmx}</script>
+                    <script src="/static/htmx-1.9.4"></script>
                 </body>
             </html>
             "#,
             tailwind = tailwind,
-            htmx = htmx,
             title = clean(&self.title),
             body_html = self.children.render()
         )
@@ -221,7 +219,7 @@ impl Component for PageOverview<'_> {
     fn render(&self) -> String {
         let back_button = format!(
             r#"
-                <a class="link" href="/collection/{}">Back</a>
+                <a class="block mb-2 link" href="/collection/{}">Back</a>
             "#,
             self.page.collection_id
         );
@@ -376,8 +374,15 @@ impl Component for NewPage {
         } else {
             "".to_string()
         };
+        let back_button = format!(
+            r#"
+                <a class="block mb-2 link" href="/collection/{}">Back</a>
+            "#,
+            self.collection_id
+        );
         format!(
             r#"
+                {back_button}
                 <form hx-post="/collection/{cid}">
                     <h1 class="text-xl">New Page</h1>
                     <label for="title">Title</label>
