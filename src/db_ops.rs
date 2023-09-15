@@ -6,12 +6,17 @@ use std::collections::HashMap;
 
 #[async_trait]
 pub trait DbModel<GetQuery, ListQuery>: Sync + Send {
+    /// Get exactly one object from the database, matching the query. WIll
+    /// return an error variant if the item does not exist.
     async fn get(db: &PgPool, query: &GetQuery) -> Result<Self>
     where
         Self: Sized;
+    /// Get a set of objects from the database, matching the contents of the
+    /// list query type.
     async fn list(db: &PgPool, query: &ListQuery) -> Result<Vec<Self>>
     where
         Self: Sized;
+    /// Persist the object to the database
     async fn save(&self, db: &PgPool) -> Result<()>;
 }
 
@@ -122,23 +127,31 @@ impl DbModel<GetPageQuery, ListPageQuery> for models::Page {
     /// an empty vec for now.
     async fn get(db: &PgPool, query: &GetPageQuery) -> Result<Self> {
         struct Qres {
-            id: i32,
             collection_id: i32,
             title: String,
+            content: Option<String>,
         }
         let res = query_as!(
             Qres,
-            "select id, collection_id, title from page where id = $1",
+            r#"select
+                p.collection_id collection_id, p.title title, pc.content as "content?"
+            from page p
+            left join page_content pc on pc.page_id = p.id
+            where p.id = $1"#,
             query.id
         )
         .fetch_one(db)
         .await?;
 
         Ok(Self {
-            id: res.id,
+            id: query.id,
             title: res.title,
             collection_id: res.collection_id,
             props: vec![],
+            content: res.content.map(|content| models::Content {
+                page_id: query.id,
+                content,
+            }),
         })
     }
     async fn list(db: &PgPool, query: &ListPageQuery) -> Result<Vec<Self>> {
@@ -149,6 +162,39 @@ impl DbModel<GetPageQuery, ListPageQuery> for models::Page {
             "update page set title = $1 where id = $2",
             self.title,
             self.id
+        )
+        .execute(db)
+        .await?;
+
+        Ok(())
+    }
+}
+
+pub struct GetDbModelQuery {
+    pub page_id: i32,
+}
+
+#[async_trait]
+impl DbModel<GetDbModelQuery, ()> for models::Content {
+    async fn get(db: &PgPool, query: &GetDbModelQuery) -> Result<Self> {
+        Ok(query_as!(
+            Self,
+            "select content, page_id from page_content where page_id = $1",
+            query.page_id
+        )
+        .fetch_one(db)
+        .await?)
+    }
+    async fn list(_db: &PgPool, _q: &()) -> Result<Vec<Self>> {
+        todo!()
+    }
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            "insert into page_content (page_id, content) values ($1, $2)
+            on conflict (page_id)
+            do update set content = $2",
+            self.page_id,
+            self.content
         )
         .execute(db)
         .await?;
@@ -232,6 +278,7 @@ pub async fn list_pages(
                 id: page.id,
                 collection_id: page.collection_id,
                 title: page.title.clone(),
+                content: None,
             }
         })
         .collect())

@@ -6,12 +6,16 @@ Next Steps
 2. (done) Lazy propval init
   - inserted pages will not have any rows in propvals
   - logic for rendering the overview needs to figure out how to deal with that
-3. Page overview
+3. (done) Page overview
   - where page content can be edited
   - markdown time!
 4. Customizable column ordering
 5. Filter by arbitrary prop
 6. Sort by arbitrary prop
+7. Deal with treating db_op error as "Not Found"
+  - we're treating DB errors as not found in some cases
+  - formally, this ain't correct; maybe DB ops should return a 3-member enum of
+    `Found<T>`, `NotFound`, or `Error<E>`
 
 # Page Overview
 

@@ -105,11 +105,7 @@ pub async fn collection_pages(
     let pages =
         db_ops::list_pages(&db, collection_id, page.unwrap_or(0)).await?;
 
-    Ok(pages
-        .iter()
-        .map(|p| p.render())
-        .collect::<Vec<String>>()
-        .join(""))
+    Ok(components::PageList { pages: &pages }.render())
 }
 
 #[derive(Deserialize)]
@@ -182,11 +178,35 @@ pub async fn existing_page_form(
     let page =
         models::Page::get(&db, &db_ops::GetPageQuery { id: page_id }).await?;
 
-    Ok(components::Page {
+    let html = components::Page {
         title: format!("{}", page.title),
-        children: Box::new(page),
+        children: Box::new(components::PageOverview { page: &page }),
     }
-    .render())
+    .render();
+
+    Ok(html)
+}
+
+#[derive(Deserialize)]
+pub struct PageFormSubmission {
+    id: i32,
+    collection_id: i32,
+    title: String,
+}
+pub async fn save_existing_page_form(
+    State(AppState { db }): State<AppState>,
+    Form(form): Form<PageFormSubmission>,
+) -> Result<impl IntoResponse, ServerError> {
+    let page = models::Page {
+        id: form.id,
+        collection_id: form.collection_id,
+        title: form.title,
+        props: vec![],
+        content: None,
+    };
+    page.save(&db).await?;
+
+    Ok(components::PageForm { page: &page }.render())
 }
 
 #[derive(Debug, Deserialize)]
@@ -205,6 +225,7 @@ pub async fn handle_page_submission(
             collection_id,
             title: form.title,
             props: Vec::new(),
+            content: None,
         }
         .save(&db)
         .await?;
@@ -216,4 +237,39 @@ pub async fn handle_page_submission(
         htmx::redirect(&format!("/collection/{collection_id}")),
         "OK",
     ))
+}
+
+pub async fn get_content_form(
+    State(AppState { db }): State<AppState>,
+    Path(page_id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let existing_content =
+        models::Content::get(&db, &db_ops::GetDbModelQuery { page_id }).await;
+    if let Ok(c) = existing_content {
+        Ok(c.render())
+    } else {
+        Ok(models::Content {
+            page_id,
+            content: "".to_string(),
+        }
+        .render())
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ContentForm {
+    content: String,
+}
+pub async fn handle_content_submission(
+    State(AppState { db }): State<AppState>,
+    Path(page_id): Path<i32>,
+    Form(ContentForm { content }): Form<ContentForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    let content = models::Content { page_id, content };
+    content.save(&db).await?;
+    Ok(components::ContentDisplay {
+        page_id,
+        content: Some(&content),
+    }
+    .render())
 }

@@ -1,5 +1,6 @@
 use super::models;
 use ammonia::clean;
+use std::fmt::Write;
 
 pub trait Component {
     /// Render the component to a HTML string. By convention, the
@@ -7,12 +8,12 @@ pub trait Component {
     fn render(&self) -> String;
 }
 
-pub struct Page {
+pub struct Page<'a> {
     pub title: String,
-    pub children: Box<dyn Component>,
+    pub children: Box<dyn Component + 'a>,
 }
 
-impl Component for Page {
+impl Component for Page<'_> {
     fn render(&self) -> String {
         // note: we'll get a compiler error here until the tailwind build occurs.
         // Make sure you use `make build` in the Makefile to get both to happen
@@ -29,7 +30,7 @@ impl Component for Page {
                         {tailwind}
                     </style>
                 </head>
-                <body>
+                <body class="dark:bg-indigo-1000 dark:text-white mt-2 ml-2 sm:mt-8 sm:ml-8">
                     {body_html}
                     <script>{htmx}</script>
                 </body>
@@ -184,22 +185,136 @@ impl Component for Collection {
     }
 }
 
-impl Component for models::Page {
+pub struct PageList<'a> {
+    pub pages: &'a [models::Page],
+}
+impl Component for PageList<'_> {
     fn render(&self) -> String {
+        self.pages.iter().fold(String::new(), |mut str, page| {
+            let _ = write!(
+                str,
+                r#"
+                        <div class="flex gap-2 my-1 items-center">
+                            <a class="link" href="/page/{page_id}">Edit</a>
+                            <div class="w-64 truncate">{title}</div>
+                            {other_props}
+                        </div>
+                    "#,
+                page_id = page.id,
+                title = clean(&page.title),
+                other_props = page
+                    .props
+                    .iter()
+                    .map(|p| p.render())
+                    .collect::<Vec<String>>()
+                    .join("")
+            );
+            str
+        })
+    }
+}
+
+pub struct PageOverview<'a> {
+    pub page: &'a models::Page,
+}
+impl Component for PageOverview<'_> {
+    fn render(&self) -> String {
+        let back_button = format!(
+            r#"
+                <a class="link" href="/collection/{}">Back</a>
+            "#,
+            self.page.collection_id
+        );
+        [
+            back_button,
+            PageForm { page: self.page }.render(),
+            ContentDisplay {
+                page_id: self.page.id,
+                content: self.page.content.as_ref(),
+            }
+            .render(),
+        ]
+        .join("\n")
+    }
+}
+
+pub struct PageForm<'a> {
+    pub page: &'a models::Page,
+}
+impl Component for PageForm<'_> {
+    fn render(&self) -> String {
+        let id = self.page.id;
+        let title = &self.page.title;
+        let collection_id = &self.page.collection_id;
         format!(
             r#"
-                <div class="flex gap-2 my-1 items-center">
-                    <div class="w-64 truncate">{title}</div>
-                    {other_props}
+                <form hx-trigger="change" hx-post="/page" hx-swap="outerHTML">
+                    <input type="hidden" name="id" value="{id}" />
+                    <input type="hidden" name="collection_id" value="{collection_id}" />
+                    <input
+                        id="title"
+                        name="title"
+                        value="{title}"
+                        type="text"
+                        class="w-[80vw]"
+                    />
+                </form>
+            "#
+        )
+    }
+}
+
+pub struct ContentDisplay<'a> {
+    pub content: Option<&'a models::Content>,
+    pub page_id: i32,
+}
+impl Component for ContentDisplay<'_> {
+    fn render(&self) -> String {
+        let page_id = self.page_id;
+        if let Some(content) = self.content {
+            let rendered = markdown::to_html(&content.content);
+            let cleaned = clean(&rendered);
+            format!(
+                r#"
+                <div
+                    class="prose dark:prose-invert cursor-pointer"
+                    hx-get="/page/{page_id}/content"
+                    hx-swap="outerHTML"
+                >
+                    {cleaned}
                 </div>
-            "#,
-            title = clean(&self.title),
-            other_props = self
-                .props
-                .iter()
-                .map(|p| p.render())
-                .collect::<Vec<String>>()
-                .join("")
+            "#
+            )
+        } else {
+            format!(
+                r#"
+                <div
+                    class="prose dark:prose-invert cursor-pointer"
+                    hx-get="/page/{page_id}/content"
+                    hx-swap="outerHTML"
+                >
+                    <p>Click to add content!</p>
+                </div>
+            "#
+            )
+        }
+    }
+}
+
+impl Component for models::Content {
+    fn render(&self) -> String {
+        let page_id = self.page_id;
+        let content = &self.content;
+        // next thing to do is handle submission of this form!
+        format!(
+            r#"
+                <form hx-trigger="change" hx-post="/page/{page_id}/content">
+                    <textarea
+                        name="content"
+                        class="w-[80vw] h-48"
+                        >{content}</textarea>
+                </form>
+            "#
         )
     }
 }

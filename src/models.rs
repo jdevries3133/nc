@@ -148,6 +148,13 @@ pub struct Page {
     pub collection_id: i32,
     pub title: String,
     pub props: Vec<Box<dyn PropVal>>,
+    pub content: Option<Content>,
+}
+
+#[derive(Debug)]
+pub struct Content {
+    pub page_id: i32,
+    pub content: String,
 }
 
 #[derive(Clone, Debug)]

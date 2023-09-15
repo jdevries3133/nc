@@ -10,10 +10,7 @@ pub struct ServerError(Error);
 impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
         println!("{:?}", self);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
-        )
+        (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong")
             .into_response()
     }
 }

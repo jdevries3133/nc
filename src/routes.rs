@@ -13,6 +13,9 @@ pub fn get_routes() -> Router<models::AppState> {
         .route("/collection/:id/new-page",          get(controllers::new_page_form))
         .route("/collection/:id/list-pages",        get(controllers::collection_pages))
         .route("/page/:page_id",                    get(controllers::existing_page_form))
+        .route("/page",                             post(controllers::save_existing_page_form))
+        .route("/page/:page_id/content",            get(controllers::get_content_form))
+        .route("/page/:page_id/content",            post(controllers::handle_content_submission))
         .route("/page/:page_id/prop/:prop_id/bool", post(controllers::save_pv_bool))
         .route("/page/:page_id/prop/:prop_id/int",  post(controllers::save_pv_int))
 }
