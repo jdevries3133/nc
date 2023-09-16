@@ -1,6 +1,6 @@
 use super::errors::ServerError;
 use axum::{
-    http::{HeaderMap, HeaderValue, Request},
+    http::{HeaderValue, Request},
     middleware::Next,
     response::Response,
 };
