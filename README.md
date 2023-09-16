@@ -20,6 +20,7 @@ Next Steps
 9. Implement date
 10. Implement datetime
 11. Implement multistr (tags) 
+12. Paginate the collection list view
 
 # Customizable Column Ordering
 
