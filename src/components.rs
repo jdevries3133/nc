@@ -2,6 +2,36 @@ use super::models;
 use ammonia::clean;
 use std::fmt::Write;
 
+const LIVE_RELOAD_SCRIPT: &str = r#"
+    (async () => {
+        while (true) {
+            try {
+                await fetch('/ping?poll_interval_secs=60');
+            } catch (e) {
+                console.log("hup from ping; let's live-reload");
+                const el = document.createElement('p');
+                el.innerText = "Reloading...";
+                el.classList.add("bg-yellow-100");
+                el.classList.add("p-2");
+                el.classList.add("rounded");
+                el.classList.add("w-full");
+                el.classList.add("dark:text-black");
+                document.body.insertBefore(el, document.body.firstChild);
+                setInterval(async () => {
+                    // Now the server is down, we'll fast-poll it (trying to
+                    // get an immediate response), and reload the page when it
+                    // comes back
+                    try {
+                        await fetch('/ping?poll_interval_secs=0');
+                        window.location.reload()
+                    } catch (e) {}
+                }, 100);
+                break;
+            }
+        }
+    })();
+"#;
+
 pub trait Component {
     /// Render the component to a HTML string. By convention, the
     /// implementation should sanitize all string properties at render-time
@@ -32,6 +62,7 @@ impl Component for Page<'_> {
                 <body hx-boost="true" class="dark:bg-indigo-1000 dark:text-white mt-2 ml-2 sm:mt-8 sm:ml-8">
                     {body_html}
                     <script src="/static/htmx-1.9.4"></script>
+                    <script>{LIVE_RELOAD_SCRIPT}</script>
                 </body>
             </html>
             "#,

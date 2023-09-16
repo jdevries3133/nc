@@ -24,6 +24,19 @@ pub async fn root() -> impl IntoResponse {
     .render()
 }
 
+#[derive(Deserialize)]
+pub struct PongParams {
+    pub poll_interval_secs: u64,
+}
+/// The client will reload when this HTTP long-polling route disconnects,
+/// effectively implementing live-reloading.
+pub async fn pong(
+    Query(PongParams { poll_interval_secs }): Query<PongParams>,
+) -> impl IntoResponse {
+    tokio::time::sleep(std::time::Duration::from_secs(poll_interval_secs)).await;
+    "ping"
+}
+
 pub async fn get_htmx_js() -> impl IntoResponse {
     let mut headers = HeaderMap::new();
     headers.insert(

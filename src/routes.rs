@@ -5,6 +5,7 @@ use axum::routing::{delete, get, post, Router};
 pub fn get_routes() -> Router<models::AppState> {
     Router::new()
         .route("/",                                 get(controllers::root))
+        .route("/ping",                             get(controllers::pong))
         .route("/item",                             get(controllers::list_todos))
         .route("/item",                             post(controllers::save_todo))
         .route("/item/:id",                         delete(controllers::delete_todo))
