@@ -188,7 +188,7 @@ pub struct PageList<'a> {
 }
 impl Component for PageList<'_> {
     fn render(&self) -> String {
-        self.pages.iter().fold(String::new(), |mut str, page| {
+        let list = self.pages.iter().fold(String::new(), |mut str, page| {
             let _ = write!(
                 str,
                 r#"
@@ -208,7 +208,14 @@ impl Component for PageList<'_> {
                     .join("")
             );
             str
-        })
+        });
+        format!(
+            r#"
+                <div class="overflow-y-scroll">
+                    {list}
+                </div>
+            "#
+        )
     }
 }
 
