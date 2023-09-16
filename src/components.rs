@@ -194,7 +194,7 @@ impl Component for PageList<'_> {
                 r#"
                         <div class="flex gap-2 my-1 items-center">
                             <a class="link" href="/page/{page_id}">Edit</a>
-                            <div class="w-64 truncate">{title}</div>
+                            <div><div class="w-64 truncate">{title}</div></div>
                             {other_props}
                         </div>
                     "#,
