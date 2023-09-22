@@ -10,12 +10,11 @@ use super::{
 use anyhow::Result;
 use axum::{
     extract::{Path, Query, State},
-    http::{HeaderMap, HeaderValue, StatusCode},
+    http::{HeaderMap, HeaderValue},
     response::IntoResponse,
     Form,
 };
 use serde::Deserialize;
-use sqlx::PgPool;
 
 pub async fn root() -> impl IntoResponse {
     components::Page {

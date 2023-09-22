@@ -2,7 +2,7 @@ use super::{config, config::PROP_SET_MAX, models, models::PropVal};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use sqlx::{
-    postgres::{PgPool, PgRow, Postgres},
+    postgres::{PgPool, Postgres},
     query, query_as,
     query_builder::QueryBuilder,
 };
@@ -298,7 +298,9 @@ impl DbModel<GetPropQuery, ListPropQuery> for models::Prop {
             self.name,
             self.order,
             self.id
-        ).execute(db).await?;
+        )
+        .execute(db)
+        .await?;
 
         Ok(())
     }
@@ -368,7 +370,7 @@ pub async fn list_pages(
                     props.push(existing)
                 } else {
                     props.push(models::get_default(
-                        collection_prop.type_id.clone(),
+                        collection_prop.type_id,
                         page.id,
                         collection_prop.id,
                     ))
