@@ -17,7 +17,7 @@ setup:
 dev: setup
 	npx concurrently --names 'tailwind,cargo' \
 		'pnpm run dev' \
-		"cargo watch -x 'run'"
+		"cargo watch -x 'run --features live_reload'"
 
 # 99% of the time, this is what you want when you change `initdb.sql`, because
 # you want to re-init the DB with that change, and also watch to make sure

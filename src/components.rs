@@ -2,7 +2,8 @@ use super::models;
 use ammonia::clean;
 use std::fmt::Write;
 
-const LIVE_RELOAD_SCRIPT: &str = r#"
+#[cfg(feature = "live_reload")]
+const LIVE_RELOAD_SCRIPT: &str = r#"<script>
     (async () => {
         while (true) {
             try {
@@ -18,6 +19,11 @@ const LIVE_RELOAD_SCRIPT: &str = r#"
                 el.classList.add("dark:text-black");
                 document.body.insertBefore(el, document.body.firstChild);
                 setInterval(async () => {
+                    setTimeout(() => {
+                        // At some point, a compiler error may be preventing
+                        // the server from coming back
+                        el.innerText = "Reload taking longer than usual; check for a compiler error";
+                    }, 2000);
                     // Now the server is down, we'll fast-poll it (trying to
                     // get an immediate response), and reload the page when it
                     // comes back
@@ -30,7 +36,10 @@ const LIVE_RELOAD_SCRIPT: &str = r#"
             }
         }
     })();
-"#;
+</script>"#;
+
+#[cfg(not(feature = "live_reload"))]
+const LIVE_RELOAD_SCRIPT: &str = "";
 
 pub trait Component {
     /// Render the component to a HTML string. By convention, the
@@ -62,7 +71,7 @@ impl Component for Page<'_> {
                 <body hx-boost="true" class="dark:bg-indigo-1000 dark:text-white mt-2 ml-2 sm:mt-8 sm:ml-8">
                     {body_html}
                     <script src="/static/htmx-1.9.4"></script>
-                    <script>{LIVE_RELOAD_SCRIPT}</script>
+                    {LIVE_RELOAD_SCRIPT}
                 </body>
             </html>
             "#,
