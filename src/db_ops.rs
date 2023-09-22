@@ -521,6 +521,7 @@ pub async fn get_prop_set(
     )
     .fetch_all(db)
     .await?;
+    props.sort_by_key(|p| p.order);
     if props.len() > config::PROP_SET_MAX {
         bail!("Collection {collection_id} has too many props");
     } else {
