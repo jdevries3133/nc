@@ -1,7 +1,11 @@
-use super::{config, models, models::PropVal};
+use super::{config, config::PROP_SET_MAX, models, models::PropVal};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
-use sqlx::{postgres::PgPool, query, query_as};
+use sqlx::{
+    postgres::{PgPool, PgRow, Postgres},
+    query, query_as,
+    query_builder::QueryBuilder,
+};
 use std::collections::HashMap;
 
 #[async_trait]
@@ -198,6 +202,103 @@ impl DbModel<GetDbModelQuery, ()> for models::Content {
         )
         .execute(db)
         .await?;
+
+        Ok(())
+    }
+}
+
+pub struct GetPropQuery {
+    pub id: i32,
+}
+
+pub struct ListPropQuery {
+    pub collection_id: i32,
+    /// A set of orders to match with the `prop.order` column. Can be useful
+    /// for selecting props within a range, or getting the props that are
+    /// immediately adjacent to a known prop.
+    // On reflection, we later _need_ to look up all the props to
+    // re-render the prop ordering component. All the complexity of
+    // this order_in property is unnecessary. I figure I will remove it, but
+    // it also took me a second to figure out how this query builder API
+    // works, so I'll just do an implementation that keeps this functionality
+    // in use at the cost of actually being less efficient so that I have a
+    // template to follow for the query builder.
+    pub order_in: Option<Vec<i16>>,
+}
+#[derive(sqlx::FromRow)]
+struct QresProp {
+    id: i32,
+    type_id: i32,
+    collection_id: i32,
+    name: String,
+    order: i16,
+}
+impl QresProp {
+    fn into_prop(self) -> models::Prop {
+        models::Prop {
+            id: self.id,
+            collection_id: self.collection_id,
+            name: self.name,
+            order: self.order,
+            type_id: models::propval_type_from_int(self.type_id),
+        }
+    }
+}
+
+#[async_trait]
+impl DbModel<GetPropQuery, ListPropQuery> for models::Prop {
+    async fn get(db: &PgPool, query: &GetPropQuery) -> Result<Self> {
+        let raw_prop = query_as!(
+            QresProp,
+            r#"select id, type_id, collection_id, name, "order"
+            from property
+            where id = $1"#,
+            query.id
+        )
+        .fetch_one(db)
+        .await?;
+
+        Ok(raw_prop.into_prop())
+    }
+    async fn list(db: &PgPool, query: &ListPropQuery) -> Result<Vec<Self>> {
+        let mut builder: QueryBuilder<Postgres> = QueryBuilder::new(
+            r#"select id, type_id, collection_id, name, "order"
+            from property "#,
+        );
+
+        builder.push("where collection_id = ");
+        builder.push_bind(query.collection_id);
+
+        if let Some(order_set) = &query.order_in {
+            builder.push(r#" and "order" in ("#);
+            let mut sep = builder.separated(",");
+            for o in order_set {
+                sep.push_bind(o);
+            }
+            builder.push(")");
+        };
+
+        let mut raw_props =
+            builder.build_query_as::<QresProp>().fetch_all(db).await?;
+
+        raw_props.sort_by_key(|p| p.order);
+        if raw_props.len() > PROP_SET_MAX {
+            bail!("too many props for collection {}", query.collection_id);
+        };
+        let props = raw_props.drain(..).map(|p| p.into_prop()).collect();
+
+        Ok(props)
+    }
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            r#"update property set
+                name = $1,
+                "order" = $2
+            where id = $3"#,
+            self.name,
+            self.order,
+            self.id
+        ).execute(db).await?;
 
         Ok(())
     }
@@ -407,12 +508,13 @@ pub async fn get_prop_set(
         type_id: i32,
         collection_id: i32,
         name: String,
+        order: i16,
     }
-    let props = query_as!(
+    let mut props = query_as!(
         Qres,
-        "select id, type_id, collection_id, name
+        r#"select id, type_id, collection_id, name, "order"
         from property
-        where collection_id = $1",
+        where collection_id = $1"#,
         collection_id
     )
     .fetch_all(db)
@@ -421,12 +523,13 @@ pub async fn get_prop_set(
         bail!("Collection {collection_id} has too many props");
     } else {
         Ok(props
-            .iter()
+            .drain(..)
             .map(|p| models::Prop {
                 id: p.id,
                 collection_id: p.collection_id,
+                name: p.name,
+                order: p.order,
                 type_id: models::propval_type_from_int(p.type_id),
-                name: p.name.clone(),
             })
             .collect())
     }

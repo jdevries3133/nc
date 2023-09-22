@@ -30,6 +30,7 @@ insert into property_type (name) values
 create table property(
     id serial primary key,
     name varchar(255) not null,
+    "order" smallint not null,
 
     type_id int not null references property_type(id),
     collection_id int not null references collection(id)
@@ -113,9 +114,9 @@ create table propval_multistr__value(
 -- Starter Data
 
 insert into collection (name) values ('Default Collection');
-insert into property (name, type_id, collection_id) values
-    ('Sprint Number', 2, 1),
-    ('Completed', 1, 1)
+insert into property (name, type_id, collection_id, "order") values
+    ('Sprint Number', 2, 1, 1),
+    ('Completed', 1, 1, 2)
     -- ('Due Date', 6, 1)
 ;
 insert into page (title, collection_id) values

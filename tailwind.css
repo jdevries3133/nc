@@ -23,3 +23,44 @@
     @apply text-yellow-400;
   }
 }
+
+.tooltip {
+  @apply relative;
+}
+
+.tooltip:focus:after,
+.tooltip:hover:after {
+  @apply bg-slate-600 text-white absolute p-2 rounded-md;
+  content: attr(data-tooltip);
+  top: -45px;
+  left: 0px;
+}
+
+.tooltip:focus:before,
+.tooltip:hover:before {
+  content: "";
+  position: absolute;
+  display: block;
+  top: -5px;
+  left: 8px;
+  width: 10px;
+  margin: auto;
+  border-left: 5px solid transparent;
+  border-top: 5px solid #475569;
+  border-right: 5px solid transparent;
+}
+
+.tooltip-left-0:focus:after,
+.tooltip-left-0:hover:after {
+  left: 0;
+}
+
+.tooltip-wide:focus:after,
+.tooltip-wide:hover:after {
+  left: 20%;
+}
+
+.tooltip-drf:focus:after,
+.tooltip-drf:hover:after {
+  width: 200%;
+}

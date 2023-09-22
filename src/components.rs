@@ -249,10 +249,68 @@ impl Component for PageList<'_> {
             );
             str
         });
+        // We're about to assume all pages are in the same collection... let's
+        // enforce that invariant here at runtime just to be safe.
+        let mut collection: Option<i32> = None;
+        for page in self.pages {
+            let cid = page.collection_id;
+            if let Some(other_cid) = collection {
+                if cid != other_cid {
+                    panic!("cannot render mixed collection including {cid} and {other_cid}");
+                }
+                collection = Some(cid);
+            }
+        }
+        let col_order = HoverIcon {
+            children: Box::new(ColumnOrderIcon {
+                collection_id: self.pages[0].collection_id,
+            }),
+            tooltip_text: "Edit Column Order",
+        }
+        .render();
         format!(
             r#"
+                <div class="mt-2">
+                    {col_order}
+                </div>
                 <div class="overflow-y-scroll">
                     {list}
+                </div>
+            "#
+        )
+    }
+}
+
+struct ColumnOrderIcon {
+    collection_id: i32,
+}
+impl Component for ColumnOrderIcon {
+    fn render(&self) -> String {
+        let cid = self.collection_id;
+        format!(
+            r#"
+                <a href="/collection/{cid}/prop-order">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 rotate-90">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
+                    </svg>
+                </a>
+            "#
+        )
+    }
+}
+
+struct HoverIcon<'a> {
+    pub children: Box<dyn Component>,
+    pub tooltip_text: &'a str,
+}
+impl Component for HoverIcon<'_> {
+    fn render(&self) -> String {
+        let text = clean(self.tooltip_text);
+        let children = self.children.render();
+        format!(
+            r#"
+                <div data-tooltip="{text}" class="tooltip">
+                    {children}
                 </div>
             "#
         )
@@ -439,5 +497,69 @@ impl Component for NewPage {
                 </form>
             "#,
         )
+    }
+}
+
+pub struct ArrowUp;
+impl Component for ArrowUp {
+    fn render(&self) -> String {
+        format!(
+            r#"
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 rotate-180">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
+            </svg>
+            "#
+        )
+    }
+}
+
+pub struct ArrowDown;
+impl Component for ArrowDown {
+    fn render(&self) -> String {
+        format!(
+            r#"
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
+            </svg>
+            "#
+        )
+    }
+}
+
+pub struct PropOrderForm {
+    pub props: Vec<models::Prop>,
+}
+impl Component for PropOrderForm {
+    fn render(&self) -> String {
+        let list_items = self
+            .props
+            .iter()
+            .map(|p| {
+                let name = clean(&p.name);
+                let pid = p.id;
+                let cid = p.collection_id;
+                let up = ArrowUp {}.render();
+                let down = ArrowDown {}.render();
+                format!(
+                    r##"
+                <li class="flex">
+                    <span class="w-48 truncate">{name}</span>
+                    <a
+                        hx-post="/collection/{cid}/prop/{pid}/up"
+                        hx-swap="outerHTML"
+                        hx-target="closest ol"
+                        hx-sync="closest ol:queue">{up}</a>
+                    <a 
+                        hx-post="/collection/{cid}/prop/{pid}/down"
+                        hx-swap="outerHTML"
+                        hx-target="closest ol"
+                        hx-sync="closest ol:queue">{down}</a>
+                </li>
+                "##
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+        format!(r#"<ol class="ml-4 list-decimal"">{list_items}</ol>"#)
     }
 }

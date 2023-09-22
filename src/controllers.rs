@@ -10,11 +10,12 @@ use super::{
 use anyhow::Result;
 use axum::{
     extract::{Path, Query, State},
-    http::{HeaderMap, HeaderValue},
+    http::{HeaderMap, HeaderValue, StatusCode},
     response::IntoResponse,
     Form,
 };
 use serde::Deserialize;
+use sqlx::PgPool;
 
 pub async fn root() -> impl IntoResponse {
     components::Page {
@@ -24,17 +25,25 @@ pub async fn root() -> impl IntoResponse {
     .render()
 }
 
+#[cfg(feature = "live_reload")]
 #[derive(Deserialize)]
 pub struct PongParams {
     pub poll_interval_secs: u64,
 }
 /// The client will reload when this HTTP long-polling route disconnects,
 /// effectively implementing live-reloading.
+#[cfg(feature = "live_reload")]
 pub async fn pong(
     Query(PongParams { poll_interval_secs }): Query<PongParams>,
 ) -> impl IntoResponse {
-    tokio::time::sleep(std::time::Duration::from_secs(poll_interval_secs)).await;
-    "ping"
+    tokio::time::sleep(std::time::Duration::from_secs(poll_interval_secs))
+        .await;
+    "pong"
+}
+
+#[cfg(not(feature = "live_reload"))]
+pub async fn pong() -> impl IntoResponse {
+    "pong"
 }
 
 pub async fn get_htmx_js() -> impl IntoResponse {
@@ -142,6 +151,26 @@ pub async fn collection_pages(
     Ok(components::PageList { pages: &pages }.render())
 }
 
+pub async fn collection_prop_order(
+    State(AppState { db }): State<AppState>,
+    Path(collection_id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let props = models::Prop::list(
+        &db,
+        &db_ops::ListPropQuery {
+            collection_id,
+            order_in: None,
+        },
+    )
+    .await?;
+
+    Ok(components::Page {
+        title: format!("Set Prop Order (collection {})", collection_id),
+        children: Box::new(components::PropOrderForm { props }),
+    }
+    .render())
+}
+
 #[derive(Deserialize)]
 pub struct PvbForm {
     value: Option<String>,
@@ -188,6 +217,131 @@ pub async fn save_pv_int(
         }
     };
     Ok(existing.render())
+}
+
+pub async fn increment_prop_order(
+    State(AppState { db }): State<AppState>,
+    Path((collection_id, prop_id)): Path<(i32, i32)>,
+) -> Result<impl IntoResponse, ServerError> {
+    let mut prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: prop_id }).await?;
+    let mut next_props = models::Prop::list(
+        &db,
+        &db_ops::ListPropQuery {
+            collection_id,
+            order_in: Some(vec![prop.order - 1]),
+        },
+    )
+    .await?;
+    if next_props.is_empty() {
+        // So, as I point out near the definition of ListPropQuery, this final
+        // query is basically wasteful. It would make more sense to just get all
+        // the props up-front, but I'm doing this purely because I want to retain
+        // the headway gained in setting up the query builder, and I'm figuring
+        // on remove this once I have another real use-case for the query
+        // builder.
+        let all_props = models::Prop::list(
+            &db,
+            &db_ops::ListPropQuery {
+                collection_id,
+                order_in: None,
+            },
+        )
+        .await?;
+
+        return Ok(components::PropOrderForm { props: all_props }.render());
+    };
+
+    if next_props.len() != 1 {
+        // If we've got more than one prop in the same collection with the same
+        // order, we've encountered a data-integrity invariant, so we will
+        // panic.
+        panic!("collection {collection_id} did not have exactly one prop");
+    };
+    let mut next_prop = next_props
+        .pop()
+        .expect("we have exactly 1 prop in next_props");
+
+    prop.order -= 1;
+    next_prop.order += 1;
+
+    // Soooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+    // it would be very nice to have transactions here. But obviously, there
+    // is a problem -- my DbModel abstraction does not support transactions.
+    //
+    // Hm, that's a dilemma.
+    //
+    // I gotta figure that one out.
+    //
+    // Later, though...
+    prop.save(&db).await?;
+    next_prop.save(&db).await?;
+
+    // So, as I point out near the definition of ListPropQuery, this final
+    // query is basically wasteful. It would make more sense to just get all
+    // the props up-front, but I'm doing this purely because I want to retain
+    // the headway gained in setting up the query builder, and I'm figuring
+    // on remove this once I have another real use-case for the query
+    // builder.
+    let all_props = models::Prop::list(
+        &db,
+        &db_ops::ListPropQuery {
+            collection_id,
+            order_in: None,
+        },
+    )
+    .await?;
+
+    Ok(components::PropOrderForm { props: all_props }.render())
+}
+
+pub async fn decrement_prop_order(
+    State(AppState { db }): State<AppState>,
+    Path((collection_id, prop_id)): Path<(i32, i32)>,
+) -> Result<impl IntoResponse, ServerError> {
+    let mut prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: prop_id }).await?;
+    let mut next_props = models::Prop::list(
+        &db,
+        &db_ops::ListPropQuery {
+            collection_id,
+            order_in: Some(vec![prop.order + 1]),
+        },
+    )
+    .await?;
+    if next_props.is_empty() {
+        let all_props = models::Prop::list(
+            &db,
+            &db_ops::ListPropQuery {
+                collection_id,
+                order_in: None,
+            },
+        )
+        .await?;
+        return Ok(components::PropOrderForm { props: all_props }.render());
+    };
+
+    if next_props.len() != 1 {
+        panic!("collection {collection_id} did not have exactly one prop");
+    };
+    let mut next_prop = next_props
+        .pop()
+        .expect("we have exactly 1 prop in next_props");
+
+    prop.order += 1;
+    next_prop.order -= 1;
+    prop.save(&db).await?;
+    next_prop.save(&db).await?;
+    let all_props = models::Prop::list(
+        &db,
+        &db_ops::ListPropQuery {
+            collection_id,
+            order_in: None,
+        },
+    )
+    .await?;
+
+    Ok(components::PropOrderForm { props: all_props }.render())
 }
 
 pub async fn new_page_form(

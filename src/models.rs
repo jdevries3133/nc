@@ -5,16 +5,18 @@ use super::{
 use async_trait::async_trait;
 use sqlx::PgPool;
 
+#[derive(Clone)]
 pub struct Prop {
     pub id: i32,
     pub type_id: PropValTypes,
     pub collection_id: i32,
     pub name: String,
+    pub order: i16,
 }
 
 /// This is only really used for adapting from `property.type_id` in the
 /// database to one of our `Pv*` structs
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum PropValTypes {
     Bool = 1,
     Int = 2,
