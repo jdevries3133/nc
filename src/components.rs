@@ -67,11 +67,11 @@ impl Component for Page<'_> {
                     <style>
                         {tailwind}
                     </style>
+                    {LIVE_RELOAD_SCRIPT}
                 </head>
                 <body hx-boost="true" class="dark:bg-indigo-1000 dark:text-white mt-2 ml-2 sm:mt-8 sm:ml-8">
                     {body_html}
                     <script src="/static/htmx-1.9.4"></script>
-                    {LIVE_RELOAD_SCRIPT}
                 </body>
             </html>
             "#,
