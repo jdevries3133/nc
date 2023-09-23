@@ -16,12 +16,16 @@ use axum::{
 };
 use serde::Deserialize;
 
-pub async fn root() -> impl IntoResponse {
-    components::Page {
-        title: "NC".to_string(),
-        children: Box::new(components::TodoHome {}),
+pub async fn root(headers: HeaderMap) -> impl IntoResponse {
+    if headers.contains_key("Hx-Request") {
+        components::TodoHome {}.render()
+    } else {
+        components::Page {
+            title: "NC".to_string(),
+            children: Box::new(components::TodoHome {}),
+        }
+        .render()
     }
-    .render()
 }
 
 #[cfg(feature = "live_reload")]
@@ -151,6 +155,7 @@ pub async fn collection_pages(
 }
 
 pub async fn collection_prop_order(
+    headers: HeaderMap,
     State(AppState { db }): State<AppState>,
     Path(collection_id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
@@ -163,11 +168,15 @@ pub async fn collection_prop_order(
     )
     .await?;
 
-    Ok(components::Page {
-        title: format!("Set Prop Order (collection {})", collection_id),
-        children: Box::new(components::PropOrderForm { props }),
-    }
-    .render())
+    Ok(if headers.contains_key("Hx-Request") {
+        components::PropOrderForm { props }.render()
+    } else {
+        components::Page {
+            title: format!("Set Prop Order (collection {})", collection_id),
+            children: Box::new(components::PropOrderForm { props }),
+        }
+        .render()
+    })
 }
 
 #[derive(Deserialize)]

@@ -10,7 +10,7 @@ live_reload = []
 ammonia = "3.3.0"
 anyhow = "1.0.69"
 async-trait = "0.1.73"
-axum = "0.6.18"
+axum = { version = "0.6.18", features = ["headers"] }
 axum-macros = "0.3.8"
 base64 = "0.21.2"
 chrono = { version = "0.4.26", features = ["serde"] }
