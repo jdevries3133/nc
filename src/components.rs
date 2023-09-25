@@ -228,6 +228,9 @@ pub struct PageList<'a> {
 }
 impl Component for PageList<'_> {
     fn render(&self) -> String {
+        if self.pages.is_empty() {
+            return "<p>No pages available</p>".into();
+        };
         let list = self.pages.iter().fold(String::new(), |mut str, page| {
             let _ = write!(
                 str,
@@ -527,6 +530,10 @@ pub struct PropOrderForm {
 }
 impl Component for PropOrderForm {
     fn render(&self) -> String {
+        if self.props.is_empty() {
+            return "<p>No props in this workspace!</p>".into();
+        };
+        let collection_id = self.props[0].collection_id;
         let list_items = self
             .props
             .iter()
@@ -543,12 +550,12 @@ impl Component for PropOrderForm {
                     <a
                         hx-post="/collection/{cid}/prop/{pid}/up"
                         hx-swap="outerHTML"
-                        hx-target="closest ol"
+                        hx-target="closest div"
                         hx-sync="closest ol:queue">{up}</a>
                     <a 
                         hx-post="/collection/{cid}/prop/{pid}/down"
                         hx-swap="outerHTML"
-                        hx-target="closest ol"
+                        hx-target="closest div"
                         hx-sync="closest ol:queue">{down}</a>
                 </li>
                 "##
@@ -556,6 +563,14 @@ impl Component for PropOrderForm {
             })
             .collect::<Vec<String>>()
             .join("\n");
-        format!(r#"<ol class="ml-4 list-decimal"">{list_items}</ol>"#)
+
+        format!(
+            r#"
+                <div>
+                    <a class="link" href="/collection/{collection_id}">Back</a>
+                    <ol class="ml-4 list-decimal"">{list_items}</ol>
+                </div>
+            "#
+        )
     }
 }

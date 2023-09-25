@@ -111,30 +111,70 @@ create table propval_multistr__value(
     propval_multistr_id int not null references propval_multistr(id) on delete cascade
 );
 
+create table filter_type(
+    id serial primary key,
+    name varchar(255) not null
+);
+
+insert into filter_type (name) values
+    ('Exactly Equals'),  ----- 1
+    ('Does not Equal'),  ----- 2
+    ('Is Greater Than'), ----- 3
+    ('Is Less Than'), -------- 4
+    ('Is Inside Range'), ----- 5
+    ('Is Not Inside Range') -- 6
+;
+
+create table filter_bool(
+    id serial primary key,
+    type_id int not null references filter_type(id),
+    prop_id int unique not null references property(id) on delete cascade,
+    value boolean not null
+);
+
+create table filter_int(
+    id serial primary key,
+    type_id int not null references filter_type(id),
+    prop_id int not null references property(id) on delete cascade,
+    value bigint not null
+);
+
+create table filter_int_range(
+    id serial primary key,
+    type_id int not null references filter_type(id),
+    prop_id int not null references property(id) on delete cascade,
+    start bigint not null,
+    "end" bigint not null
+);
+
 -- Starter Data
 
 insert into collection (name) values ('Default Collection');
 insert into property (name, type_id, collection_id, "order") values
     ('Sprint Number', 2, 1, 1),
-    ('Completed', 1, 1, 2)
-    -- ('Due Date', 6, 1)
+    ('Completed', 1, 1, 2),
+    ('Age', 2, 1, 3)
 ;
 insert into page (title, collection_id) values
     ('Build multi-string support', 1),
-    ('Get started on git integration. This is a really long ticket with a long title; gee, so many words. I wonder if our layout can support this?', 1)
+    ('Get started on git integration. This is a really long ticket with a long title; gee, so many words. I wonder if our layout can support this?', 1),
+    ('Do the thing!', 1),
+    ('Oh, and the other thing too!!', 1)
 ;
 insert into propval_int (value, page_id, prop_id) values 
-    (1, 1, 1),
+    (3, 1, 1),
     (2, 2, 1)
 ;
 insert into propval_bool (value, page_id, prop_id) values
-    (false, 1, 2),
+    (true, 1, 2),
     (false, 2, 2)
 ;
--- insert into propval_date (value, page_id, prop_id) values
---     ('2023-09-01', 1, 3),
---     ('2023-09-15', 2, 3)
--- ;
+
+insert into filter_bool (type_id, prop_id, value) values (1, 2, true);
+insert into filter_int (type_id, prop_id, value) values (3, 1, 1);
+insert into filter_int_range (type_id, prop_id, start, "end") values
+    (5, 1, 0, 10)
+;
 
 
 

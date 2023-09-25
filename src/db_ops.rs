@@ -1,12 +1,14 @@
 use super::{config, config::PROP_SET_MAX, models, models::PropVal};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
+use futures::join;
 use sqlx::{
     postgres::{PgPool, Postgres},
     query, query_as,
     query_builder::QueryBuilder,
+    Row,
 };
-use std::collections::HashMap;
+
 
 #[async_trait]
 pub trait DbModel<GetQuery, ListQuery>: Sync + Send {
@@ -306,85 +308,391 @@ impl DbModel<GetPropQuery, ListPropQuery> for models::Prop {
     }
 }
 
+pub struct GetFilterQuery {
+    id: i32,
+}
+
+pub struct ListFilterQuery {
+    collection_id: i32,
+}
+
+#[async_trait]
+impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterBool {
+    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
+        struct Qres {
+            id: i32,
+            type_id: i32,
+            type_name: String,
+            prop_id: i32,
+            value: bool,
+        }
+        let res = query_as!(
+            Qres,
+            "select
+                f.id,
+                ft.id type_id,
+                ft.name type_name,
+                f.prop_id,
+                f.value
+            from filter_bool f
+            join filter_type ft on f.type_id = ft.id
+            where f.id = $1",
+            query.id
+        )
+        .fetch_one(db)
+        .await?;
+
+        let filter_type =
+            models::create_filter_type(res.type_id, res.type_name.clone());
+
+        Ok(Self {
+            id: res.id,
+            prop_id: res.prop_id,
+            value: res.value,
+            r#type: filter_type,
+        })
+    }
+    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
+        struct Qres {
+            id: i32,
+            type_id: i32,
+            type_name: String,
+            prop_id: i32,
+            value: bool,
+        }
+        let res = query_as!(
+            Qres,
+            "select
+                f.id,
+                ft.id type_id,
+                ft.name type_name,
+                f.prop_id,
+                f.value
+            from filter_bool f
+            join filter_type ft on f.type_id = ft.id
+            join property p on p.id = f.prop_id
+            where p.collection_id = $1",
+            query.collection_id
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(res
+            .iter()
+            .map(|r| {
+                let filter_type =
+                    models::create_filter_type(r.type_id, r.type_name.clone());
+                Self {
+                    id: r.id,
+                    prop_id: r.prop_id,
+                    value: r.value,
+                    r#type: filter_type,
+                }
+            })
+            .collect())
+    }
+    async fn save(&self, _db: &PgPool) -> Result<()> {
+        todo!()
+    }
+}
+#[async_trait]
+impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
+    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
+        struct Qres {
+            id: i32,
+            type_id: i32,
+            type_name: String,
+            prop_id: i32,
+            value: i64,
+        }
+        let res = query_as!(
+            Qres,
+            "select
+                f.id,
+                ft.id type_id,
+                ft.name type_name,
+                f.prop_id,
+                f.value
+            from filter_int f
+            join filter_type ft on f.type_id = ft.id
+            where f.id = $1",
+            query.id
+        )
+        .fetch_one(db)
+        .await?;
+
+        let filter_type =
+            models::create_filter_type(res.type_id, res.type_name.clone());
+
+        Ok(Self {
+            id: res.id,
+            prop_id: res.prop_id,
+            value: res.value,
+            r#type: filter_type,
+        })
+    }
+    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
+        struct Qres {
+            id: i32,
+            type_id: i32,
+            type_name: String,
+            prop_id: i32,
+            value: i64,
+        }
+        let res = query_as!(
+            Qres,
+            "select
+                f.id,
+                ft.id type_id,
+                ft.name type_name,
+                f.prop_id,
+                f.value
+            from filter_int f
+            join filter_type ft on f.type_id = ft.id
+            join property p on p.id = f.prop_id
+            where p.collection_id = $1",
+            query.collection_id
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(res
+            .iter()
+            .map(|r| {
+                let filter_type =
+                    models::create_filter_type(r.type_id, r.type_name.clone());
+                Self {
+                    id: r.id,
+                    prop_id: r.prop_id,
+                    value: r.value,
+                    r#type: filter_type,
+                }
+            })
+            .collect())
+    }
+    async fn save(&self, _db: &PgPool) -> Result<()> {
+        todo!()
+    }
+}
+#[async_trait]
+impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterIntRange {
+    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
+        struct Qres {
+            id: i32,
+            type_id: i32,
+            type_name: String,
+            prop_id: i32,
+            start: i64,
+            end: i64,
+        }
+        let res = query_as!(
+            Qres,
+            "select
+                f.id,
+                ft.id type_id,
+                ft.name type_name,
+                f.prop_id,
+                f.start,
+                f.end
+            from filter_int_range f
+            join filter_type ft on f.type_id = ft.id
+            where f.id = $1",
+            query.id
+        )
+        .fetch_one(db)
+        .await?;
+
+        let filter_type =
+            models::create_filter_type(res.type_id, res.type_name.clone());
+
+        Ok(Self {
+            id: res.id,
+            prop_id: res.prop_id,
+            start: res.start,
+            end: res.end,
+            r#type: filter_type,
+        })
+    }
+    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
+        struct Qres {
+            id: i32,
+            type_id: i32,
+            type_name: String,
+            prop_id: i32,
+            start: i64,
+            end: i64,
+        }
+        let res = query_as!(
+            Qres,
+            "select
+                f.id,
+                ft.id type_id,
+                ft.name type_name,
+                f.prop_id,
+                f.start,
+                f.end
+            from filter_int_range f
+            join filter_type ft on f.type_id = ft.id
+            join property p on p.id = f.prop_id
+            where p.collection_id = $1",
+            query.collection_id
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(res
+            .iter()
+            .map(|r| {
+                let filter_type =
+                    models::create_filter_type(r.type_id, r.type_name.clone());
+                Self {
+                    id: r.id,
+                    prop_id: r.prop_id,
+                    start: r.start,
+                    end: r.end,
+                    r#type: filter_type,
+                }
+            })
+            .collect())
+    }
+    async fn save(&self, _db: &PgPool) -> Result<()> {
+        todo!()
+    }
+}
+
+async fn get_page_list_ctx(
+    db: &PgPool,
+    collection_id: i32,
+) -> Result<(
+    Vec<models::FilterBool>,
+    Vec<models::FilterInt>,
+    Vec<models::FilterIntRange>,
+    Vec<models::Prop>,
+)> {
+    let filter_query = ListFilterQuery { collection_id };
+    let (filter_bool, filter_int, filter_int_rng, collection_prop_set) = join!(
+        models::FilterBool::list(db, &filter_query),
+        models::FilterInt::list(db, &filter_query),
+        models::FilterIntRange::list(db, &filter_query),
+        get_prop_set(db, collection_id)
+    );
+    let filter_bool = filter_bool?;
+    let filter_int = filter_int?;
+    let filter_int_rng = filter_int_rng?;
+    let collection_prop_set = collection_prop_set?;
+
+    Ok((filter_bool, filter_int, filter_int_rng, collection_prop_set))
+}
+
 pub async fn list_pages(
     db: &PgPool,
     collection_id: i32,
     page_number: i32,
 ) -> Result<Vec<models::Page>> {
+    let (filter_bool, filter_int, filter_int_rng, collection_prop_set) =
+        get_page_list_ctx(db, collection_id).await?;
+
     let page_size = 100;
     let offset = page_number * page_size;
-    struct Pages {
-        id: i32,
-        title: String,
-        collection_id: i32,
+
+    let mut query = QueryBuilder::new("select ");
+
+    let mut sep = query.separated(",");
+    sep.push("page.id id");
+    sep.push("page.title title");
+    sep.push("page.collection_id collection_id");
+    for prop in &collection_prop_set[..] {
+        sep.push(format!("prop{}.value prop{}", prop.id, prop.id));
     }
-    let pages = query_as!(
-        Pages,
-        "select id, title, collection_id from page
-        where collection_id = $1
-        limit $2 offset $3
-        ",
-        collection_id,
-        i64::from(page_size),
-        i64::from(offset)
-    )
-    .fetch_all(db)
-    .await?;
+    query.push(" from page ");
 
-    let collection_prop_set = get_prop_set(db, collection_id).await?;
-    let pv_query = PvListQuery {
-        page_ids: pages.iter().map(|p| p.id).collect(),
-    };
-    let bool_props = models::PvBool::list(db, &pv_query).await?;
-    let int_props = models::PvInt::list(db, &pv_query).await?;
-
-    // Let's build a hash map to facilitate applying this blob of all prop
-    // values for all pages in the collection into an ordered set of prop values
-    // for each page being rendered.
-    //
-    // The keys of the hash map will be a tuple of `(page_id, prop_id)`. This
-    // is the natural key for all prop-values, allowing us to lookup arbitrary
-    // prop values by identifier as we perform an outer loop over pages and
-    // an inner loop over props.
-    let mut prop_map: HashMap<(i32, i32), Box<dyn PropVal>> = HashMap::new();
-
-    macro_rules! insert {
-        ($propset:ident) => {
-            for item in $propset {
-                prop_map.insert((item.page_id, item.prop_id), Box::new(item));
-            }
+    for prop in &collection_prop_set[..] {
+        let table_name = match prop.type_id {
+            models::PropValTypes::Int => "propval_int",
+            models::PropValTypes::Bool => "propval_bool",
+            _ => todo!(),
         };
+        query.push(format!(
+            "left join {} as prop{} on prop{}.page_id = page.id ",
+            table_name, prop.id, prop.id
+        ));
     }
 
-    insert!(bool_props);
-    insert!(int_props);
+    query.push("where ");
 
-    Ok(pages
+    let mut sep = query.separated(" and ");
+    for filter in &filter_bool[..] {
+        let prop_id = filter.prop_id;
+        let operator = models::into_operator(&filter.r#type);
+        let value = if filter.value { "true" } else { "false " };
+        // The value here is a boolean, not a user-input string, so I think that
+        // direct interpolation without binding is safe.
+        sep.push(format!("prop{prop_id}.value {operator} {value} "));
+    }
+    for filter in &filter_int[..] {
+        let prop_id = filter.prop_id;
+        let operator = models::into_operator(&filter.r#type);
+        let value = filter.value;
+        // The value here is a boolean, not a user-input string, so I think that
+        // direct interpolation without binding is safe.
+        sep.push(format!("prop{prop_id}.value {operator} {value} "));
+    }
+    for filter in &filter_int_rng[..] {
+        let prop_id = filter.prop_id;
+        let start = filter.start;
+        let end = filter.end;
+        // The value here is a boolean, not a user-input string, so I think that
+        // direct interpolation without binding is safe.
+        sep.push(format!("prop{prop_id}.value > {start} "));
+        sep.push(format!("prop{prop_id}.value < {end} "));
+    }
+
+    query.push(format!(" limit {page_size} offset {offset} "));
+
+    let res = query.build().fetch_all(db).await?;
+    let pages: Vec<models::Page> = res
         .iter()
-        .map(|page| {
-            let mut props = vec![];
-            for collection_prop in &collection_prop_set[..] {
-                if let Some(existing) =
-                    prop_map.remove(&(page.id, collection_prop.id))
-                {
-                    props.push(existing)
-                } else {
-                    props.push(models::get_default(
-                        collection_prop.type_id,
-                        page.id,
-                        collection_prop.id,
-                    ))
-                }
-            }
+        .map(|row| {
+            let id: i32 = row.get("id");
+            let title: String = row.get("title");
+            let collection_id: i32 = row.get("collection_id");
+            let props: Vec<Box<dyn PropVal>> = collection_prop_set
+                .iter()
+                .map(|prop| {
+                    let prop_alias = format!("prop{}", prop.id);
+                    match prop.type_id {
+                        models::PropValTypes::Int => {
+                            let value = row.try_get(&prop_alias as &str).unwrap_or(0);
+                            Box::new(models::PvInt {
+                                page_id: id,
+                                prop_id: prop.id,
+                                value,
+                            }) as _
+                        }
+                        models::PropValTypes::Bool => {
+                            let value = row.try_get(&prop_alias as &str).unwrap_or(false);
+                            Box::new(models::PvBool {
+                                page_id: id,
+                                prop_id: prop.id,
+                                value,
+                            }) as _
+                        }
+                        _ => todo!(),
+                    }
+                })
+                .collect();
+
             models::Page {
+                id,
+                title,
+                collection_id,
                 props,
-                id: page.id,
-                collection_id: page.collection_id,
-                title: page.title.clone(),
                 content: None,
             }
         })
-        .collect())
+        .collect();
+
+    Ok(pages)
 }
 
 pub async fn get_items(

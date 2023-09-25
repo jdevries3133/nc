@@ -18,13 +18,13 @@ pub struct Prop {
 /// database to one of our `Pv*` structs
 #[derive(Copy, Clone, Debug)]
 pub enum PropValTypes {
-    Bool = 1,
-    Int = 2,
-    Float = 3,
-    Str = 4,
-    MultiString = 5,
-    Date = 6,
-    DateTime = 7,
+    Bool,
+    Int,
+    Float,
+    Str,
+    MultiString,
+    Date,
+    DateTime,
 }
 
 /// Will panic if an invalid PropValTypes is passed in
@@ -38,27 +38,6 @@ pub fn propval_type_from_int(int: i32) -> PropValTypes {
         6 => PropValTypes::Date,
         7 => PropValTypes::DateTime,
         _ => panic!("invalid prop-type {int}"),
-    }
-}
-
-/// Get the `dyn PropVal` default value for any prop type
-pub fn get_default(
-    pv_type: PropValTypes,
-    page_id: i32,
-    prop_id: i32,
-) -> Box<dyn PropVal> {
-    match pv_type {
-        PropValTypes::Bool => Box::new(PvBool {
-            page_id,
-            prop_id,
-            value: false,
-        }),
-        PropValTypes::Int => Box::new(PvInt {
-            page_id,
-            prop_id,
-            value: 0,
-        }),
-        _ => todo!("type {pv_type:?} not implemented"),
     }
 }
 
@@ -169,4 +148,63 @@ pub struct Item {
     pub id: Option<i32>,
     pub title: String,
     pub is_completed: bool,
+}
+
+/// The string inside is the user-facing name of the filter type
+#[derive(Clone, Debug)]
+pub enum FilterType {
+    Eq(String),
+    Neq(String),
+    Gt(String),
+    Lt(String),
+    InRng(String),
+    NotInRng(String),
+}
+
+pub fn create_filter_type(id: i32, name: String) -> FilterType {
+    match id {
+        1 => FilterType::Eq(name),
+        2 => FilterType::Neq(name),
+        3 => FilterType::Gt(name),
+        4 => FilterType::Lt(name),
+        5 => FilterType::InRng(name),
+        6 => FilterType::NotInRng(name),
+        _ => panic!("{id} is not a valid filter type"),
+    }
+}
+
+pub fn into_operator(ft: &FilterType) -> &'static str {
+    match ft {
+        FilterType::Eq(_) => "=",
+        FilterType::Gt(_) => ">",
+        FilterType::Neq(_) => "!=",
+        FilterType::Lt(_) => "<",
+        // InRng // NotInRng do not map nicely into SQL operators
+        _ => panic!("not supported"),
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FilterBool {
+    pub id: i32,
+    pub r#type: FilterType,
+    pub prop_id: i32,
+    pub value: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct FilterInt {
+    pub id: i32,
+    pub r#type: FilterType,
+    pub prop_id: i32,
+    pub value: i64,
+}
+
+#[derive(Clone, Debug)]
+pub struct FilterIntRange {
+    pub id: i32,
+    pub r#type: FilterType,
+    pub prop_id: i32,
+    pub start: i64,
+    pub end: i64,
 }
