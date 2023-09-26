@@ -224,6 +224,11 @@ SQL injection through this attack vector.
 
 # Other Future Ideas
 
+- it would be nice to order filters by creation date... currently, the order in
+  the toolbar is basically nondeterministic; though in practice they'll appear
+  first sorted by type and secondarily sorted by order of creation, which is
+  fine, I suppose
+- hover tooltips are gross; we can do a better implementation with a bit of JS
 - we need to query for filters and sorts before the main query for initial page
   load. An in-memory cache for all collection filters and sorts would be awesome
   for maximally taking advantage of our architecture and also improving initial

@@ -15,6 +15,7 @@ use axum::{
     Form,
 };
 use serde::Deserialize;
+use std::collections::HashMap;
 
 pub async fn root(headers: HeaderMap) -> impl IntoResponse {
     if headers.contains_key("Hx-Request") {
@@ -151,7 +152,11 @@ pub async fn collection_pages(
     let pages =
         db_ops::list_pages(&db, collection_id, page.unwrap_or(0)).await?;
 
-    Ok(components::PageList { pages: &pages }.render())
+    Ok(components::PageList {
+        pages: &pages,
+        collection_id,
+    }
+    .render())
 }
 
 pub async fn collection_prop_order(
@@ -162,8 +167,9 @@ pub async fn collection_prop_order(
     let props = models::Prop::list(
         &db,
         &db_ops::ListPropQuery {
-            collection_id,
+            collection_id: Some(collection_id),
             order_in: None,
+            exact_ids: None,
         },
     )
     .await?;
@@ -236,8 +242,9 @@ pub async fn increment_prop_order(
     let mut next_props = models::Prop::list(
         &db,
         &db_ops::ListPropQuery {
-            collection_id,
+            collection_id: Some(collection_id),
             order_in: Some(vec![prop.order - 1]),
+            exact_ids: None,
         },
     )
     .await?;
@@ -251,8 +258,9 @@ pub async fn increment_prop_order(
         let all_props = models::Prop::list(
             &db,
             &db_ops::ListPropQuery {
-                collection_id,
+                collection_id: Some(collection_id),
                 order_in: None,
+                exact_ids: None,
             },
         )
         .await?;
@@ -294,8 +302,9 @@ pub async fn increment_prop_order(
     let all_props = models::Prop::list(
         &db,
         &db_ops::ListPropQuery {
-            collection_id,
+            collection_id: Some(collection_id),
             order_in: None,
+            exact_ids: None,
         },
     )
     .await?;
@@ -312,8 +321,9 @@ pub async fn decrement_prop_order(
     let mut next_props = models::Prop::list(
         &db,
         &db_ops::ListPropQuery {
-            collection_id,
+            collection_id: Some(collection_id),
             order_in: Some(vec![prop.order + 1]),
+            exact_ids: None,
         },
     )
     .await?;
@@ -321,8 +331,9 @@ pub async fn decrement_prop_order(
         let all_props = models::Prop::list(
             &db,
             &db_ops::ListPropQuery {
-                collection_id,
+                collection_id: Some(collection_id),
                 order_in: None,
+                exact_ids: None,
             },
         )
         .await?;
@@ -343,8 +354,9 @@ pub async fn decrement_prop_order(
     let all_props = models::Prop::list(
         &db,
         &db_ops::ListPropQuery {
-            collection_id,
+            collection_id: Some(collection_id),
             order_in: None,
+            exact_ids: None,
         },
     )
     .await?;
@@ -476,4 +488,53 @@ pub async fn handle_content_submission(
         content: Some(&content),
     }
     .render())
+}
+
+pub async fn get_filter_toolbar(
+    State(AppState { db }): State<AppState>,
+    Path(collection_id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let (bool_filters, int_filters, int_rng_filters) =
+        db_ops::get_filters(&db, collection_id).await?;
+    let mut all_props: Vec<i32> = Vec::with_capacity(
+        bool_filters.len() + int_filters.len() + int_rng_filters.len(),
+    );
+    for f in &bool_filters[..] {
+        all_props.push(f.prop_id);
+    }
+    for f in &int_filters[..] {
+        all_props.push(f.prop_id);
+    }
+    for f in &int_rng_filters[..] {
+        all_props.push(f.prop_id);
+    }
+    let prop_query = db_ops::ListPropQuery {
+        collection_id: None,
+        exact_ids: Some(all_props),
+        order_in: None,
+    };
+    let mut props = models::Prop::list(&db, &prop_query).await?;
+    let prop_by_id = props.drain(..).fold(HashMap::new(), |mut acc, prop| {
+        acc.insert(prop.id, prop);
+        acc
+    });
+    let get_prop_name = |prop_id: i32| {
+        &prop_by_id
+            .get(&prop_id)
+            .expect("you lookup a prop that exists")
+            .name as &str
+    };
+    Ok(components::FilterToolbar {
+        collection_id,
+        bool_filters,
+        int_filters,
+        int_rng_filters,
+        get_prop_name: &get_prop_name,
+    }
+    .render())
+}
+
+// This needs to be async because axum requires route handlers to be async.
+pub async fn hide_filter_toolbar(Path(collection_id): Path<i32>) -> String {
+    components::FilterToolbarPlaceholder { collection_id }.render()
 }

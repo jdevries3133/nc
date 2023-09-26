@@ -9,7 +9,6 @@ use sqlx::{
     Row,
 };
 
-
 #[async_trait]
 pub trait DbModel<GetQuery, ListQuery>: Sync + Send {
     /// Get exactly one object from the database, matching the query. WIll
@@ -214,7 +213,7 @@ pub struct GetPropQuery {
 }
 
 pub struct ListPropQuery {
-    pub collection_id: i32,
+    pub collection_id: Option<i32>,
     /// A set of orders to match with the `prop.order` column. Can be useful
     /// for selecting props within a range, or getting the props that are
     /// immediately adjacent to a known prop.
@@ -226,6 +225,9 @@ pub struct ListPropQuery {
     // in use at the cost of actually being less efficient so that I have a
     // template to follow for the query builder.
     pub order_in: Option<Vec<i16>>,
+
+    /// If provided, override collection_id and return these specific props.
+    pub exact_ids: Option<Vec<i32>>,
 }
 #[derive(sqlx::FromRow)]
 struct QresProp {
@@ -268,8 +270,19 @@ impl DbModel<GetPropQuery, ListPropQuery> for models::Prop {
             from property "#,
         );
 
-        builder.push("where collection_id = ");
-        builder.push_bind(query.collection_id);
+        if let Some(ref ids) = query.exact_ids {
+            builder.push("where id in (");
+            let mut sep = builder.separated(",");
+            for id in ids {
+                sep.push_bind(id);
+            }
+            builder.push(")");
+        } else if let Some(collection_id) = query.collection_id {
+            builder.push("where collection_id = ");
+            builder.push_bind(collection_id);
+        } else {
+            bail!("exact_ids or collection_id must be provided");
+        };
 
         if let Some(order_set) = &query.order_in {
             builder.push(r#" and "order" in ("#);
@@ -285,7 +298,7 @@ impl DbModel<GetPropQuery, ListPropQuery> for models::Prop {
 
         raw_props.sort_by_key(|p| p.order);
         if raw_props.len() > PROP_SET_MAX {
-            bail!("too many props for collection {}", query.collection_id);
+            bail!("too many props for collection {:?}", query.collection_id);
         };
         let props = raw_props.drain(..).map(|p| p.into_prop()).collect();
 
@@ -313,7 +326,7 @@ pub struct GetFilterQuery {
 }
 
 pub struct ListFilterQuery {
-    collection_id: i32,
+    pub collection_id: i32,
 }
 
 #[async_trait]
@@ -343,7 +356,7 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterBool {
         .await?;
 
         let filter_type =
-            models::create_filter_type(res.type_id, res.type_name.clone());
+            models::FilterType::new(res.type_id, res.type_name.clone());
 
         Ok(Self {
             id: res.id,
@@ -381,7 +394,7 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterBool {
             .iter()
             .map(|r| {
                 let filter_type =
-                    models::create_filter_type(r.type_id, r.type_name.clone());
+                    models::FilterType::new(r.type_id, r.type_name.clone());
                 Self {
                     id: r.id,
                     prop_id: r.prop_id,
@@ -422,7 +435,7 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
         .await?;
 
         let filter_type =
-            models::create_filter_type(res.type_id, res.type_name.clone());
+            models::FilterType::new(res.type_id, res.type_name.clone());
 
         Ok(Self {
             id: res.id,
@@ -460,7 +473,7 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
             .iter()
             .map(|r| {
                 let filter_type =
-                    models::create_filter_type(r.type_id, r.type_name.clone());
+                    models::FilterType::new(r.type_id, r.type_name.clone());
                 Self {
                     id: r.id,
                     prop_id: r.prop_id,
@@ -503,7 +516,7 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterIntRange {
         .await?;
 
         let filter_type =
-            models::create_filter_type(res.type_id, res.type_name.clone());
+            models::FilterType::new(res.type_id, res.type_name.clone());
 
         Ok(Self {
             id: res.id,
@@ -544,7 +557,7 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterIntRange {
             .iter()
             .map(|r| {
                 let filter_type =
-                    models::create_filter_type(r.type_id, r.type_name.clone());
+                    models::FilterType::new(r.type_id, r.type_name.clone());
                 Self {
                     id: r.id,
                     prop_id: r.prop_id,
@@ -560,6 +573,27 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterIntRange {
     }
 }
 
+pub async fn get_filters(
+    db: &PgPool,
+    collection_id: i32,
+) -> Result<(
+    Vec<models::FilterBool>,
+    Vec<models::FilterInt>,
+    Vec<models::FilterIntRange>,
+)> {
+    let filter_query = ListFilterQuery { collection_id };
+    let (filter_bool, filter_int, filter_int_rng) = join!(
+        models::FilterBool::list(db, &filter_query),
+        models::FilterInt::list(db, &filter_query),
+        models::FilterIntRange::list(db, &filter_query),
+    );
+    let filter_bool = filter_bool?;
+    let filter_int = filter_int?;
+    let filter_int_rng = filter_int_rng?;
+
+    Ok((filter_bool, filter_int, filter_int_rng))
+}
+
 async fn get_page_list_ctx(
     db: &PgPool,
     collection_id: i32,
@@ -569,16 +603,11 @@ async fn get_page_list_ctx(
     Vec<models::FilterIntRange>,
     Vec<models::Prop>,
 )> {
-    let filter_query = ListFilterQuery { collection_id };
-    let (filter_bool, filter_int, filter_int_rng, collection_prop_set) = join!(
-        models::FilterBool::list(db, &filter_query),
-        models::FilterInt::list(db, &filter_query),
-        models::FilterIntRange::list(db, &filter_query),
+    let (filters, collection_prop_set) = join!(
+        get_filters(db, collection_id),
         get_prop_set(db, collection_id)
     );
-    let filter_bool = filter_bool?;
-    let filter_int = filter_int?;
-    let filter_int_rng = filter_int_rng?;
+    let (filter_bool, filter_int, filter_int_rng) = filters?;
     let collection_prop_set = collection_prop_set?;
 
     Ok((filter_bool, filter_int, filter_int_rng, collection_prop_set))
@@ -623,7 +652,7 @@ pub async fn list_pages(
     let mut sep = query.separated(" and ");
     for filter in &filter_bool[..] {
         let prop_id = filter.prop_id;
-        let operator = models::into_operator(&filter.r#type);
+        let operator = &filter.r#type.get_operator_str();
         let value = if filter.value { "true" } else { "false " };
         // The value here is a boolean, not a user-input string, so I think that
         // direct interpolation without binding is safe.
@@ -631,7 +660,7 @@ pub async fn list_pages(
     }
     for filter in &filter_int[..] {
         let prop_id = filter.prop_id;
-        let operator = models::into_operator(&filter.r#type);
+        let operator = &filter.r#type.get_operator_str();
         let value = filter.value;
         // The value here is a boolean, not a user-input string, so I think that
         // direct interpolation without binding is safe.
@@ -662,7 +691,8 @@ pub async fn list_pages(
                     let prop_alias = format!("prop{}", prop.id);
                     match prop.type_id {
                         models::PropValTypes::Int => {
-                            let value = row.try_get(&prop_alias as &str).unwrap_or(0);
+                            let value =
+                                row.try_get(&prop_alias as &str).unwrap_or(0);
                             Box::new(models::PvInt {
                                 page_id: id,
                                 prop_id: prop.id,
@@ -670,7 +700,9 @@ pub async fn list_pages(
                             }) as _
                         }
                         models::PropValTypes::Bool => {
-                            let value = row.try_get(&prop_alias as &str).unwrap_or(false);
+                            let value = row
+                                .try_get(&prop_alias as &str)
+                                .unwrap_or(false);
                             Box::new(models::PvBool {
                                 page_id: id,
                                 prop_id: prop.id,

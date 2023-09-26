@@ -1,6 +1,6 @@
 use super::models;
 use ammonia::clean;
-use std::fmt::Write;
+use std::fmt::{Display, Write};
 
 #[cfg(feature = "live_reload")]
 const LIVE_RELOAD_SCRIPT: &str = r#"<script>
@@ -225,22 +225,49 @@ impl Component for Collection {
 
 pub struct PageList<'a> {
     pub pages: &'a [models::Page],
+    pub collection_id: i32,
 }
 impl Component for PageList<'_> {
     fn render(&self) -> String {
+        let col_order = HoverIcon {
+            children: Box::new(ColumnOrderIcon {
+                collection_id: self.collection_id,
+            }),
+            tooltip_text: "Edit Column Order",
+        }
+        .render();
+        let filter = HoverIcon {
+            children: Box::new(FilterIcon {}),
+            tooltip_text: "View Filters",
+        }
+        .render();
+        let filter_toolbar_placeholder = FilterToolbarPlaceholder {
+            collection_id: self.collection_id,
+        }
+        .render();
         if self.pages.is_empty() {
-            return "<p>No pages available</p>".into();
+            return format!(
+                r#"
+                <div>
+                    <p>No pages available</p>
+                </div>
+                <div class="mt-2 flex">
+                    {col_order} {filter}
+                </div>
+                {filter_toolbar_placeholder}
+                "#
+            );
         };
         let list = self.pages.iter().fold(String::new(), |mut str, page| {
             let _ = write!(
                 str,
                 r#"
-                        <div class="flex gap-2 my-1 items-center">
-                            <a class="link" href="/page/{page_id}">Edit</a>
-                            <div><div class="w-64 truncate">{title}</div></div>
-                            {other_props}
-                        </div>
-                    "#,
+                    <div class="flex gap-2 my-1 items-center">
+                        <a class="link" href="/page/{page_id}">Edit</a>
+                        <div><div class="w-64 truncate">{title}</div></div>
+                        {other_props}
+                    </div>
+                "#,
                 page_id = page.id,
                 title = clean(&page.title),
                 other_props = page
@@ -264,18 +291,12 @@ impl Component for PageList<'_> {
                 collection = Some(cid);
             }
         }
-        let col_order = HoverIcon {
-            children: Box::new(ColumnOrderIcon {
-                collection_id: self.pages[0].collection_id,
-            }),
-            tooltip_text: "Edit Column Order",
-        }
-        .render();
         format!(
             r#"
-                <div class="mt-2">
-                    {col_order}
+                <div class="mt-2 flex">
+                    {col_order} {filter}
                 </div>
+                {filter_toolbar_placeholder}
                 <div class="overflow-y-scroll">
                     {list}
                 </div>
@@ -312,7 +333,7 @@ impl Component for HoverIcon<'_> {
         let children = self.children.render();
         format!(
             r#"
-                <div data-tooltip="{text}" class="tooltip">
+                <div data-tooltip="{text}" class="tooltip cursor-pointer">
                     {children}
                 </div>
             "#
@@ -570,6 +591,270 @@ impl Component for PropOrderForm {
                     <a class="link" href="/collection/{collection_id}">Back</a>
                     <ol class="ml-4 list-decimal"">{list_items}</ol>
                 </div>
+            "#
+        )
+    }
+}
+
+pub struct FilterIcon;
+impl Component for FilterIcon {
+    fn render(&self) -> String {
+        r##"
+        <div id="filter-icon" class="rounded">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
+            </svg>
+        </div>
+        <script>
+            (() => {{
+            const iconElement = document.querySelector("#filter-icon");
+            iconElement.addEventListener('click', function () {{
+                if ([...iconElement.classList].includes('text-black')) {{
+                    iconElement.classList.remove('text-black');
+                    iconElement.classList.remove('bg-yellow-100');
+                    htmx.trigger('body', 'toggle-filter-toolbar');
+                }} else {{
+                    iconElement.classList.add('text-black');
+                    iconElement.classList.add('bg-yellow-100');
+                    htmx.trigger('body', 'toggle-filter-toolbar');
+                }}
+            }});
+            }})()
+        </script>
+        "##.into()
+    }
+}
+
+pub struct FilterToolbarPlaceholder {
+    pub collection_id: i32,
+}
+impl Component for FilterToolbarPlaceholder {
+    fn render(&self) -> String {
+        let collection_id = self.collection_id;
+        format!(
+            r#"
+            <div
+                hx-get="/collection/{collection_id}/show-filter-toolbar"
+                hx-swap="outerHTML"
+                hx-trigger="toggle-filter-toolbar from:body"
+                ></div>
+            "#
+        )
+    }
+}
+
+pub struct FilterToolbar<'a> {
+    pub bool_filters: Vec<models::FilterBool>,
+    pub int_filters: Vec<models::FilterInt>,
+    pub int_rng_filters: Vec<models::FilterIntRange>,
+    pub collection_id: i32,
+    pub get_prop_name: &'a dyn Fn(i32) -> &'a str,
+}
+impl Component for FilterToolbar<'_> {
+    fn render(&self) -> String {
+        let collection_id = self.collection_id;
+        let bool_rendered =
+            self.bool_filters
+                .iter()
+                .fold(String::new(), |mut acc, filter| {
+                    acc.push_str(
+                        &FilterBool {
+                            filter,
+                            prop_name: (self.get_prop_name)(filter.id),
+                        }
+                        .render(),
+                    );
+                    acc
+                });
+        let int_rendered =
+            self.int_filters
+                .iter()
+                .fold(String::new(), |mut acc, filter| {
+                    acc.push_str(
+                        &FilterInt {
+                            filter,
+                            prop_name: (self.get_prop_name)(filter.id),
+                        }
+                        .render(),
+                    );
+                    acc
+                });
+        let int_rng_rendered = self.int_rng_filters.iter().fold(
+            String::new(),
+            |mut acc, filter| {
+                acc.push_str(
+                    &FilterIntRange {
+                        filter,
+                        prop_name: (self.get_prop_name)(filter.id),
+                    }
+                    .render(),
+                );
+                acc
+            },
+        );
+        format!(
+            r#"
+            <div
+                hx-get="/collection/{collection_id}/hide-filter-toolbar"
+                hx-swap="outerHTML"
+                hx-trigger="toggle-filter-toolbar from:body"
+                class="flex flex-row gap-2 mt-3 mb-4"
+            >{bool_rendered}{int_rendered}{int_rng_rendered}
+            </div>
+            "#
+        )
+    }
+}
+
+struct FilterBool<'a> {
+    filter: &'a models::FilterBool,
+    prop_name: &'a str,
+}
+impl Component for FilterBool<'_> {
+    fn render(&self) -> String {
+        let prop_name = self.prop_name;
+        let operation_name = self.filter.r#type.get_display_name();
+        let val = if self.filter.value {
+            r#""true""#
+        } else {
+            r#""false""#
+        };
+        let predicate = Box::new(Text { inner_text: &val });
+        // Clippy is whining but the borrow-checker will whine louder
+        #[allow(clippy::let_and_return)]
+        let result = FilterChip {
+            subject: prop_name,
+            operator_text: operation_name,
+            predicate,
+        }
+        .render();
+
+        result
+    }
+}
+
+#[derive(Debug)]
+struct FilterInt<'a> {
+    filter: &'a models::FilterInt,
+    prop_name: &'a str,
+}
+impl Component for FilterInt<'_> {
+    fn render(&self) -> String {
+        let prop_name = self.prop_name;
+        let operation_name = self.filter.r#type.get_display_name();
+        FilterChip {
+            subject: prop_name,
+            operator_text: operation_name,
+            predicate: Box::new(Text {
+                inner_text: &self.filter.value,
+            }),
+        }
+        .render()
+    }
+}
+
+#[derive(Debug)]
+struct FilterIntRange<'a> {
+    filter: &'a models::FilterIntRange,
+    prop_name: &'a str,
+}
+impl Component for FilterIntRange<'_> {
+    fn render(&self) -> String {
+        let prop_name = self.prop_name;
+        let operation_name = self.filter.r#type.get_display_name();
+        let start = self.filter.start;
+        let end = self.filter.end;
+        let predicate = FilterRngPredicate { start, end };
+        FilterChip {
+            subject: prop_name,
+            operator_text: operation_name,
+            predicate: Box::new(predicate),
+        }
+        .render()
+    }
+}
+
+enum ChevronVariant {
+    #[allow(dead_code)]
+    Open,
+    Closed,
+}
+struct Chevron {
+    variant: ChevronVariant,
+}
+impl Component for Chevron {
+    fn render(&self) -> String {
+        match self.variant {
+            ChevronVariant::Open => r#"
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+
+            "#.into()
+            ,
+            ChevronVariant::Closed => r#"
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+            "#.into()
+        }
+    }
+}
+
+struct ArrowLeftRight;
+impl Component for ArrowLeftRight {
+    fn render(&self) -> String {
+        r#"<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+        </svg>"#.into()
+    }
+}
+
+struct Text<'a, T: Display> {
+    inner_text: &'a T,
+}
+impl<T: Display> Component for Text<'_, T> {
+    fn render(&self) -> String {
+        clean(&format!("{}", self.inner_text))
+    }
+}
+
+struct FilterRngPredicate {
+    start: i64,
+    end: i64,
+}
+impl Component for FilterRngPredicate {
+    fn render(&self) -> String {
+        let start = self.start;
+        let end = self.end;
+        let arrow_icon = ArrowLeftRight {}.render();
+
+        format!("{start} {arrow_icon} {end}")
+    }
+}
+
+struct FilterChip<'a> {
+    pub subject: &'a str,
+    pub operator_text: &'a str,
+    pub predicate: Box<dyn Component + 'a>,
+}
+impl Component for FilterChip<'_> {
+    fn render(&self) -> String {
+        let subject = clean(self.subject);
+        let operator_text = clean(self.operator_text);
+        let child = self.predicate.render();
+        let chevron = Chevron {
+            variant: ChevronVariant::Closed,
+        }
+        .render();
+        format!(
+            r#"
+            <div class="text-sm border border-slate-600 bg-gradient-to-tr from-blue-100 to-fuchsia-100 dark:bg-gradient-to-tr dark:from-fuchsia-800 dark:to-violet-700 rounded p-2 flex flex-row gap-2 items-center justify-center">
+                {chevron}
+                <span>{subject}</span>
+                <span class="text-xs bg-slate-100 bg-opacity-40 rounded text-black p-2 shadow italic">{operator_text}</span>
+                {child}
+            </div>
             "#
         )
     }

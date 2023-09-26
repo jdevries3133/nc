@@ -161,26 +161,38 @@ pub enum FilterType {
     NotInRng(String),
 }
 
-pub fn create_filter_type(id: i32, name: String) -> FilterType {
-    match id {
-        1 => FilterType::Eq(name),
-        2 => FilterType::Neq(name),
-        3 => FilterType::Gt(name),
-        4 => FilterType::Lt(name),
-        5 => FilterType::InRng(name),
-        6 => FilterType::NotInRng(name),
-        _ => panic!("{id} is not a valid filter type"),
+impl FilterType {
+    pub fn new(id: i32, name: String) -> FilterType {
+        match id {
+            1 => FilterType::Eq(name),
+            2 => FilterType::Neq(name),
+            3 => FilterType::Gt(name),
+            4 => FilterType::Lt(name),
+            5 => FilterType::InRng(name),
+            6 => FilterType::NotInRng(name),
+            _ => panic!("{id} is not a valid filter type"),
+        }
     }
-}
+    pub fn get_display_name(&self) -> &String {
+        match self {
+            FilterType::Eq(name) => name,
+            FilterType::Neq(name) => name,
+            FilterType::Gt(name) => name,
+            FilterType::Lt(name) => name,
+            FilterType::InRng(name) => name,
+            FilterType::NotInRng(name) => name,
+        }
+    }
 
-pub fn into_operator(ft: &FilterType) -> &'static str {
-    match ft {
-        FilterType::Eq(_) => "=",
-        FilterType::Gt(_) => ">",
-        FilterType::Neq(_) => "!=",
-        FilterType::Lt(_) => "<",
-        // InRng // NotInRng do not map nicely into SQL operators
-        _ => panic!("not supported"),
+    pub fn get_operator_str(&self) -> &'static str {
+        match self {
+            FilterType::Eq(_) => "=",
+            FilterType::Gt(_) => ">",
+            FilterType::Neq(_) => "!=",
+            FilterType::Lt(_) => "<",
+            // InRng // NotInRng do not map nicely into SQL operators
+            _ => panic!("not supported"),
+        }
     }
 }
 
