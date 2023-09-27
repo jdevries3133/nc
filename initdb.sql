@@ -117,12 +117,13 @@ create table filter_type(
 );
 
 insert into filter_type (name) values
-    ('Exactly Equals'),  ----- 1
-    ('Does not Equal'),  ----- 2
-    ('Is Greater Than'), ----- 3
-    ('Is Less Than'), -------- 4
-    ('Is Inside Range'), ----- 5
-    ('Is Not Inside Range') -- 6
+    ('Exactly Equals'),  ------ 1
+    ('Does not Equal'),  ------ 2
+    ('Is Greater Than'), ------ 3
+    ('Is Less Than'), --------- 4
+    ('Is Inside Range'), ------ 5
+    ('Is Not Inside Range'), -- 6
+    ('Is Empty') -------------- 7
 ;
 
 create table filter_bool(

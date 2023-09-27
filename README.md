@@ -224,6 +224,7 @@ SQL injection through this attack vector.
 
 # Other Future Ideas
 
+- I would like middleware to minify and compress outgoing HTML
 - it would be nice to order filters by creation date... currently, the order in
   the toolbar is basically nondeterministic; though in practice they'll appear
   first sorted by type and secondarily sorted by order of creation, which is

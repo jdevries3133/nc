@@ -151,7 +151,7 @@ pub struct Item {
 }
 
 /// The string inside is the user-facing name of the filter type
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FilterType {
     Eq(String),
     Neq(String),
@@ -159,6 +159,7 @@ pub enum FilterType {
     Lt(String),
     InRng(String),
     NotInRng(String),
+    IsEmpty(String),
 }
 
 impl FilterType {
@@ -170,6 +171,7 @@ impl FilterType {
             4 => FilterType::Lt(name),
             5 => FilterType::InRng(name),
             6 => FilterType::NotInRng(name),
+            7 => FilterType::IsEmpty(name),
             _ => panic!("{id} is not a valid filter type"),
         }
     }
@@ -181,6 +183,7 @@ impl FilterType {
             FilterType::Lt(name) => name,
             FilterType::InRng(name) => name,
             FilterType::NotInRng(name) => name,
+            FilterType::IsEmpty(name) => name,
         }
     }
 
@@ -194,9 +197,21 @@ impl FilterType {
             _ => panic!("not supported"),
         }
     }
+
+    pub fn get_int_repr(&self) -> i32 {
+        match self {
+            FilterType::Eq(_) => 1,
+            FilterType::Gt(_) => 2,
+            FilterType::Neq(_) => 3,
+            FilterType::Lt(_) => 4,
+            FilterType::InRng(_) => 5,
+            FilterType::NotInRng(_) => 6,
+            FilterType::IsEmpty(_) => 7,
+        }
+    }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FilterBool {
     pub id: i32,
     pub r#type: FilterType,
@@ -204,7 +219,7 @@ pub struct FilterBool {
     pub value: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FilterInt {
     pub id: i32,
     pub r#type: FilterType,
@@ -212,8 +227,8 @@ pub struct FilterInt {
     pub value: i64,
 }
 
-#[derive(Clone, Debug)]
-pub struct FilterIntRange {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FilterIntRng {
     pub id: i32,
     pub r#type: FilterType,
     pub prop_id: i32,

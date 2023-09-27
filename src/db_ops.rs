@@ -322,7 +322,7 @@ impl DbModel<GetPropQuery, ListPropQuery> for models::Prop {
 }
 
 pub struct GetFilterQuery {
-    id: i32,
+    pub id: i32,
 }
 
 pub struct ListFilterQuery {
@@ -404,8 +404,17 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterBool {
             })
             .collect())
     }
-    async fn save(&self, _db: &PgPool) -> Result<()> {
-        todo!()
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            "update filter_bool set value = $1, type_id = $2 where id = $3",
+            self.value,
+            self.r#type.get_int_repr(),
+            self.id
+        )
+        .execute(db)
+        .await?;
+
+        Ok(())
     }
 }
 #[async_trait]
@@ -483,12 +492,21 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
             })
             .collect())
     }
-    async fn save(&self, _db: &PgPool) -> Result<()> {
-        todo!()
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            "update filter_int set value = $1, type_id = $2 where id = $3",
+            self.value,
+            self.r#type.get_int_repr(),
+            self.id
+        )
+        .execute(db)
+        .await?;
+
+        Ok(())
     }
 }
 #[async_trait]
-impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterIntRange {
+impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterIntRng {
     async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
         struct Qres {
             id: i32,
@@ -568,8 +586,20 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterIntRange {
             })
             .collect())
     }
-    async fn save(&self, _db: &PgPool) -> Result<()> {
-        todo!()
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            r#"update filter_int_range
+            set start = $1, "end" = $2, type_id = $3
+            where id = $4"#,
+            self.start,
+            self.end,
+            self.r#type.get_int_repr(),
+            self.id
+        )
+        .execute(db)
+        .await?;
+
+        Ok(())
     }
 }
 
@@ -579,13 +609,13 @@ pub async fn get_filters(
 ) -> Result<(
     Vec<models::FilterBool>,
     Vec<models::FilterInt>,
-    Vec<models::FilterIntRange>,
+    Vec<models::FilterIntRng>,
 )> {
     let filter_query = ListFilterQuery { collection_id };
     let (filter_bool, filter_int, filter_int_rng) = join!(
         models::FilterBool::list(db, &filter_query),
         models::FilterInt::list(db, &filter_query),
-        models::FilterIntRange::list(db, &filter_query),
+        models::FilterIntRng::list(db, &filter_query),
     );
     let filter_bool = filter_bool?;
     let filter_int = filter_int?;
@@ -600,7 +630,7 @@ async fn get_page_list_ctx(
 ) -> Result<(
     Vec<models::FilterBool>,
     Vec<models::FilterInt>,
-    Vec<models::FilterIntRange>,
+    Vec<models::FilterIntRng>,
     Vec<models::Prop>,
 )> {
     let (filters, collection_prop_set) = join!(
@@ -647,33 +677,55 @@ pub async fn list_pages(
         ));
     }
 
-    query.push("where ");
+    if !(filter_bool.is_empty()
+        && filter_int.is_empty()
+        && filter_int_rng.is_empty())
+    {
+        query.push("where ");
 
-    let mut sep = query.separated(" and ");
-    for filter in &filter_bool[..] {
-        let prop_id = filter.prop_id;
-        let operator = &filter.r#type.get_operator_str();
-        let value = if filter.value { "true" } else { "false " };
-        // The value here is a boolean, not a user-input string, so I think that
-        // direct interpolation without binding is safe.
-        sep.push(format!("prop{prop_id}.value {operator} {value} "));
-    }
-    for filter in &filter_int[..] {
-        let prop_id = filter.prop_id;
-        let operator = &filter.r#type.get_operator_str();
-        let value = filter.value;
-        // The value here is a boolean, not a user-input string, so I think that
-        // direct interpolation without binding is safe.
-        sep.push(format!("prop{prop_id}.value {operator} {value} "));
-    }
-    for filter in &filter_int_rng[..] {
-        let prop_id = filter.prop_id;
-        let start = filter.start;
-        let end = filter.end;
-        // The value here is a boolean, not a user-input string, so I think that
-        // direct interpolation without binding is safe.
-        sep.push(format!("prop{prop_id}.value > {start} "));
-        sep.push(format!("prop{prop_id}.value < {end} "));
+        let mut sep = query.separated(" and ");
+        for filter in &filter_bool[..] {
+            let prop_id = filter.prop_id;
+            if let models::FilterType::IsEmpty(..) = filter.r#type {
+                sep.push(format!("prop{prop_id}.value is null"));
+            } else {
+                let operator = &filter.r#type.get_operator_str();
+                let value = if filter.value { "true" } else { "false " };
+                // The value here is a boolean, not a user-input string, so I think that
+                // direct interpolation without binding is safe.
+                sep.push(format!("prop{prop_id}.value {operator} {value} "));
+            }
+        }
+        for filter in &filter_int[..] {
+            let prop_id = filter.prop_id;
+            if let models::FilterType::IsEmpty(..) = filter.r#type {
+                sep.push(format!("prop{prop_id}.value is null"));
+            } else {
+                let operator = &filter.r#type.get_operator_str();
+                let value = filter.value;
+                // The value here is a boolean, not a user-input string, so I think that
+                // direct interpolation without binding is safe.
+                sep.push(format!("prop{prop_id}.value {operator} {value} "));
+            }
+        }
+        for filter in &filter_int_rng[..] {
+            let prop_id = filter.prop_id;
+            let start = filter.start;
+            let end = filter.end;
+            match &filter.r#type {
+                models::FilterType::InRng(..) => {
+                    // The value here is a boolean, not a user-input string, so I think that
+                    // direct interpolation without binding is safe.
+                    sep.push(format!("prop{prop_id}.value > {start} "));
+                    sep.push(format!("prop{prop_id}.value < {end} "));
+                }
+                models::FilterType::NotInRng(..) => {
+                    sep.push(format!("prop{prop_id}.value < {start} "));
+                    sep.push(format!("prop{prop_id}.value > {end} "));
+                }
+                ty => panic!("type {ty:?} not supported for int range filters"),
+            };
+        }
     }
 
     query.push(format!(" limit {page_size} offset {offset} "));

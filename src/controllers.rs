@@ -10,7 +10,7 @@ use super::{
 use anyhow::Result;
 use axum::{
     extract::{Path, Query, State},
-    http::{HeaderMap, HeaderValue},
+    http::{HeaderMap, HeaderValue, StatusCode},
     response::IntoResponse,
     Form,
 };
@@ -496,6 +496,22 @@ pub async fn get_filter_toolbar(
 ) -> Result<impl IntoResponse, ServerError> {
     let (bool_filters, int_filters, int_rng_filters) =
         db_ops::get_filters(&db, collection_id).await?;
+    if bool_filters.is_empty()
+        && int_filters.is_empty()
+        && int_rng_filters.is_empty()
+    {
+        return Ok(format!(
+            r#"
+            <p
+                hx-get="/collection/{collection_id}/hide-filter-toolbar"
+                hx-swap="outerHTML"
+                hx-trigger="toggle-filter-toolbar from:body"
+                >
+                You do not have any filters yet
+            </p>
+            "#
+        ));
+    };
     let mut all_props: Vec<i32> = Vec::with_capacity(
         bool_filters.len() + int_filters.len() + int_rng_filters.len(),
     );
@@ -537,4 +553,252 @@ pub async fn get_filter_toolbar(
 // This needs to be async because axum requires route handlers to be async.
 pub async fn hide_filter_toolbar(Path(collection_id): Path<i32>) -> String {
     components::FilterToolbarPlaceholder { collection_id }.render()
+}
+
+pub async fn get_bool_filter_chip(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        &models::FilterBool::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+
+    Ok(components::FilterBool {
+        filter,
+        prop_name: &related_prop.name,
+    }
+    .render())
+}
+
+pub async fn get_bool_filter_form(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        &models::FilterBool::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+
+    Ok(components::BoolFilterForm {
+        filter,
+        prop_name: &related_prop.name,
+    }
+    .render())
+}
+
+/// Insert the Hx-Trugger header into a HeaderMap such that the table reload
+/// will occur on the collection view.
+fn reload_table(mut headers: HeaderMap) -> HeaderMap {
+    headers.insert(
+        "Hx-Trigger",
+        HeaderValue::from_str("reload-pages")
+            .expect("reload-pages can be a header"),
+    );
+
+    headers
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BoolForm {
+    value: String,
+}
+pub async fn handle_bool_form_submit(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+    Form(form): Form<BoolForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        models::FilterBool::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+    let mut headers = HeaderMap::new();
+    let new_filter = if form.value == "true" {
+        models::FilterBool {
+            id: filter.id,
+            r#type: models::FilterType::Eq("Exactly Equals".into()),
+            prop_id: filter.prop_id,
+            value: true,
+        }
+    } else if form.value == "false" {
+        models::FilterBool {
+            id: filter.id,
+            r#type: models::FilterType::Eq("Exactly Equals".into()),
+            prop_id: filter.prop_id,
+            value: false,
+        }
+    } else if form.value == "is-empty" {
+        models::FilterBool {
+            id: filter.id,
+            r#type: models::FilterType::IsEmpty("Is Empty".into()),
+            prop_id: filter.prop_id,
+            value: true,
+        }
+    } else {
+        return Ok((
+            StatusCode::BAD_REQUEST,
+            headers,
+            "Invalid value".to_string(),
+        ));
+    };
+
+    if new_filter != filter {
+        new_filter.save(&db).await?;
+        headers = reload_table(headers);
+    };
+    Ok((
+        StatusCode::OK,
+        headers,
+        components::FilterBool {
+            filter: &new_filter,
+            prop_name: &related_prop.name,
+        }
+        .render(),
+    ))
+}
+
+pub async fn get_int_filter_chip(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        &models::FilterInt::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+
+    Ok(components::FilterInt {
+        filter,
+        prop_name: &related_prop.name,
+    }
+    .render())
+}
+
+pub async fn get_int_filter_form(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        &models::FilterInt::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+
+    Ok(components::IntFilterForm {
+        filter,
+        prop_name: &related_prop.name,
+    }
+    .render())
+}
+
+#[derive(Deserialize)]
+pub struct IntForm {
+    pub value: i64,
+    pub r#type: i32,
+}
+pub async fn handle_int_form_submit(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+    Form(form): Form<IntForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        models::FilterInt::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+    let mut headers = HeaderMap::new();
+    let form_type = models::FilterType::new(form.r#type, "whatever".into());
+    let new_filter = models::FilterInt {
+        id: filter.id,
+        prop_id: filter.prop_id,
+        r#type: form_type,
+        value: form.value,
+    };
+    if new_filter != filter {
+        new_filter.save(&db).await?;
+        headers = reload_table(headers);
+    };
+    Ok((
+        headers,
+        components::FilterInt {
+            filter: &new_filter,
+            prop_name: &related_prop.name,
+        }
+        .render(),
+    ))
+}
+
+pub async fn get_int_rng_filter_chip(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        &models::FilterIntRng::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+
+    Ok(components::FilterIntRng {
+        filter,
+        prop_name: &related_prop.name,
+    }
+    .render())
+}
+
+pub async fn get_int_rng_filter_form(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        &models::FilterIntRng::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+
+    Ok(components::IntRngFilterForm {
+        filter,
+        prop_name: &related_prop.name,
+    }
+    .render())
+}
+
+#[derive(Deserialize)]
+pub struct IntRngForm {
+    pub start: i64,
+    pub end: i64,
+    pub r#type: i32,
+}
+pub async fn handle_int_rng_form_submit(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+    Form(form): Form<IntRngForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        models::FilterIntRng::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+    let mut headers = HeaderMap::new();
+    let form_type = models::FilterType::new(form.r#type, "whatever".into());
+    let new_filter = models::FilterIntRng {
+        r#type: form_type.clone(),
+        start: form.start,
+        end: form.end,
+        ..filter
+    };
+    if new_filter != filter {
+        new_filter.save(&db).await?;
+        headers = reload_table(headers);
+    };
+    Ok((
+        headers,
+        components::FilterIntRng {
+            filter: &new_filter,
+            prop_name: &related_prop.name,
+        }
+        .render(),
+    ))
 }

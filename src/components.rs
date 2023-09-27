@@ -1,3 +1,8 @@
+// In many cases, we need to do a let binding to satisfy the borrow checker
+// and for some reason, clippy identifies those as unnecessary. Maybe there
+// are and clippy knows more than me, maybe not.
+#![allow(clippy::let_and_return)]
+
 use super::models;
 use ammonia::clean;
 use std::fmt::{Display, Write};
@@ -229,10 +234,9 @@ pub struct PageList<'a> {
 }
 impl Component for PageList<'_> {
     fn render(&self) -> String {
+        let collection_id = self.collection_id;
         let col_order = HoverIcon {
-            children: Box::new(ColumnOrderIcon {
-                collection_id: self.collection_id,
-            }),
+            children: Box::new(ColumnOrderIcon { collection_id }),
             tooltip_text: "Edit Column Order",
         }
         .render();
@@ -241,20 +245,24 @@ impl Component for PageList<'_> {
             tooltip_text: "View Filters",
         }
         .render();
-        let filter_toolbar_placeholder = FilterToolbarPlaceholder {
-            collection_id: self.collection_id,
-        }
-        .render();
+        let filter_toolbar_placeholder =
+            FilterToolbarPlaceholder { collection_id }.render();
         if self.pages.is_empty() {
             return format!(
                 r#"
-                <div>
-                    <p>No pages available</p>
+                <div
+                    hx-get="/collection/{collection_id}/list-pages"
+                    hx-trigger="reload-pages from:body"
+                    hx-swap="outerHTML"
+                    >
+                    <div>
+                        <p>No pages available</p>
+                    </div>
+                    <div class="mt-2 flex">
+                        {col_order} {filter}
+                    </div>
+                    {filter_toolbar_placeholder}
                 </div>
-                <div class="mt-2 flex">
-                    {col_order} {filter}
-                </div>
-                {filter_toolbar_placeholder}
                 "#
             );
         };
@@ -293,12 +301,18 @@ impl Component for PageList<'_> {
         }
         format!(
             r#"
-                <div class="mt-2 flex">
-                    {col_order} {filter}
-                </div>
-                {filter_toolbar_placeholder}
-                <div class="overflow-y-scroll">
-                    {list}
+                <div
+                    hx-get="/collection/{collection_id}/list-pages"
+                    hx-trigger="reload-pages from:body"
+                    hx-swap="outerHTML"
+                    >
+                    <div class="mt-2 flex">
+                        {col_order} {filter}
+                    </div>
+                    {filter_toolbar_placeholder}
+                    <div class="overflow-y-scroll">
+                        {list}
+                    </div>
                 </div>
             "#
         )
@@ -646,7 +660,7 @@ impl Component for FilterToolbarPlaceholder {
 pub struct FilterToolbar<'a> {
     pub bool_filters: Vec<models::FilterBool>,
     pub int_filters: Vec<models::FilterInt>,
-    pub int_rng_filters: Vec<models::FilterIntRange>,
+    pub int_rng_filters: Vec<models::FilterIntRng>,
     pub collection_id: i32,
     pub get_prop_name: &'a dyn Fn(i32) -> &'a str,
 }
@@ -683,7 +697,7 @@ impl Component for FilterToolbar<'_> {
             String::new(),
             |mut acc, filter| {
                 acc.push_str(
-                    &FilterIntRange {
+                    &FilterIntRng {
                         filter,
                         prop_name: (self.get_prop_name)(filter.id),
                     }
@@ -706,26 +720,30 @@ impl Component for FilterToolbar<'_> {
     }
 }
 
-struct FilterBool<'a> {
-    filter: &'a models::FilterBool,
-    prop_name: &'a str,
+pub struct FilterBool<'a> {
+    pub filter: &'a models::FilterBool,
+    pub prop_name: &'a str,
 }
 impl Component for FilterBool<'_> {
     fn render(&self) -> String {
         let prop_name = self.prop_name;
+        let form_href = &format!("/filter/bool/{}", self.filter.id);
         let operation_name = self.filter.r#type.get_display_name();
-        let val = if self.filter.value {
+        let val = if let models::FilterType::IsEmpty(..) = self.filter.r#type {
+            ""
+        } else if self.filter.value {
             r#""true""#
         } else {
             r#""false""#
         };
         let predicate = Box::new(Text { inner_text: &val });
         // Clippy is whining but the borrow-checker will whine louder
-        #[allow(clippy::let_and_return)]
         let result = FilterChip {
             subject: prop_name,
             operator_text: operation_name,
             predicate,
+            form_href,
+            filter_type: &self.filter.r#type,
         }
         .render();
 
@@ -734,43 +752,53 @@ impl Component for FilterBool<'_> {
 }
 
 #[derive(Debug)]
-struct FilterInt<'a> {
-    filter: &'a models::FilterInt,
-    prop_name: &'a str,
+pub struct FilterInt<'a> {
+    pub filter: &'a models::FilterInt,
+    pub prop_name: &'a str,
 }
 impl Component for FilterInt<'_> {
     fn render(&self) -> String {
+        let form_href = &format!("/filter/int/{}", self.filter.id);
         let prop_name = self.prop_name;
         let operation_name = self.filter.r#type.get_display_name();
-        FilterChip {
+        let result = FilterChip {
             subject: prop_name,
             operator_text: operation_name,
             predicate: Box::new(Text {
                 inner_text: &self.filter.value,
             }),
+            form_href,
+            filter_type: &self.filter.r#type,
         }
-        .render()
+        .render();
+
+        result
     }
 }
 
 #[derive(Debug)]
-struct FilterIntRange<'a> {
-    filter: &'a models::FilterIntRange,
-    prop_name: &'a str,
+pub struct FilterIntRng<'a> {
+    pub filter: &'a models::FilterIntRng,
+    pub prop_name: &'a str,
 }
-impl Component for FilterIntRange<'_> {
+impl Component for FilterIntRng<'_> {
     fn render(&self) -> String {
         let prop_name = self.prop_name;
+        let form_href = &format!("/filter/int-rng/{}", self.filter.id);
         let operation_name = self.filter.r#type.get_display_name();
         let start = self.filter.start;
         let end = self.filter.end;
         let predicate = FilterRngPredicate { start, end };
-        FilterChip {
+        let result = FilterChip {
             subject: prop_name,
             operator_text: operation_name,
             predicate: Box::new(predicate),
+            form_href,
+            filter_type: &self.filter.r#type,
         }
-        .render()
+        .render();
+
+        result
     }
 }
 
@@ -786,16 +814,19 @@ impl Component for Chevron {
     fn render(&self) -> String {
         match self.variant {
             ChevronVariant::Open => r#"
+                <div class="w-6 h-6">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                 </svg>
-
+                </div>
             "#.into()
             ,
             ChevronVariant::Closed => r#"
+                <div class="w-6 h-6">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
+                </div>
             "#.into()
         }
     }
@@ -833,28 +864,276 @@ impl Component for FilterRngPredicate {
     }
 }
 
+const FILTER_CONTAINER_STYLE: &str = "text-sm border border-slate-600 bg-gradient-to-tr from-blue-100 to-fuchsia-100 dark:bg-gradient-to-tr dark:from-fuchsia-800 dark:to-violet-700 rounded p-2 flex flex-row gap-2 items-center justify-center";
+
 struct FilterChip<'a> {
     pub subject: &'a str,
     pub operator_text: &'a str,
     pub predicate: Box<dyn Component + 'a>,
+    pub form_href: &'a str,
+    pub filter_type: &'a models::FilterType,
 }
 impl Component for FilterChip<'_> {
     fn render(&self) -> String {
+        let form_href = self.form_href;
         let subject = clean(self.subject);
         let operator_text = clean(self.operator_text);
-        let child = self.predicate.render();
+        let child = if let models::FilterType::IsEmpty(..) = self.filter_type {
+            "".into()
+        } else {
+            self.predicate.render()
+        };
         let chevron = Chevron {
             variant: ChevronVariant::Closed,
         }
         .render();
         format!(
             r#"
-            <div class="text-sm border border-slate-600 bg-gradient-to-tr from-blue-100 to-fuchsia-100 dark:bg-gradient-to-tr dark:from-fuchsia-800 dark:to-violet-700 rounded p-2 flex flex-row gap-2 items-center justify-center">
+            <div
+                hx-get="{form_href}"
+                hx-swap="outerHTML"
+                class="{FILTER_CONTAINER_STYLE} h-10 cursor-pointer">
                 {chevron}
-                <span>{subject}</span>
-                <span class="text-xs bg-slate-100 bg-opacity-40 rounded text-black p-2 shadow italic">{operator_text}</span>
+                <span class="text-xs">{subject}</span>
+                <span class="text-[10px] bg-slate-100 bg-opacity-40 rounded text-black p-1 shadow italic whitespace-nowrap">{operator_text}</span>
                 {child}
             </div>
+            "#
+        )
+    }
+}
+
+pub struct BoolFilterForm<'a> {
+    pub filter: &'a models::FilterBool,
+    pub prop_name: &'a str,
+}
+impl Component for BoolFilterForm<'_> {
+    fn render(&self) -> String {
+        let filter_id = self.filter.id;
+        let container_id = format!("filter-{filter_id}-form");
+        let chevron = Chevron {
+            variant: ChevronVariant::Open,
+        }
+        .render();
+        let prop_name = self.prop_name;
+        let submit_url = format!("/filter/bool/{}", self.filter.id);
+        format!(
+            r##"
+            <div id="{container_id}" class="{FILTER_CONTAINER_STYLE} flex-col">
+                <div class="flex flex-row">
+                    <button 
+                        hx-get="/filter/bool/{filter_id}/chip"
+                        hx-swap="outerHTML"
+                        hx-target="#{container_id}""
+                        >{chevron}</button>
+                    <div class="flex flex-col">
+                        <p class="text-xl">{prop_name}</p>
+                        <p class="italic">update filter</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-center">
+                    <form
+                        hx-target="#{container_id}"
+                        hx-swap="outerHTML"
+                        hx-post="{submit_url}"
+                        >
+                            <input type="hidden" name="value" value="true" />
+                            <button
+                                class="bg-green-100 shadow hover:shadow-none hover:bg-green-200 dark:bg-green-700 dark:hover:bg-green-600 transition rounded-tl rounded-bl p-4"
+                                >
+                                True</button>
+                    </form>
+                    <form
+                        hx-target="#{container_id}"
+                        hx-swap="outerHTML"
+                        hx-post="{submit_url}"
+                        >
+                            <input type="hidden" name="value" value="is-empty" />
+                            <button
+                                class="bg-slate-100 shadow hover:shadow-none hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition p-4 whitespace-nowrap"
+                                >
+                                Is Empty</button>
+                    </form>
+                    <form
+                        hx-target="#{container_id}"
+                        hx-swap="outerHTML"
+                        hx-post="{submit_url}"
+                        >
+                        <input type="hidden" name="value" value="false" />
+                        <button
+                            class="bg-red-100 shadow hover:shadow-none hover:bg-red-200 dark:bg-red-700 hover:dark:bg-red-600 transition rounded-tr rounded-br p-4"
+                            >False</button>
+                    </form>
+                </div>
+            </div>
+            "##
+        )
+    }
+}
+
+pub struct IntFilterForm<'a> {
+    pub filter: &'a models::FilterInt,
+    pub prop_name: &'a str,
+}
+impl Component for IntFilterForm<'_> {
+    fn render(&self) -> String {
+        let value = self.filter.value;
+        let id = self.filter.id;
+        let chevron = Chevron {
+            variant: ChevronVariant::Open,
+        }
+        .render();
+        let type_1_selected =
+            if let models::FilterType::Eq(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_2_selected =
+            if let models::FilterType::Neq(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_3_selected =
+            if let models::FilterType::Gt(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_4_selected =
+            if let models::FilterType::Lt(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_7_selected =
+            if let models::FilterType::IsEmpty(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        format!(
+            r#"
+            <form
+                hx-post="/filter/int/{id}"
+                hx-swap="outerHTML"
+                class="{FILTER_CONTAINER_STYLE}"
+            >
+                <button 
+                    hx-get="/filter/int/{id}/chip"
+                    hx-swap="outerHTML"
+                    hx-target="closest form"
+                    >{chevron}</button>
+                <div class="flex flex-col gap-2">
+                    <div>
+                        <label class="text-sm" for="type">Filter Type</label>
+                        <select
+                            id="type"
+                            name="type"
+                            class="dark:text-white text-sm dark:bg-slate-700 rounded"
+                            >
+                            <option {type_1_selected} value="1">Exactly Equals</option>
+                            <option {type_2_selected} value="2">Does not Equal</option>
+                            <option {type_3_selected} value="3">Is Greater Than</option>
+                            <option {type_4_selected} value="4">Is Less Than</option>
+                            <option {type_7_selected} value="7">Is Empty</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="value">Value</label>
+                        <input id="value" name="value" type="number" value="{value}" />
+                    </div>
+                    <div>
+                        <button class="dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Save</button>
+                    </div>
+                </div>
+            </form>
+            "#
+        )
+    }
+}
+
+pub struct IntRngFilterForm<'a> {
+    pub filter: &'a models::FilterIntRng,
+    pub prop_name: &'a str,
+}
+impl Component for IntRngFilterForm<'_> {
+    fn render(&self) -> String {
+        let id = self.filter.id;
+        let start = self.filter.start;
+        let end = self.filter.end;
+        let chevron = Chevron {
+            variant: ChevronVariant::Open,
+        }
+        .render();
+        let type_5_selected = match self.filter.r#type {
+            models::FilterType::InRng(_) => "selected",
+            _ => "",
+        };
+        let type_6_selected = match self.filter.r#type {
+            models::FilterType::NotInRng(_) => "selected",
+            _ => "",
+        };
+        // <form
+        //     hx-post="/filter/int-rng/{id}"
+        //     hx-swap="outerHTML"
+        //     >
+        //     <select
+        //         id="type"
+        //         name="type"
+        //         class="dark:text-black"
+        //         >
+        //         <option {type_5_selected} value="5">Is Inside Range</option>
+        //         <option {type_6_selected} value="6">Is Not Inside Range</option>
+        //     </select>
+        //     <div>
+        //         <label for="start">Start</label>
+        //         <input id="start" name="start" type="number" value="{start}" />
+        //     </div>
+        //     <div>
+        //         <label for="end">End</label>
+        //         <input id="end" name="end" type="number" value="{end}" />
+        //     </div>
+        //     <button>Save</button>
+        // </form>
+        format!(
+            r#"
+            <form
+                hx-post="/filter/int-rng/{id}"
+                hx-swap="outerHTML"
+                class="{FILTER_CONTAINER_STYLE}"
+            >
+                <button 
+                    hx-get="/filter/int-rng/{id}/chip"
+                    hx-swap="outerHTML"
+                    hx-target="closest form"
+                    >{chevron}</button>
+                <div class="flex flex-col gap-2">
+                    <div>
+                        <label class="text-sm" for="type">Filter Type</label>
+                        <select
+                            id="type"
+                            name="type"
+                            class="dark:text-white text-sm dark:bg-slate-700 rounded"
+                            >
+                                <option {type_5_selected} value="5">Is Inside Range</option>
+                                <option {type_6_selected} value="6">Is Not Inside Range</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="start">Start</label>
+                        <input id="start" name="start" type="number" value="{start}" />
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="end">End</label>
+                        <input id="end" name="end" type="number" value="{end}" />
+                    </div>
+                    <div>
+                        <button class="dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Save</button>
+                    </div>
+                </div>
+            </form>
             "#
         )
     }
