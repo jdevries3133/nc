@@ -77,6 +77,9 @@ impl Component for Page<'_> {
                 <body hx-boost="true" class="dark:bg-indigo-1000 dark:text-white mt-2 ml-2 sm:mt-8 sm:ml-8">
                     {body_html}
                     <script src="/static/htmx-1.9.4"></script>
+                    <script>
+                        htmx.config.defaultSwapStyle = "outerHTML"
+                    </script>
                 </body>
             </html>
             "#,
@@ -147,14 +150,12 @@ impl Component for Item {
                     name="is_completed"
                     hx-post="/item"
                     hx-target="closest form"
-                    hx-swap="outerHTML"
                 />
                 <input type="hidden" name="title" value="{title}" />
                 <input type="hidden" name="id" value="{id}" />
                 <h2 class="text-md">{title}</h2>
                 <button
                     hx-delete="/item/{id}"
-                    hx-swap="outerHTML"
                     hx-target="closest form"
                     class="flex items-center justify-center rounded-full text-lg
                     w-6 h-6 bg-red-100 justify-self-right"
@@ -204,7 +205,7 @@ pub struct InfiniteScroll {
 impl Component for InfiniteScroll {
     fn render(&self) -> String {
         format!(
-            r#"<div hx-trigger="revealed" hx-swap="outerHTML" hx-get="{}" />"#,
+            r#"<div hx-trigger="revealed" hx-get="{}" />"#,
             clean(&self.next_href)
         )
     }
@@ -253,7 +254,6 @@ impl Component for PageList<'_> {
                 <div
                     hx-get="/collection/{collection_id}/list-pages"
                     hx-trigger="reload-pages from:body"
-                    hx-swap="outerHTML"
                     >
                     <div>
                         <p>No pages available</p>
@@ -304,7 +304,6 @@ impl Component for PageList<'_> {
                 <div
                     hx-get="/collection/{collection_id}/list-pages"
                     hx-trigger="reload-pages from:body"
-                    hx-swap="outerHTML"
                     >
                     <div class="mt-2 flex">
                         {col_order} {filter}
@@ -389,7 +388,7 @@ impl Component for PageForm<'_> {
         let collection_id = &self.page.collection_id;
         format!(
             r#"
-                <form hx-trigger="change" hx-post="/page" hx-swap="outerHTML">
+                <form hx-trigger="change" hx-post="/page">
                     <input type="hidden" name="id" value="{id}" />
                     <input type="hidden" name="collection_id" value="{collection_id}" />
                     <input
@@ -420,7 +419,6 @@ impl Component for ContentDisplay<'_> {
                 <div
                     class="prose dark:prose-invert cursor-pointer"
                     hx-get="/page/{page_id}/content"
-                    hx-swap="outerHTML"
                 >
                     {cleaned}
                 </div>
@@ -432,7 +430,6 @@ impl Component for ContentDisplay<'_> {
                 <div
                     class="prose dark:prose-invert cursor-pointer"
                     hx-get="/page/{page_id}/content"
-                    hx-swap="outerHTML"
                 >
                     <p>Click to add content!</p>
                 </div>
@@ -469,7 +466,6 @@ impl Component for models::PvBool {
             r#"
                 <input
                     hx-post="/page/{page_id}/prop/{prop_id}/bool"
-                    hx-swap="outerHTML"
                     name="value"
                     type="checkbox"
                     {checked_state}
@@ -489,7 +485,6 @@ impl Component for models::PvInt {
                 <input
                     class="rounded text-sm w-24"
                     hx-post="/page/{page_id}/prop/{prop_id}/int"
-                    hx-swap="outerHTML"
                     name="value"
                     type="number"
                     value={value}
@@ -584,12 +579,10 @@ impl Component for PropOrderForm {
                     <span class="w-48 truncate">{name}</span>
                     <a
                         hx-post="/collection/{cid}/prop/{pid}/up"
-                        hx-swap="outerHTML"
                         hx-target="closest div"
                         hx-sync="closest ol:queue">{up}</a>
                     <a 
                         hx-post="/collection/{cid}/prop/{pid}/down"
-                        hx-swap="outerHTML"
                         hx-target="closest div"
                         hx-sync="closest ol:queue">{down}</a>
                 </li>
@@ -649,7 +642,6 @@ impl Component for FilterToolbarPlaceholder {
             r#"
             <div
                 hx-get="/collection/{collection_id}/show-filter-toolbar"
-                hx-swap="outerHTML"
                 hx-trigger="toggle-filter-toolbar from:body"
                 ></div>
             "#
@@ -710,7 +702,6 @@ impl Component for FilterToolbar<'_> {
             r#"
             <div
                 hx-get="/collection/{collection_id}/hide-filter-toolbar"
-                hx-swap="outerHTML"
                 hx-trigger="toggle-filter-toolbar from:body"
                 class="flex flex-row gap-2 mt-3 mb-4"
             >{bool_rendered}{int_rendered}{int_rng_rendered}
@@ -891,7 +882,6 @@ impl Component for FilterChip<'_> {
             r#"
             <div
                 hx-get="{form_href}"
-                hx-swap="outerHTML"
                 class="{FILTER_CONTAINER_STYLE} h-10 cursor-pointer">
                 {chevron}
                 <span class="text-xs">{subject}</span>
@@ -923,7 +913,6 @@ impl Component for BoolFilterForm<'_> {
                 <div class="flex flex-row">
                     <button 
                         hx-get="/filter/bool/{filter_id}/chip"
-                        hx-swap="outerHTML"
                         hx-target="#{container_id}""
                         >{chevron}</button>
                     <div class="flex flex-col">
@@ -934,7 +923,6 @@ impl Component for BoolFilterForm<'_> {
                 <div class="flex items-center justify-center">
                     <form
                         hx-target="#{container_id}"
-                        hx-swap="outerHTML"
                         hx-post="{submit_url}"
                         >
                             <input type="hidden" name="value" value="true" />
@@ -945,7 +933,6 @@ impl Component for BoolFilterForm<'_> {
                     </form>
                     <form
                         hx-target="#{container_id}"
-                        hx-swap="outerHTML"
                         hx-post="{submit_url}"
                         >
                             <input type="hidden" name="value" value="is-empty" />
@@ -956,7 +943,6 @@ impl Component for BoolFilterForm<'_> {
                     </form>
                     <form
                         hx-target="#{container_id}"
-                        hx-swap="outerHTML"
                         hx-post="{submit_url}"
                         >
                         <input type="hidden" name="value" value="false" />
@@ -1017,12 +1003,10 @@ impl Component for IntFilterForm<'_> {
             r#"
             <form
                 hx-post="/filter/int/{id}"
-                hx-swap="outerHTML"
                 class="{FILTER_CONTAINER_STYLE}"
             >
                 <button 
                     hx-get="/filter/int/{id}/chip"
-                    hx-swap="outerHTML"
                     hx-target="closest form"
                     >{chevron}</button>
                 <div class="flex flex-col gap-2">
@@ -1075,38 +1059,14 @@ impl Component for IntRngFilterForm<'_> {
             models::FilterType::NotInRng(_) => "selected",
             _ => "",
         };
-        // <form
-        //     hx-post="/filter/int-rng/{id}"
-        //     hx-swap="outerHTML"
-        //     >
-        //     <select
-        //         id="type"
-        //         name="type"
-        //         class="dark:text-black"
-        //         >
-        //         <option {type_5_selected} value="5">Is Inside Range</option>
-        //         <option {type_6_selected} value="6">Is Not Inside Range</option>
-        //     </select>
-        //     <div>
-        //         <label for="start">Start</label>
-        //         <input id="start" name="start" type="number" value="{start}" />
-        //     </div>
-        //     <div>
-        //         <label for="end">End</label>
-        //         <input id="end" name="end" type="number" value="{end}" />
-        //     </div>
-        //     <button>Save</button>
-        // </form>
         format!(
             r#"
             <form
                 hx-post="/filter/int-rng/{id}"
-                hx-swap="outerHTML"
                 class="{FILTER_CONTAINER_STYLE}"
             >
                 <button 
                     hx-get="/filter/int-rng/{id}/chip"
-                    hx-swap="outerHTML"
                     hx-target="closest form"
                     >{chevron}</button>
                 <div class="flex flex-col gap-2">
