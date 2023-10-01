@@ -672,9 +672,12 @@ pub async fn list_pages(
             _ => todo!(),
         };
         query.push(format!(
-            "left join {} as prop{} on prop{}.page_id = page.id ",
-            table_name, prop.id, prop.id
-        ));
+                "left join {table} as prop{prop_id}
+                on prop{prop_id}.page_id = page.id 
+                and prop{prop_id}.prop_id = {prop_id} ",
+                table = table_name,
+                prop_id = prop.id
+            ));
     }
 
     if !(filter_bool.is_empty()
