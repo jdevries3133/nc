@@ -666,7 +666,7 @@ impl Component for FilterToolbar<'_> {
                     acc.push_str(
                         &FilterBool {
                             filter,
-                            prop_name: (self.get_prop_name)(filter.id),
+                            prop_name: (self.get_prop_name)(filter.prop_id),
                         }
                         .render(),
                     );
@@ -679,7 +679,7 @@ impl Component for FilterToolbar<'_> {
                     acc.push_str(
                         &FilterInt {
                             filter,
-                            prop_name: (self.get_prop_name)(filter.id),
+                            prop_name: (self.get_prop_name)(filter.prop_id),
                         }
                         .render(),
                     );
@@ -691,7 +691,7 @@ impl Component for FilterToolbar<'_> {
                 acc.push_str(
                     &FilterIntRng {
                         filter,
-                        prop_name: (self.get_prop_name)(filter.id),
+                        prop_name: (self.get_prop_name)(filter.prop_id),
                     }
                     .render(),
                 );
