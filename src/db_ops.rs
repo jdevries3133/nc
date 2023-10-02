@@ -423,7 +423,6 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
         struct Qres {
             id: i32,
             type_id: i32,
-            type_name: String,
             prop_id: i32,
             value: i64,
         }
@@ -432,7 +431,6 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
             "select
                 f.id,
                 ft.id type_id,
-                ft.name type_name,
                 f.prop_id,
                 f.value
             from filter_int f
@@ -443,8 +441,7 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
         .fetch_one(db)
         .await?;
 
-        let filter_type =
-            models::FilterType::new(res.type_id, res.type_name.clone());
+        let filter_type = models::FilterType::new(res.type_id, "".into());
 
         Ok(Self {
             id: res.id,

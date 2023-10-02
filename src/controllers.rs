@@ -782,7 +782,7 @@ pub async fn handle_int_rng_form_submit(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
     let mut headers = HeaderMap::new();
-    let form_type = models::FilterType::new(form.r#type, "whatever".into());
+    let form_type = models::FilterType::new(form.r#type, "".into());
     let new_filter = models::FilterIntRng {
         r#type: form_type.clone(),
         start: form.start,

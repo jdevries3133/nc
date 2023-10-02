@@ -175,15 +175,15 @@ impl FilterType {
             _ => panic!("{id} is not a valid filter type"),
         }
     }
-    pub fn get_display_name(&self) -> &String {
+    pub fn get_display_name(&self) -> &str {
         match self {
-            FilterType::Eq(name) => name,
-            FilterType::Neq(name) => name,
-            FilterType::Gt(name) => name,
-            FilterType::Lt(name) => name,
-            FilterType::InRng(name) => name,
-            FilterType::NotInRng(name) => name,
-            FilterType::IsEmpty(name) => name,
+            FilterType::Eq(_) => "Exactly Equals",
+            FilterType::Neq(_) => "Does not Equal",
+            FilterType::Gt(_) => "Is Greater Than",
+            FilterType::Lt(_) => "Is Less Than",
+            FilterType::InRng(_) => "Is Inside Range",
+            FilterType::NotInRng(_) => "Is Not Inside Range",
+            FilterType::IsEmpty(_) => "Is Empty",
         }
     }
 
