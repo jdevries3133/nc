@@ -14,8 +14,9 @@ use axum::{
     response::IntoResponse,
     Form,
 };
+use futures::join;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub async fn root(headers: HeaderMap) -> impl IntoResponse {
     if headers.contains_key("Hx-Request") {
@@ -710,7 +711,8 @@ pub async fn handle_int_form_submit(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
     let mut headers = HeaderMap::new();
-    let form_type = models::FilterType::new(form.r#type, "whatever".into());
+    let form_type = models::FilterType::new(form.r#type, "".into());
+    dbg!(&form_type);
     let new_filter = models::FilterInt {
         id: filter.id,
         prop_id: filter.prop_id,
@@ -801,4 +803,154 @@ pub async fn handle_int_rng_form_submit(
         }
         .render(),
     ))
+}
+
+pub async fn choose_prop_for_filter(
+    State(AppState { db }): State<AppState>,
+    Path(collection_id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let props = models::Prop::list(
+        &db,
+        &db_ops::ListPropQuery {
+            collection_id: Some(collection_id),
+            order_in: None,
+            exact_ids: None,
+        },
+    )
+    .await?;
+    let (fb, fi, fir) = db_ops::get_filters(&db, collection_id).await?;
+    let mut props_with_filter = HashSet::new();
+    for f in fb {
+        props_with_filter.insert(f.prop_id);
+    }
+    for f in fi {
+        props_with_filter.insert(f.prop_id);
+    }
+    for f in fir {
+        props_with_filter.insert(f.prop_id);
+    }
+
+    let props: Vec<&models::Prop> = props
+        .iter()
+        .filter(|p| !props_with_filter.contains(&p.id))
+        .collect();
+
+    Ok(components::ChoosePropForFilter { props: &props }.render())
+}
+
+pub async fn new_filter_type_select(
+    State(AppState { db }): State<AppState>,
+    Path(prop_id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: prop_id }).await?;
+    let options = models::FilterType::get_supported_filter_types(prop.type_id);
+    Ok(components::NewFilterTypeOptions {
+        options: &options,
+        prop_id,
+        prop_type: &prop.type_id,
+    }
+    .render())
+}
+
+#[derive(Deserialize)]
+pub struct NewFilterQuery {
+    pub type_id: Option<i32>,
+}
+
+pub async fn create_new_bool_filter(
+    State(AppState { db }): State<AppState>,
+    Path(prop_id): Path<i32>,
+    Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
+) -> Result<impl IntoResponse, ServerError> {
+    let r#type = if let Some(type_id) = type_id {
+        models::FilterType::new(type_id, "".into())
+    } else {
+        models::FilterType::Eq("".into())
+    };
+    let query = db_ops::GetPropQuery { id: prop_id };
+    let (prop, filter) = join!(
+        models::Prop::get(&db, &query),
+        db_ops::create_bool_filter(&db, prop_id, r#type)
+    );
+    let prop = prop?;
+    let filter = filter?;
+
+    Ok(components::BoolFilterForm {
+        filter: &filter,
+        prop_name: &prop.name,
+    }
+    .render())
+}
+pub async fn create_new_int_filter(
+    State(AppState { db }): State<AppState>,
+    Path(prop_id): Path<i32>,
+    Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
+) -> Result<impl IntoResponse, ServerError> {
+    let r#type = if let Some(type_id) = type_id {
+        println!("ya");
+        models::FilterType::new(type_id, "".into())
+    } else {
+        println!("na");
+        models::FilterType::Eq("".into())
+    };
+    let query = db_ops::GetPropQuery { id: prop_id };
+    let (prop, filter) = join!(
+        models::Prop::get(&db, &query),
+        db_ops::create_int_filter(&db, prop_id, r#type)
+    );
+    let prop = prop?;
+    let filter = filter?;
+
+    Ok(components::IntFilterForm {
+        filter: &filter,
+        prop_name: &prop.name,
+    }
+    .render())
+}
+
+pub async fn create_new_int_rng_filter(
+    State(AppState { db }): State<AppState>,
+    Path(prop_id): Path<i32>,
+    Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
+) -> Result<impl IntoResponse, ServerError> {
+    let r#type = if let Some(type_id) = type_id {
+        models::FilterType::new(type_id, "".into())
+    } else {
+        models::FilterType::Eq("".into())
+    };
+    let query = db_ops::GetPropQuery { id: prop_id };
+    let (prop, filter) = join!(
+        models::Prop::get(&db, &query),
+        db_ops::create_int_rng_filter(&db, prop_id, r#type)
+    );
+    let prop = prop?;
+    let filter = filter?;
+
+    Ok(components::IntRngFilterForm {
+        filter: &filter,
+        prop_name: &prop.name,
+    }
+    .render())
+}
+
+/// I pulled this out into a separate request because it requires its own
+/// database query. We only want to show the filter button if there are
+/// props in the workspace that do not have any filters already.
+pub async fn get_add_filter_button(
+    State(AppState { db }): State<AppState>,
+    Path(collection_id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let does_it_tho =
+        db_ops::does_collection_have_capacity_for_additional_filters(
+            &db,
+            collection_id,
+        )
+        .await?;
+
+    if does_it_tho {
+        Ok(components::AddFilterButton { collection_id }.render())
+    } else {
+        Ok("".into())
+    }
 }

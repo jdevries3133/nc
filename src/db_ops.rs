@@ -9,6 +9,12 @@ use sqlx::{
     Row,
 };
 
+/// Generic container for database IDs. For example, to be used with queries
+/// returning (id).
+struct Id {
+    id: i32,
+}
+
 #[async_trait]
 pub trait DbModel<GetQuery, ListQuery>: Sync + Send {
     /// Get exactly one object from the database, matching the query. WIll
@@ -669,12 +675,12 @@ pub async fn list_pages(
             _ => todo!(),
         };
         query.push(format!(
-                "left join {table} as prop{prop_id}
+            "left join {table} as prop{prop_id}
                 on prop{prop_id}.page_id = page.id 
                 and prop{prop_id}.prop_id = {prop_id} ",
-                table = table_name,
-                prop_id = prop.id
-            ));
+            table = table_name,
+            prop_id = prop.id
+        ));
     }
 
     if !(filter_bool.is_empty()
@@ -928,4 +934,115 @@ pub async fn get_prop_set(
             })
             .collect())
     }
+}
+
+pub async fn create_bool_filter(
+    db: &PgPool,
+    prop_id: i32,
+    r#type: models::FilterType,
+) -> Result<models::FilterBool> {
+    let Id { id } = query_as!(
+        Id,
+        "insert into filter_bool (type_id, prop_id, value) values
+            ($1, $2, $3)
+        returning (id)
+        ",
+        r#type.get_int_repr(),
+        prop_id,
+        true
+    )
+    .fetch_one(db)
+    .await?;
+
+    Ok(models::FilterBool {
+        id,
+        prop_id,
+        r#type,
+        value: false,
+    })
+}
+
+pub async fn create_int_filter(
+    db: &PgPool,
+    prop_id: i32,
+    r#type: models::FilterType,
+) -> Result<models::FilterInt> {
+    let Id { id } = query_as!(
+        Id,
+        "insert into filter_int (type_id, prop_id, value) values
+            ($1, $2, $3)
+        returning (id)
+        ",
+        r#type.get_int_repr(),
+        prop_id,
+        0
+    )
+    .fetch_one(db)
+    .await?;
+
+    Ok(models::FilterInt {
+        id,
+        prop_id,
+        r#type,
+        value: 0,
+    })
+}
+
+pub async fn create_int_rng_filter(
+    db: &PgPool,
+    prop_id: i32,
+    r#type: models::FilterType,
+) -> Result<models::FilterIntRng> {
+    let Id { id } = query_as!(
+        Id,
+        r#"insert into filter_int_range (type_id, prop_id, start, "end") values
+            ($1, $2, $3, $4)
+        returning (id)
+        "#,
+        r#type.get_int_repr(),
+        prop_id,
+        0,
+        10
+    )
+    .fetch_one(db)
+    .await?;
+
+    Ok(models::FilterIntRng {
+        id,
+        prop_id,
+        r#type,
+        start: 0,
+        end: 10,
+    })
+}
+
+pub async fn does_collection_have_capacity_for_additional_filters(
+    db: &PgPool,
+    collection_id: i32,
+) -> Result<bool> {
+    struct Qres {
+        cnt: Option<i64>,
+    }
+    let res = query_as!(
+        Qres,
+        "select count(1) cnt from property p
+        left join filter_bool fb on p.id = fb.prop_id
+        left join filter_int fi on p.id = fi.prop_id
+        left join filter_int_range fri on p.id = fri.prop_id
+        where
+            p.collection_id = $1
+            and fb.id is null
+            and fi.id is null
+            and fri.id is null
+        ",
+        collection_id
+    )
+    .fetch_one(db)
+    .await?;
+
+    let count = res
+        .cnt
+        .expect("idk... why would count(1) not return a count? WTF");
+
+    Ok(count > 0)
 }

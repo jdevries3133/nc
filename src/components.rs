@@ -704,7 +704,9 @@ impl Component for FilterToolbar<'_> {
                 hx-get="/collection/{collection_id}/hide-filter-toolbar"
                 hx-trigger="toggle-filter-toolbar from:body"
                 class="flex flex-row gap-2 mt-3 mb-4"
-            >{bool_rendered}{int_rendered}{int_rng_rendered}
+            >
+            <div hx-trigger="load" hx-get="/collection/{collection_id}/add-filter-button"></div>
+            {bool_rendered}{int_rendered}{int_rng_rendered}
             </div>
             "#
         )
@@ -752,6 +754,7 @@ impl Component for FilterInt<'_> {
         let form_href = &format!("/filter/int/{}", self.filter.id);
         let prop_name = self.prop_name;
         let operation_name = self.filter.r#type.get_display_name();
+        dbg!(operation_name);
         let result = FilterChip {
             subject: prop_name,
             operator_text: operation_name,
@@ -965,6 +968,7 @@ impl Component for IntFilterForm<'_> {
     fn render(&self) -> String {
         let value = self.filter.value;
         let id = self.filter.id;
+        let prop_name = self.prop_name;
         let chevron = Chevron {
             variant: ChevronVariant::Open,
         }
@@ -1006,10 +1010,12 @@ impl Component for IntFilterForm<'_> {
                 class="{FILTER_CONTAINER_STYLE}"
             >
                 <button 
+                    class="self-start"
                     hx-get="/filter/int/{id}/chip"
                     hx-target="closest form"
                     >{chevron}</button>
                 <div class="flex flex-col gap-2">
+                    <h1 class="text-lg">{prop_name}</h1>
                     <div>
                         <label class="text-sm" for="type">Filter Type</label>
                         <select
@@ -1045,6 +1051,7 @@ pub struct IntRngFilterForm<'a> {
 impl Component for IntRngFilterForm<'_> {
     fn render(&self) -> String {
         let id = self.filter.id;
+        let prop_name = self.prop_name;
         let start = self.filter.start;
         let end = self.filter.end;
         let chevron = Chevron {
@@ -1068,8 +1075,10 @@ impl Component for IntRngFilterForm<'_> {
                 <button 
                     hx-get="/filter/int-rng/{id}/chip"
                     hx-target="closest form"
+                    class="self-start"
                     >{chevron}</button>
                 <div class="flex flex-col gap-2">
+                    <h1 class="text-xl">{prop_name}</h1>
                     <div>
                         <label class="text-sm" for="type">Filter Type</label>
                         <select
@@ -1094,6 +1103,141 @@ impl Component for IntRngFilterForm<'_> {
                     </div>
                 </div>
             </form>
+            "#
+        )
+    }
+}
+
+pub struct ChoosePropForFilter<'a> {
+    pub props: &'a Vec<&'a models::Prop>,
+}
+impl Component for ChoosePropForFilter<'_> {
+    fn render(&self) -> String {
+        let button_style = "p-2 w-full text-md rounded dark:bg-blue-700 dark:hover:bg-blue-600 shadow hover:shadow-none";
+        let prop_buttons =
+            self.props.iter().fold(String::new(), |mut acc, p| {
+                let prop_id = p.id;
+                let prop_name = clean(&p.name);
+
+                let href = format!("/prop/{prop_id}/new-filter-type-select");
+                let type_string = match p.type_id {
+                    models::PropValTypes::Int => "number",
+                    models::PropValTypes::Bool => "checkbox",
+                    _ => todo!(),
+                };
+                acc.push_str(&format!(
+                    r#"
+                <button
+                    hx-get="{href}"
+                    hx-target="closest div"
+                    class="{button_style}"
+                    >{prop_name} ({type_string})</button>
+                "#
+                ));
+                acc
+            });
+
+        format!(
+            r#"
+            <div class="flex flex-col {FILTER_CONTAINER_STYLE}">
+                {prop_buttons}
+            </div>
+            "#
+        )
+    }
+}
+
+pub struct AddFilterButton {
+    pub collection_id: i32,
+}
+impl Component for AddFilterButton {
+    fn render(&self) -> String {
+        let collection_id = self.collection_id;
+        format!(
+            r#"
+            <button
+                class="p-2 rounded-full bg-blue-600 hover:bg-blue-500 shadow hover:shadow-none border-2 border-slate-600"
+                hx-get="/collection/{collection_id}/choose-prop-for-filter"
+                >
+                Add filter
+            </button>
+            "#
+        )
+    }
+}
+
+fn get_slug(
+    filter_type: &models::FilterType,
+    prop_type: &models::PropValTypes,
+) -> String {
+    let filter_type_id = filter_type.get_int_repr();
+    match filter_type {
+        models::FilterType::Neq(_)
+        | models::FilterType::Lt(_)
+        | models::FilterType::Gt(_)
+        | models::FilterType::Eq(_) => match prop_type {
+            models::PropValTypes::Bool => {
+                format!("new-bool-filter?type_id={filter_type_id}")
+            }
+            models::PropValTypes::Int => {
+                format!("new-int-filter?type_id={filter_type_id}")
+            }
+            _ => todo!(),
+        },
+        models::FilterType::InRng(_) | models::FilterType::NotInRng(_) => {
+            match prop_type {
+                models::PropValTypes::Bool => {
+                    panic!("in-rng and not-in-rng not supported for bool")
+                }
+                models::PropValTypes::Int => {
+                    format!("new-int-rng-filter?type_id={filter_type_id}")
+                }
+                _ => todo!(),
+            }
+        }
+        models::FilterType::IsEmpty(_) => match prop_type {
+            models::PropValTypes::Bool => {
+                format!("new-bool-filter?type_id={filter_type_id}")
+            }
+            models::PropValTypes::Int => {
+                format!("new-int-filter?type_id={filter_type_id}")
+            }
+            _ => todo!(),
+        },
+    }
+}
+
+pub struct NewFilterTypeOptions<'a> {
+    pub options: &'a Vec<models::FilterType>,
+    pub prop_id: i32,
+    pub prop_type: &'a models::PropValTypes,
+}
+impl Component for NewFilterTypeOptions<'_> {
+    fn render(&self) -> String {
+        let button_style = "p-2 w-full text-md rounded dark:bg-blue-700 dark:hover:bg-blue-600 shadow hover:shadow-none";
+        let prop_id = self.prop_id;
+        let rendered_options =
+            self.options.iter().fold(String::new(), |mut str, opt| {
+                let opt_text = clean(opt.get_display_name());
+                let type_slug = get_slug(opt, self.prop_type);
+                str.push_str(&format!(
+                    r#"
+                    <button
+                        class="{button_style}"
+                        hx-post="/prop/{prop_id}/{type_slug}"
+                        hx-target="closest div"
+                        >{opt_text}</button>
+                    "#
+                ));
+                str
+            });
+        format!(
+            r#"
+            <div class="flex flex-col {FILTER_CONTAINER_STYLE}"
+                >
+                <p class="text-lg">Choose Filter Type</p>
+                {rendered_options}
+            </div>
             "#
         )
     }

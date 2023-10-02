@@ -5,7 +5,7 @@ use super::{
 use async_trait::async_trait;
 use sqlx::PgPool;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Prop {
     pub id: i32,
     pub type_id: PropValTypes,
@@ -207,6 +207,25 @@ impl FilterType {
             FilterType::InRng(_) => 5,
             FilterType::NotInRng(_) => 6,
             FilterType::IsEmpty(_) => 7,
+        }
+    }
+    pub fn get_supported_filter_types(prop_type: PropValTypes) -> Vec<Self> {
+        match prop_type {
+            PropValTypes::Bool => vec![
+                FilterType::Eq("Exactly Equals".into()),
+                FilterType::Neq("Does not Equal".into()),
+                FilterType::IsEmpty("Is Empty".into()),
+            ],
+            PropValTypes::Int => vec![
+                FilterType::Eq("Exactly Equals".into()),
+                FilterType::Gt("Does not Equal".into()),
+                FilterType::Neq("Is Greater Than".into()),
+                FilterType::Lt("Is Less Than".into()),
+                FilterType::InRng("Is Inside Range".into()),
+                FilterType::NotInRng("Is Not Inside Range".into()),
+                FilterType::IsEmpty("Is Empty".into()),
+            ],
+            _ => todo!(),
         }
     }
 }
