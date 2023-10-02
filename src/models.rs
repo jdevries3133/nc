@@ -201,8 +201,8 @@ impl FilterType {
     pub fn get_int_repr(&self) -> i32 {
         match self {
             FilterType::Eq(_) => 1,
-            FilterType::Gt(_) => 2,
-            FilterType::Neq(_) => 3,
+            FilterType::Neq(_) => 2,
+            FilterType::Gt(_) => 3,
             FilterType::Lt(_) => 4,
             FilterType::InRng(_) => 5,
             FilterType::NotInRng(_) => 6,
