@@ -754,7 +754,6 @@ impl Component for FilterInt<'_> {
         let form_href = &format!("/filter/int/{}", self.filter.id);
         let prop_name = self.prop_name;
         let operation_name = self.filter.r#type.get_display_name();
-        dbg!(operation_name);
         let result = FilterChip {
             subject: prop_name,
             operator_text: operation_name,

@@ -712,7 +712,6 @@ pub async fn handle_int_form_submit(
             .await?;
     let mut headers = HeaderMap::new();
     let form_type = models::FilterType::new(form.r#type, "".into());
-    dbg!(&form_type);
     let new_filter = models::FilterInt {
         id: filter.id,
         prop_id: filter.prop_id,
@@ -888,10 +887,8 @@ pub async fn create_new_int_filter(
     Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
 ) -> Result<impl IntoResponse, ServerError> {
     let r#type = if let Some(type_id) = type_id {
-        println!("ya");
         models::FilterType::new(type_id, "".into())
     } else {
-        println!("na");
         models::FilterType::Eq("".into())
     };
     let query = db_ops::GetPropQuery { id: prop_id };
