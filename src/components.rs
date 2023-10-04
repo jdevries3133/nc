@@ -150,7 +150,7 @@ impl Component for PageList<'_> {
                     hx-trigger="reload-pages from:body"
                     >
                     <div>
-                        <p>No pages available</p>
+                        <p>No pages matching filters are available</p>
                     </div>
                 </div>
                 "#
@@ -529,27 +529,6 @@ impl Component for FilterToolbarPlaceholder {
                 hx-get="/collection/{collection_id}/show-filter-toolbar"
                 hx-trigger="toggle-filter-toolbar from:body"
                 ></div>
-            "#
-        )
-    }
-}
-
-pub struct EmptyFilterToolbar {
-    pub collection_id: i32,
-}
-impl Component for EmptyFilterToolbar {
-    fn render(&self) -> String {
-        let collection_id = self.collection_id;
-        format!(
-            r#"
-            <p
-                hx-get="/collection/{collection_id}/hide-filter-toolbar"
-                hx-swap="outerHTML"
-                hx-trigger="toggle-filter-toolbar from:body"
-                >
-                You do not have any filters yet
-            </p>
-            <div hx-trigger="load" hx-get="/collection/{collection_id}/add-filter-button"></div>
             "#
         )
     }
@@ -1073,7 +1052,7 @@ impl Component for AddFilterButton {
         format!(
             r#"
             <button
-                class="p-2 rounded-full bg-blue-600 hover:bg-blue-500 shadow hover:shadow-none border-2 border-slate-600"
+                class="p-2 max-h-[45px] whitespace-nowrap rounded-full bg-blue-600 hover:bg-blue-500 shadow hover:shadow-none border-2 border-slate-600"
                 hx-get="/collection/{collection_id}/choose-prop-for-filter"
                 >
                 Add filter
@@ -1212,5 +1191,17 @@ impl Component for DeleteButton<'_> {
             </button>
             "#
         )
+    }
+}
+
+pub struct Div<'a> {
+    pub class: &'a str,
+    pub children: Box<dyn Component>,
+}
+impl Component for Div<'_> {
+    fn render(&self) -> String {
+        let class = self.class;
+        let children = self.children.render();
+        format!(r#"<div class="{class}">{children}</div>"#)
     }
 }

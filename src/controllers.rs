@@ -439,7 +439,11 @@ pub async fn get_filter_toolbar(
         && int_filters.is_empty()
         && int_rng_filters.is_empty()
     {
-        return Ok(components::EmptyFilterToolbar { collection_id }.render());
+        return Ok(components::Div {
+            class: "my-2",
+            children: Box::new(components::AddFilterButton { collection_id }),
+        }
+        .render());
     };
     let mut all_props: Vec<i32> = Vec::with_capacity(
         bool_filters.len() + int_filters.len() + int_rng_filters.len(),
@@ -600,37 +604,15 @@ pub async fn handle_bool_form_submit(
         new_filter.save(&db).await?;
         headers = reload_table(headers);
     };
-    let has_capacity =
-        db_ops::does_collection_have_capacity_for_additional_filters(
-            &db,
-            related_prop.collection_id,
-        )
-        .await?;
-    let add_filter_button = if has_capacity {
-        components::AddFilterButton {
-            collection_id: related_prop.collection_id,
-        }
-        .render()
-    } else {
-        components::AddFilterButtonPlaceholder {
-            collection_id: related_prop.collection_id,
-        }
-        .render()
-    };
+
     Ok((
         StatusCode::OK,
         headers,
-        [
-            r#"<div class="flex flex-row gap-2">"#,
-            &add_filter_button,
-            &components::FilterBool {
-                filter: &new_filter,
-                prop_name: &related_prop.name,
-            }
-            .render(),
-            r#"</div>"#,
-        ]
-        .join(""),
+        components::FilterBool {
+            filter: &new_filter,
+            prop_name: &related_prop.name,
+        }
+        .render(),
     ))
 }
 
@@ -695,36 +677,14 @@ pub async fn handle_int_form_submit(
         new_filter.save(&db).await?;
         headers = reload_table(headers);
     };
-    let has_capacity =
-        db_ops::does_collection_have_capacity_for_additional_filters(
-            &db,
-            related_prop.collection_id,
-        )
-        .await?;
-    let add_filter_button = if has_capacity {
-        components::AddFilterButton {
-            collection_id: related_prop.collection_id,
-        }
-        .render()
-    } else {
-        components::AddFilterButtonPlaceholder {
-            collection_id: related_prop.collection_id,
-        }
-        .render()
-    };
+
     Ok((
         headers,
-        [
-            r#"<div class="flex flex-row gap-2">"#,
-            &add_filter_button,
-            &components::FilterInt {
-                filter: &new_filter,
-                prop_name: &related_prop.name,
-            }
-            .render(),
-            r#"</div>"#,
-        ]
-        .join(""),
+        components::FilterInt {
+            filter: &new_filter,
+            prop_name: &related_prop.name,
+        }
+        .render(),
     ))
 }
 
@@ -790,36 +750,14 @@ pub async fn handle_int_rng_form_submit(
         new_filter.save(&db).await?;
         headers = reload_table(headers);
     };
-    let has_capacity =
-        db_ops::does_collection_have_capacity_for_additional_filters(
-            &db,
-            related_prop.collection_id,
-        )
-        .await?;
-    let add_filter_button = if has_capacity {
-        components::AddFilterButton {
-            collection_id: related_prop.collection_id,
-        }
-        .render()
-    } else {
-        components::AddFilterButtonPlaceholder {
-            collection_id: related_prop.collection_id,
-        }
-        .render()
-    };
+
     Ok((
         headers,
-        [
-            r#"<div class="flex flex-row gap-2">"#,
-            &add_filter_button,
-            &components::FilterIntRng {
-                filter: &new_filter,
-                prop_name: &related_prop.name,
-            }
-            .render(),
-            r#"</div>"#,
-        ]
-        .join(""),
+        components::FilterIntRng {
+            filter: &new_filter,
+            prop_name: &related_prop.name,
+        }
+        .render(),
     ))
 }
 
@@ -891,14 +829,44 @@ pub async fn create_new_bool_filter(
         models::Prop::get(&db, &query),
         db_ops::create_bool_filter(&db, prop_id, r#type)
     );
-    let prop = prop?;
+    let related_prop = prop?;
     let filter = filter?;
 
-    Ok(components::BoolFilterForm {
-        filter: &filter,
-        prop_name: &prop.name,
-    }
-    .render())
+    let headers = HeaderMap::new();
+    let headers = reload_table(headers);
+
+    let has_capacity =
+        db_ops::does_collection_have_capacity_for_additional_filters(
+            &db,
+            related_prop.collection_id,
+        )
+        .await?;
+    let add_filter_button = if has_capacity {
+        components::AddFilterButton {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    } else {
+        components::AddFilterButtonPlaceholder {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    };
+
+    Ok((
+        headers,
+        [
+            r#"<div class="flex flex-row gap-2">"#,
+            &add_filter_button,
+            &components::BoolFilterForm {
+                filter: &filter,
+                prop_name: &related_prop.name,
+            }
+            .render(),
+            "</div>",
+        ]
+        .join(""),
+    ))
 }
 pub async fn create_new_int_filter(
     State(AppState { db }): State<AppState>,
@@ -915,14 +883,44 @@ pub async fn create_new_int_filter(
         models::Prop::get(&db, &query),
         db_ops::create_int_filter(&db, prop_id, r#type)
     );
-    let prop = prop?;
+    let related_prop = prop?;
     let filter = filter?;
 
-    Ok(components::IntFilterForm {
-        filter: &filter,
-        prop_name: &prop.name,
-    }
-    .render())
+    let headers = HeaderMap::new();
+    let headers = reload_table(headers);
+
+    let has_capacity =
+        db_ops::does_collection_have_capacity_for_additional_filters(
+            &db,
+            related_prop.collection_id,
+        )
+        .await?;
+    let add_filter_button = if has_capacity {
+        components::AddFilterButton {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    } else {
+        components::AddFilterButtonPlaceholder {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    };
+
+    Ok((
+        headers,
+        [
+            r#"<div class="flex flex-row gap-2">"#,
+            &add_filter_button,
+            &components::IntFilterForm {
+                filter: &filter,
+                prop_name: &related_prop.name,
+            }
+            .render(),
+            "</div>",
+        ]
+        .join(""),
+    ))
 }
 
 pub async fn create_new_int_rng_filter(
@@ -940,14 +938,44 @@ pub async fn create_new_int_rng_filter(
         models::Prop::get(&db, &query),
         db_ops::create_int_rng_filter(&db, prop_id, r#type)
     );
-    let prop = prop?;
+    let related_prop = prop?;
     let filter = filter?;
 
-    Ok(components::IntRngFilterForm {
-        filter: &filter,
-        prop_name: &prop.name,
-    }
-    .render())
+    let headers = HeaderMap::new();
+    let headers = reload_table(headers);
+
+    let has_capacity =
+        db_ops::does_collection_have_capacity_for_additional_filters(
+            &db,
+            related_prop.collection_id,
+        )
+        .await?;
+    let add_filter_button = if has_capacity {
+        components::AddFilterButton {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    } else {
+        components::AddFilterButtonPlaceholder {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    };
+
+    Ok((
+        headers,
+        [
+            r#"<div class="flex flex-row gap-2">"#,
+            &add_filter_button,
+            &components::IntRngFilterForm {
+                filter: &filter,
+                prop_name: &related_prop.name,
+            }
+            .render(),
+            r#"</div>"#,
+        ]
+        .join(""),
+    ))
 }
 
 /// I pulled this out into a separate request because it requires its own
