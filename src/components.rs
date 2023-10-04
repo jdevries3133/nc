@@ -53,7 +53,7 @@ pub trait Component {
 }
 
 pub struct Page<'a> {
-    pub title: String,
+    pub title: &'a str,
     pub children: Box<dyn Component + 'a>,
 }
 
@@ -87,6 +87,16 @@ impl Component for Page<'_> {
             title = clean(&self.title),
             body_html = self.children.render()
         )
+    }
+}
+
+pub struct Home;
+impl Component for Home {
+    fn render(&self) -> String {
+        r#"
+        <h1>hi</h1>
+        "#
+        .into()
     }
 }
 

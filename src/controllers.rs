@@ -19,7 +19,11 @@ use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 
 pub async fn root() -> impl IntoResponse {
-    "home"
+    components::Page {
+        title: "NC!",
+        children: Box::new(components::Home {}),
+    }
+    .render()
 }
 
 #[cfg(feature = "live_reload")]
@@ -68,7 +72,7 @@ pub async fn get_collection(
         components::Collection { id, name }.render()
     } else {
         components::Page {
-            title: format!("Workspace ({name})"),
+            title: &format!("Workspace ({name})"),
             children: Box::new(components::Collection { id, name }),
         }
         .render()
@@ -113,7 +117,7 @@ pub async fn collection_prop_order(
         components::PropOrderForm { props }.render()
     } else {
         components::Page {
-            title: format!("Set Prop Order (collection {})", collection_id),
+            title: &format!("Set Prop Order (collection {})", collection_id),
             children: Box::new(components::PropOrderForm { props }),
         }
         .render()
@@ -313,7 +317,7 @@ pub async fn new_page_form(
     } else {
         components::Page {
             children: Box::new(form),
-            title: "New Page".to_string(),
+            title: &"New Page",
         }
         .render()
     }
@@ -331,7 +335,7 @@ pub async fn existing_page_form(
         components::PageOverview { page: &page }.render()
     } else {
         components::Page {
-            title: format!("{}", page.title),
+            title: &format!("{}", page.title),
             children: Box::new(components::PageOverview { page: &page }),
         }
         .render()
