@@ -143,13 +143,6 @@ pub struct AppState {
     pub db: PgPool,
 }
 
-#[derive(Default, Clone, Debug)]
-pub struct Item {
-    pub id: Option<i32>,
-    pub title: String,
-    pub is_completed: bool,
-}
-
 /// The string inside is the user-facing name of the filter type
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FilterType {
