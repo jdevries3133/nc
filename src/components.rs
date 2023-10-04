@@ -84,7 +84,7 @@ impl Component for Page<'_> {
             </html>
             "#,
             tailwind = tailwind,
-            title = clean(&self.title),
+            title = clean(self.title),
             body_html = self.children.render()
         )
     }

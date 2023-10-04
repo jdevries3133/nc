@@ -317,7 +317,7 @@ pub async fn new_page_form(
     } else {
         components::Page {
             children: Box::new(form),
-            title: &"New Page",
+            title: "New Page",
         }
         .render()
     }
