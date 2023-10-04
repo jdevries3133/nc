@@ -501,17 +501,7 @@ pub async fn get_filter_toolbar(
         && int_filters.is_empty()
         && int_rng_filters.is_empty()
     {
-        return Ok(format!(
-            r#"
-            <p
-                hx-get="/collection/{collection_id}/hide-filter-toolbar"
-                hx-swap="outerHTML"
-                hx-trigger="toggle-filter-toolbar from:body"
-                >
-                You do not have any filters yet
-            </p>
-            "#
-        ));
+        return Ok(components::EmptyFilterToolbar { collection_id }.render());
     };
     let mut all_props: Vec<i32> = Vec::with_capacity(
         bool_filters.len() + int_filters.len() + int_rng_filters.len(),
@@ -650,14 +640,34 @@ pub async fn handle_bool_form_submit(
         new_filter.save(&db).await?;
         headers = reload_table(headers);
     };
+    let has_capacity =
+        db_ops::does_collection_have_capacity_for_additional_filters(
+            &db,
+            related_prop.collection_id,
+        )
+        .await?;
+    let add_filter_button = if has_capacity {
+        components::AddFilterButton {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    } else {
+        "".into()
+    };
     Ok((
         StatusCode::OK,
         headers,
-        components::FilterBool {
-            filter: &new_filter,
-            prop_name: &related_prop.name,
-        }
-        .render(),
+        [
+            r#"<div class="flex flex-row">"#,
+            &add_filter_button,
+            &components::FilterBool {
+                filter: &new_filter,
+                prop_name: &related_prop.name,
+            }
+            .render(),
+            r#"</div>"#,
+        ]
+        .join(""),
     ))
 }
 
@@ -722,13 +732,33 @@ pub async fn handle_int_form_submit(
         new_filter.save(&db).await?;
         headers = reload_table(headers);
     };
+    let has_capacity =
+        db_ops::does_collection_have_capacity_for_additional_filters(
+            &db,
+            related_prop.collection_id,
+        )
+        .await?;
+    let add_filter_button = if has_capacity {
+        components::AddFilterButton {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    } else {
+        "".into()
+    };
     Ok((
         headers,
-        components::FilterInt {
-            filter: &new_filter,
-            prop_name: &related_prop.name,
-        }
-        .render(),
+        [
+            r#"<div class="flex flex-row">"#,
+            &add_filter_button,
+            &components::FilterInt {
+                filter: &new_filter,
+                prop_name: &related_prop.name,
+            }
+            .render(),
+            r#"</div>"#,
+        ]
+        .join(""),
     ))
 }
 
@@ -794,13 +824,33 @@ pub async fn handle_int_rng_form_submit(
         new_filter.save(&db).await?;
         headers = reload_table(headers);
     };
+    let has_capacity =
+        db_ops::does_collection_have_capacity_for_additional_filters(
+            &db,
+            related_prop.collection_id,
+        )
+        .await?;
+    let add_filter_button = if has_capacity {
+        components::AddFilterButton {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    } else {
+        "".into()
+    };
     Ok((
         headers,
-        components::FilterIntRng {
-            filter: &new_filter,
-            prop_name: &related_prop.name,
-        }
-        .render(),
+        [
+            r#"<div class="flex flex-row gap-2">"#,
+            &add_filter_button,
+            &components::FilterIntRng {
+                filter: &new_filter,
+                prop_name: &related_prop.name,
+            }
+            .render(),
+            r#"</div>"#,
+        ]
+        .join(""),
     ))
 }
 
@@ -950,4 +1000,43 @@ pub async fn get_add_filter_button(
     } else {
         Ok("".into())
     }
+}
+
+pub async fn delete_bool_filter(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        models::FilterBool::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    filter.delete(&db).await?;
+
+    let headers = HeaderMap::new();
+    let headers = reload_table(headers);
+    Ok((headers, ""))
+}
+
+pub async fn delete_int_filter(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        models::FilterInt::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    filter.delete(&db).await?;
+
+    let headers = HeaderMap::new();
+    let headers = reload_table(headers);
+    Ok((headers, ""))
+}
+
+pub async fn delete_int_rng_filter(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        models::FilterIntRng::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    filter.delete(&db).await?;
+    let headers = HeaderMap::new();
+    let headers = reload_table(headers);
+
+    Ok((headers, ""))
 }

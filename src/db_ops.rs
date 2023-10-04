@@ -29,6 +29,23 @@ pub trait DbModel<GetQuery, ListQuery>: Sync + Send {
         Self: Sized;
     /// Persist the object to the database
     async fn save(&self, db: &PgPool) -> Result<()>;
+    /// Delete the record from the databse, which could of course cascade
+    /// to related rows based on the rules in the database schema for this
+    /// table.
+    ///
+    /// Delete will consume `self`.
+    ///
+    /// Most `.save` methods are implemented using update queries, under the
+    /// assumption that the object already exists and we are just mutating it
+    /// and then calling `.save` to persist the mutation. Deletion, then,
+    /// would naturally invalidate these save queries.
+    ///
+    /// Additionally, a delete operation can trigger cascading deletion,
+    /// so the existing record will often change structurally after deletion,
+    /// because other rows around it will be deleted as well. The strategy
+    /// for recovering from deletion will vary based on the object type,
+    /// which is why the delete method consumes `self`.
+    async fn delete(self, _db: &PgPool) -> Result<()>;
 }
 
 pub struct PvGetQuery {
@@ -83,6 +100,9 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PvBool {
         .await?;
         Ok(())
     }
+    async fn delete(self, _db: &PgPool) -> Result<()> {
+        todo!()
+    }
 }
 
 #[async_trait]
@@ -120,6 +140,9 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PvInt {
         .execute(db)
         .await?;
         Ok(())
+    }
+    async fn delete(self, _db: &PgPool) -> Result<()> {
+        todo!()
     }
 }
 
@@ -179,6 +202,9 @@ impl DbModel<GetPageQuery, ListPageQuery> for models::Page {
 
         Ok(())
     }
+    async fn delete(self, _db: &PgPool) -> Result<()> {
+        todo!()
+    }
 }
 
 pub struct GetDbModelQuery {
@@ -211,6 +237,9 @@ impl DbModel<GetDbModelQuery, ()> for models::Content {
         .await?;
 
         Ok(())
+    }
+    async fn delete(self, _db: &PgPool) -> Result<()> {
+        todo!()
     }
 }
 
@@ -325,6 +354,9 @@ impl DbModel<GetPropQuery, ListPropQuery> for models::Prop {
 
         Ok(())
     }
+    async fn delete(self, _db: &PgPool) -> Result<()> {
+        todo!()
+    }
 }
 
 pub struct GetFilterQuery {
@@ -422,7 +454,15 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterBool {
 
         Ok(())
     }
+    async fn delete(self, db: &PgPool) -> Result<()> {
+        query!("delete from filter_bool where id = $1", self.id)
+            .execute(db)
+            .await?;
+
+        Ok(())
+    }
 }
+
 #[async_trait]
 impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
     async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
@@ -507,7 +547,15 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
 
         Ok(())
     }
+    async fn delete(self, db: &PgPool) -> Result<()> {
+        query!("delete from filter_int where id = $1", self.id)
+            .execute(db)
+            .await?;
+
+        Ok(())
+    }
 }
+
 #[async_trait]
 impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterIntRng {
     async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
@@ -601,6 +649,13 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterIntRng {
         )
         .execute(db)
         .await?;
+
+        Ok(())
+    }
+    async fn delete(self, db: &PgPool) -> Result<()> {
+        query!("delete from filter_int_range where id = $1", self.id)
+            .execute(db)
+            .await?;
 
         Ok(())
     }

@@ -649,6 +649,27 @@ impl Component for FilterToolbarPlaceholder {
     }
 }
 
+pub struct EmptyFilterToolbar {
+    pub collection_id: i32,
+}
+impl Component for EmptyFilterToolbar {
+    fn render(&self) -> String {
+        let collection_id = self.collection_id;
+        format!(
+            r#"
+            <p
+                hx-get="/collection/{collection_id}/hide-filter-toolbar"
+                hx-swap="outerHTML"
+                hx-trigger="toggle-filter-toolbar from:body"
+                >
+                You do not have any filters yet
+            </p>
+            <div hx-trigger="load" hx-get="/collection/{collection_id}/add-filter-button"></div>
+            "#
+        )
+    }
+}
+
 pub struct FilterToolbar<'a> {
     pub bool_filters: Vec<models::FilterBool>,
     pub int_filters: Vec<models::FilterInt>,
@@ -720,7 +741,7 @@ pub struct FilterBool<'a> {
 impl Component for FilterBool<'_> {
     fn render(&self) -> String {
         let prop_name = self.prop_name;
-        let form_href = &format!("/filter/bool/{}", self.filter.id);
+        let href = &format!("/filter/bool/{}", self.filter.id);
         let operation_name = self.filter.r#type.get_display_name();
         let val = if let models::FilterType::IsEmpty(..) = self.filter.r#type {
             ""
@@ -735,7 +756,9 @@ impl Component for FilterBool<'_> {
             subject: prop_name,
             operator_text: operation_name,
             predicate,
-            form_href,
+            // The same route is used for POST & delete
+            form_href: href,
+            delete_href: href,
             filter_type: &self.filter.r#type,
         }
         .render();
@@ -751,7 +774,7 @@ pub struct FilterInt<'a> {
 }
 impl Component for FilterInt<'_> {
     fn render(&self) -> String {
-        let form_href = &format!("/filter/int/{}", self.filter.id);
+        let href = &format!("/filter/int/{}", self.filter.id);
         let prop_name = self.prop_name;
         let operation_name = self.filter.r#type.get_display_name();
         let result = FilterChip {
@@ -760,7 +783,9 @@ impl Component for FilterInt<'_> {
             predicate: Box::new(Text {
                 inner_text: &self.filter.value,
             }),
-            form_href,
+            // The same href is used for POST & DELETE
+            form_href: href,
+            delete_href: href,
             filter_type: &self.filter.r#type,
         }
         .render();
@@ -777,7 +802,7 @@ pub struct FilterIntRng<'a> {
 impl Component for FilterIntRng<'_> {
     fn render(&self) -> String {
         let prop_name = self.prop_name;
-        let form_href = &format!("/filter/int-rng/{}", self.filter.id);
+        let href = &format!("/filter/int-rng/{}", self.filter.id);
         let operation_name = self.filter.r#type.get_display_name();
         let start = self.filter.start;
         let end = self.filter.end;
@@ -786,7 +811,8 @@ impl Component for FilterIntRng<'_> {
             subject: prop_name,
             operator_text: operation_name,
             predicate: Box::new(predicate),
-            form_href,
+            form_href: href,
+            delete_href: href,
             filter_type: &self.filter.r#type,
         }
         .render();
@@ -857,13 +883,14 @@ impl Component for FilterRngPredicate {
     }
 }
 
-const FILTER_CONTAINER_STYLE: &str = "text-sm border border-slate-600 bg-gradient-to-tr from-blue-100 to-fuchsia-100 dark:bg-gradient-to-tr dark:from-fuchsia-800 dark:to-violet-700 rounded p-2 flex flex-row gap-2 items-center justify-center";
+const FILTER_CONTAINER_STYLE: &str = "max-w-sm text-sm border border-slate-600 bg-gradient-to-tr from-blue-100 to-fuchsia-100 dark:bg-gradient-to-tr dark:from-fuchsia-800 dark:to-violet-700 rounded p-2 flex flex-row gap-2 items-center justify-center";
 
 struct FilterChip<'a> {
     pub subject: &'a str,
     pub operator_text: &'a str,
     pub predicate: Box<dyn Component + 'a>,
     pub form_href: &'a str,
+    pub delete_href: &'a str,
     pub filter_type: &'a models::FilterType,
 }
 impl Component for FilterChip<'_> {
@@ -880,6 +907,11 @@ impl Component for FilterChip<'_> {
             variant: ChevronVariant::Closed,
         }
         .render();
+        let delete_btn = DeleteButton {
+            delete_href: self.delete_href,
+            hx_target: Some("closest div"),
+        }
+        .render();
         format!(
             r#"
             <div
@@ -889,6 +921,7 @@ impl Component for FilterChip<'_> {
                 <span class="text-xs">{subject}</span>
                 <span class="text-[10px] bg-slate-100 bg-opacity-40 rounded text-black p-1 shadow italic whitespace-nowrap">{operator_text}</span>
                 {child}
+                {delete_btn}
             </div>
             "#
         )
@@ -1237,6 +1270,39 @@ impl Component for NewFilterTypeOptions<'_> {
                 <p class="text-lg">Choose Filter Type</p>
                 {rendered_options}
             </div>
+            "#
+        )
+    }
+}
+
+struct DeleteButton<'a> {
+    delete_href: &'a str,
+    hx_target: Option<&'a str>,
+}
+impl Component for DeleteButton<'_> {
+    fn render(&self) -> String {
+        let delete_href = self.delete_href;
+        let hx_target = if let Some(t) = self.hx_target {
+            format!(r#"hx-target="{t}""#)
+        } else {
+            "".into()
+        };
+
+        // Note: we're stopping propagation on the button since it's inside
+        // the chip div which itself has a hx-get. If the event propagates up
+        // to the div, both are triggered, and then the swap happens according
+        // to whichever one wins the race.
+        format!(
+            r#"
+            <button
+                onclick="(arguments[0] || window.event).stopPropagation();"
+                hx-delete="{delete_href}"
+                {hx_target}
+                >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 bg-red-500 rounded-full">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
             "#
         )
     }
