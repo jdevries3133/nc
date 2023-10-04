@@ -580,16 +580,38 @@ pub async fn get_bool_filter_form(
     .render())
 }
 
-/// Insert the Hx-Trugger header into a HeaderMap such that the table reload
-/// will occur on the collection view.
-fn reload_table(mut headers: HeaderMap) -> HeaderMap {
-    headers.insert(
-        "Hx-Trigger",
-        HeaderValue::from_str("reload-pages")
-            .expect("reload-pages can be a header"),
-    );
+fn trigger_event(
+    mut headers: HeaderMap,
+    event_name: &'static str,
+) -> HeaderMap {
+    if headers.contains_key("Hx-Trigger") {
+        let val = headers.get("Hx-Trigger").expect("we know it's here");
+        let as_str = val.to_str().expect("existing trigger is ascii");
+        let new_header = format!("{as_str}, {event_name}");
+        headers.insert(
+            "Hx-Trigger",
+            HeaderValue::from_str(&new_header)
+                .expect("event name is a valid string"),
+        );
+    } else {
+        headers.insert(
+            "Hx-Trigger",
+            HeaderValue::from_str(event_name)
+                .expect("event name is a valid string"),
+        );
+    }
 
     headers
+}
+
+/// Insert the Hx-Trugger header into a HeaderMap such that the table reload
+/// will occur on the collection view.
+fn reload_table(headers: HeaderMap) -> HeaderMap {
+    trigger_event(headers, "reload-pages")
+}
+
+fn reload_add_filter_button(headers: HeaderMap) -> HeaderMap {
+    trigger_event(headers, "reload-add-filter-button")
 }
 
 #[derive(Debug, Deserialize)]
@@ -652,13 +674,16 @@ pub async fn handle_bool_form_submit(
         }
         .render()
     } else {
-        "".into()
+        components::AddFilterButtonPlaceholder {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
     };
     Ok((
         StatusCode::OK,
         headers,
         [
-            r#"<div class="flex flex-row">"#,
+            r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
             &components::FilterBool {
                 filter: &new_filter,
@@ -744,12 +769,15 @@ pub async fn handle_int_form_submit(
         }
         .render()
     } else {
-        "".into()
+        components::AddFilterButtonPlaceholder {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
     };
     Ok((
         headers,
         [
-            r#"<div class="flex flex-row">"#,
+            r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
             &components::FilterInt {
                 filter: &new_filter,
@@ -836,7 +864,10 @@ pub async fn handle_int_rng_form_submit(
         }
         .render()
     } else {
-        "".into()
+        components::AddFilterButtonPlaceholder {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
     };
     Ok((
         headers,
@@ -998,7 +1029,7 @@ pub async fn get_add_filter_button(
     if does_it_tho {
         Ok(components::AddFilterButton { collection_id }.render())
     } else {
-        Ok("".into())
+        Ok(components::AddFilterButtonPlaceholder { collection_id }.render())
     }
 }
 
@@ -1012,6 +1043,8 @@ pub async fn delete_bool_filter(
 
     let headers = HeaderMap::new();
     let headers = reload_table(headers);
+    let headers = reload_add_filter_button(headers);
+
     Ok((headers, ""))
 }
 
@@ -1025,6 +1058,8 @@ pub async fn delete_int_filter(
 
     let headers = HeaderMap::new();
     let headers = reload_table(headers);
+    let headers = reload_add_filter_button(headers);
+
     Ok((headers, ""))
 }
 
@@ -1035,8 +1070,10 @@ pub async fn delete_int_rng_filter(
     let filter =
         models::FilterIntRng::get(&db, &db_ops::GetFilterQuery { id }).await?;
     filter.delete(&db).await?;
+
     let headers = HeaderMap::new();
     let headers = reload_table(headers);
+    let headers = reload_add_filter_button(headers);
 
     Ok((headers, ""))
 }

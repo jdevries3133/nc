@@ -217,10 +217,27 @@ pub struct Collection {
 }
 impl Component for Collection {
     fn render(&self) -> String {
+        let id = self.id;
+        let col_order = HoverIcon {
+            children: Box::new(ColumnOrderIcon { collection_id: id }),
+            tooltip_text: "Edit Column Order",
+        }
+        .render();
+        let filter = HoverIcon {
+            children: Box::new(FilterIcon {}),
+            tooltip_text: "View Filters",
+        }
+        .render();
+        let filter_toolbar_placeholder =
+            FilterToolbarPlaceholder { collection_id: id }.render();
         format!(
             r#"
             <h1 class="serif text-xl my-4">{name}</h1>
             <a class="link" href="/collection/{id}/new-page">Create Page</a>
+            <div class="mt-2 flex">
+                {col_order} {filter}
+            </div>
+            {filter_toolbar_placeholder}
             <main hx-trigger="load" hx-get="/collection/{id}/list-pages">Loading Pages...</main>
         "#,
             id = self.id,
@@ -236,18 +253,6 @@ pub struct PageList<'a> {
 impl Component for PageList<'_> {
     fn render(&self) -> String {
         let collection_id = self.collection_id;
-        let col_order = HoverIcon {
-            children: Box::new(ColumnOrderIcon { collection_id }),
-            tooltip_text: "Edit Column Order",
-        }
-        .render();
-        let filter = HoverIcon {
-            children: Box::new(FilterIcon {}),
-            tooltip_text: "View Filters",
-        }
-        .render();
-        let filter_toolbar_placeholder =
-            FilterToolbarPlaceholder { collection_id }.render();
         if self.pages.is_empty() {
             return format!(
                 r#"
@@ -258,10 +263,6 @@ impl Component for PageList<'_> {
                     <div>
                         <p>No pages available</p>
                     </div>
-                    <div class="mt-2 flex">
-                        {col_order} {filter}
-                    </div>
-                    {filter_toolbar_placeholder}
                 </div>
                 "#
             );
@@ -301,18 +302,13 @@ impl Component for PageList<'_> {
         }
         format!(
             r#"
-                <div
-                    hx-get="/collection/{collection_id}/list-pages"
-                    hx-trigger="reload-pages from:body"
-                    >
-                    <div class="mt-2 flex">
-                        {col_order} {filter}
-                    </div>
-                    {filter_toolbar_placeholder}
-                    <div class="overflow-y-scroll">
-                        {list}
-                    </div>
-                </div>
+            <div
+                hx-get="/collection/{collection_id}/list-pages"
+                hx-trigger="reload-pages from:body"
+                class="overflow-y-scroll"
+                >
+                    {list}
+            </div>
             "#
         )
     }
@@ -1193,6 +1189,28 @@ impl Component for AddFilterButton {
                 >
                 Add filter
             </button>
+            "#
+        )
+    }
+}
+
+/// If the collection does not have capacity for any more filters, we will
+/// render this component instead of the add filter button above. It is hidden
+/// but it will receive events from Hx-Trigger headers when filters are
+/// deleted, meaning that we've most likely gained capacity for a new filter
+/// again.
+pub struct AddFilterButtonPlaceholder {
+    pub collection_id: i32,
+}
+impl Component for AddFilterButtonPlaceholder {
+    fn render(&self) -> String {
+        let collection_id = self.collection_id;
+        format!(
+            r#"
+            <div
+                hx-get="/collection/{collection_id}/add-filter-button"
+                hx-trigger="reload-add-filter-button"
+            />
             "#
         )
     }
