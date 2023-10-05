@@ -1196,12 +1196,26 @@ impl Component for DeleteButton<'_> {
 
 pub struct Div<'a> {
     pub class: &'a str,
+    pub hx_get: Option<&'a str>,
+    pub hx_trigger: Option<&'a str>,
     pub children: Box<dyn Component>,
 }
 impl Component for Div<'_> {
     fn render(&self) -> String {
+        let hx_get = if let Some(hxg) = self.hx_get {
+            clean(&format!(r#"hx-get="{hxg}""#))
+        } else {
+            "".into()
+        };
+        let hx_trigger = if let Some(hxt) = self.hx_trigger {
+            clean(&format!(r#"hx-trigger="{hxt}""#))
+        } else {
+            "".into()
+        };
         let class = self.class;
         let children = self.children.render();
-        format!(r#"<div class="{class}">{children}</div>"#)
+        format!(
+            r#"<div {hx_get} {hx_trigger} class="{class}">{children}</div>"#
+        )
     }
 }

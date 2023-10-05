@@ -441,6 +441,10 @@ pub async fn get_filter_toolbar(
     {
         return Ok(components::Div {
             class: "my-2",
+            hx_trigger: Some("toggle-filter-toolbar from:body"),
+            hx_get: Some(&format!(
+                "/collection/{collection_id}/hide-filter-toolbar"
+            )),
             children: Box::new(components::AddFilterButton { collection_id }),
         }
         .render());
