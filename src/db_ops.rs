@@ -188,8 +188,8 @@ impl DbModel<GetPageQuery, ListPageQuery> for models::Page {
             }),
         })
     }
-    async fn list(db: &PgPool, query: &ListPageQuery) -> Result<Vec<Self>> {
-        list_pages(db, query.collection_id, query.page_number).await
+    async fn list(_db: &PgPool, _query: &ListPageQuery) -> Result<Vec<Self>> {
+        todo!()
     }
     async fn save(&self, db: &PgPool) -> Result<()> {
         query!(
@@ -721,7 +721,7 @@ pub async fn list_pages(
     db: &PgPool,
     collection_id: i32,
     page_number: i32,
-) -> Result<Vec<models::Page>> {
+) -> Result<(Vec<models::Page>, Vec<models::Prop>)> {
     let (
         filter_bool,
         filter_int,
@@ -864,7 +864,7 @@ pub async fn list_pages(
         })
         .collect();
 
-    Ok(pages)
+    Ok((pages, collection_prop_set))
 }
 
 pub async fn get_collection_name(db: &PgPool, id: i32) -> Result<String> {

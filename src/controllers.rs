@@ -88,11 +88,12 @@ pub async fn collection_pages(
     Query(CpQuery { page }): Query<CpQuery>,
     Path(collection_id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let pages =
+    let (pages, props) =
         db_ops::list_pages(&db, collection_id, page.unwrap_or(0)).await?;
 
     Ok(components::PageList {
         pages: &pages,
+        props: &props,
         collection_id,
     }
     .render())

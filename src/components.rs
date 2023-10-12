@@ -145,6 +145,7 @@ impl Component for Collection {
 
 pub struct PageList<'a> {
     pub pages: &'a [models::Page],
+    pub props: &'a [models::Prop],
     pub collection_id: i32,
 }
 impl Component for PageList<'_> {
@@ -168,11 +169,11 @@ impl Component for PageList<'_> {
             let _ = write!(
                 str,
                 r#"
-                    <div class="flex gap-2 my-1 items-center">
+                    <div class="flex gap-2">
                         <a class="link" href="/page/{page_id}">Edit</a>
-                        <div><div class="w-64 truncate">{title}</div></div>
-                        {other_props}
+                        <div class="max-w-[50vw] sm:max-w-xs truncate">{title}</div>
                     </div>
+                    {other_props}
                 "#,
                 page_id = page.id,
                 title = clean(&page.title),
@@ -197,13 +198,25 @@ impl Component for PageList<'_> {
                 collection = Some(cid);
             }
         }
+        let header = self.props.iter().fold(String::from("<p>Title</p>"), |mut str, prop| {
+            let prop_name = clean(&prop.name);
+            str.push_str(&format!(
+                r#"<p>{prop_name}</p>"#
+            ));
+            str
+        });
+        // "+ 1" because we're accountign for the leftmost column containing
+        // the "edit" button and the page title.
+        let column_count = self.props.len() + 1;
         format!(
             r#"
             <div
                 hx-get="/collection/{collection_id}/list-pages"
                 hx-trigger="reload-pages from:body"
-                class="overflow-y-scroll"
+                class="mt-8 overflow-y-scroll grid gap-2"
+                style="grid-template-columns: repeat({column_count}, auto);"
                 >
+                    {header}
                     {list}
             </div>
             "#
