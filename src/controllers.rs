@@ -1072,14 +1072,14 @@ pub async fn show_sort_toolbar(
             collection_id,
             prop_choices: &props[..],
             sort_type: sort.r#type,
-            default_selected_prop: Some(sort.prop_id),
+            default_selected_prop: sort.prop_id,
         }
         .render())
     } else {
         Ok(components::SortToolbar {
             collection_id,
             prop_choices: &props[..],
-            sort_type: models::SortType::Asc,
+            sort_type: Some(models::SortType::Asc),
             default_selected_prop: None,
         }
         .render())
@@ -1103,10 +1103,21 @@ pub async fn handle_sort_form_submit(
     Path(collection_id): Path<i32>,
     Form(form): Form<SortForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let new_sort = models::CollectionSort {
-        collection_id,
-        prop_id: form.sort_by,
-        r#type: models::SortType::from_int(form.sort_order)?,
+    // I'm being a bad person and using -1 as a sentinel for NULL.
+    //
+    // Don't @ me
+    let new_sort = if form.sort_by == -1 {
+        models::CollectionSort {
+            collection_id,
+            prop_id: None,
+            r#type: None,
+        }
+    } else {
+        models::CollectionSort {
+            collection_id,
+            prop_id: Some(form.sort_by),
+            r#type: Some(models::SortType::from_int(form.sort_order)?),
+        }
     };
     // Implicitly treating 'error' as 'does not exist'
     let existing_sort = if let Ok(sort) = models::CollectionSort::get(

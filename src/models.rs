@@ -277,9 +277,11 @@ impl SortType {
     }
 }
 
+/// If `prop_id` or `type` are `None`, sorting is not currently enabled for
+/// the collection.
 #[derive(Debug, Eq, PartialEq)]
 pub struct CollectionSort {
     pub collection_id: i32,
-    pub prop_id: i32,
-    pub r#type: SortType,
+    pub prop_id: Option<i32>,
+    pub r#type: Option<SortType>,
 }

@@ -198,13 +198,14 @@ impl Component for PageList<'_> {
                 collection = Some(cid);
             }
         }
-        let header = self.props.iter().fold(String::from("<p>Title</p>"), |mut str, prop| {
-            let prop_name = clean(&prop.name);
-            str.push_str(&format!(
-                r#"<p>{prop_name}</p>"#
-            ));
-            str
-        });
+        let header = self.props.iter().fold(
+            String::from("<p>Title</p>"),
+            |mut str, prop| {
+                let prop_name = clean(&prop.name);
+                str.push_str(&format!(r#"<p>{prop_name}</p>"#));
+                str
+            },
+        );
         // "+ 1" because we're accountign for the leftmost column containing
         // the "edit" button and the page title.
         let column_count = self.props.len() + 1;
@@ -1287,11 +1288,16 @@ pub struct SortToolbar<'a> {
     pub collection_id: i32,
     pub default_selected_prop: Option<i32>,
     pub prop_choices: &'a [models::Prop],
-    pub sort_type: models::SortType,
+    pub sort_type: Option<models::SortType>,
 }
 impl Component for SortToolbar<'_> {
     fn render(&self) -> String {
         let collection_id = self.collection_id;
+        let disable_sorting_option = if self.default_selected_prop.is_some() {
+            r#"<option selected value="-1">-- Disable Sorting --</option>"#
+        } else {
+            r#"<option value="-1">-- Disable Sorting --</option>"#
+        };
         let prop_options =
             self.prop_choices
                 .iter()
@@ -1315,13 +1321,19 @@ impl Component for SortToolbar<'_> {
                     str
                 });
         let sort_order_options = match self.sort_type {
-            models::SortType::Asc => {
-                r#"<option selected value="1">Ascending</option>
+            Some(ref t) => match t {
+                models::SortType::Asc => {
+                    r#"<option selected value="1">Ascending</option>
                    <option value="2">Descending</option>"#
-            }
-            models::SortType::Desc => {
-                r#"<option value="1">Ascending</option>
+                }
+                models::SortType::Desc => {
+                    r#"<option value="1">Ascending</option>
                    <option selected value="2">Descending</option>"#
+                }
+            },
+            None => {
+                r#"<option value="1">Ascending</option>
+                   <option value="2">Descending</option>"#
             }
         };
         format!(
@@ -1337,6 +1349,7 @@ impl Component for SortToolbar<'_> {
                             name="sort_by"
                             class="dark:text-white text-sm dark:bg-slate-700 rounded"
                             >
+                            {disable_sorting_option}
                             {prop_options}
                         </select>
                         <select

@@ -811,9 +811,15 @@ pub async fn list_pages(
     }
 
     if let Some(sort) = sort_details {
-        let prop_id = sort.prop_id;
-        let order_name = sort.r#type.get_sql();
-        query.push(format!(" order by prop{prop_id}.value {order_name} "));
+        if let Some(ty) = sort.r#type {
+            if let Some(prop) = sort.prop_id {
+                let prop_id = prop;
+                let order_name = ty.get_sql();
+                query.push(format!(
+                    " order by prop{prop_id}.value {order_name} "
+                ));
+            }
+        }
     };
 
     query.push(format!(" limit {page_size} offset {offset} "));
@@ -1075,14 +1081,19 @@ impl DbModel<GetSortQuery, ()> for models::CollectionSort {
 
         Ok(Self {
             collection_id: res.id,
-            prop_id: sort_prop_id,
-            r#type: sort_type,
+            prop_id: Some(sort_prop_id),
+            r#type: Some(sort_type),
         })
     }
     async fn list(_db: &PgPool, _query: &()) -> Result<Vec<Self>> {
         todo!()
     }
     async fn save(&self, db: &PgPool) -> Result<()> {
+        let tp = if let Some(ref t) = self.r#type {
+            Some(t.get_int_repr())
+        } else {
+            None
+        };
         query!(
             r#"
             update collection set
@@ -1091,7 +1102,7 @@ impl DbModel<GetSortQuery, ()> for models::CollectionSort {
             where id = $3
             "#,
             self.prop_id,
-            self.r#type.get_int_repr(),
+            tp,
             self.collection_id
         )
         .execute(db)
