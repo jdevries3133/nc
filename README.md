@@ -2,62 +2,23 @@ Notion Clone!
 
 Next Steps
 
-1. Build a column header
-2. Implement rendering for "empty" propvals
-3. Auth
+1. Implement rendering for "empty" propvals
+2. Auth
 
 Release!
 
-2. Implement float
-3. Implement date
-4. Implement datetime
-5. Implement multistr (tags)
-6. Paginate the collection list view
+1. Implement float
+2. Implement date
+3. Implement datetime
+4. Implement multistr (tags)
+5. Paginate the collection list view
 
-# Column Header
+# Empty PropVal Rendering
 
-There are basically 3 options:
-
-1. mostly maintain the current layout strategy and harangue.
-2. CSS grid
-3. maintain flex, but use a `flex-col` layout instead
-
-In approach #3, we'd do something like this:
-
-```html
-<div class="flex flex-col">
-
-  <!-- This becomes the first column -->
-  <div>
-    <p>Title One</p>
-    <p>Title Two</P
-  </div>
-
-  <!-- This becomes the second column, all of the first prop for each page -->
-  <div>
-    <input type="checkbox" />
-    <input type="checkbox" />
-  </div>
-</div>
-```
-
-The big benefit here is that by using flex, we maintain some flexibility in the
-layout. It will be easier to add column types as they'll naturally grow /
-shrink in width as needed.
-
-However, choosing a pixel width for columns is hardly the most difficult part of
-adding new data-types. The downside of flex is it's just more fiddly overall,
-and mixed row heights (even trivially) becomes a pain in the butt for alignment.
-
-Thus, I think the best move is to dynamically generate some
-`grid-template-columns` CSS for the page. It will end up looking like this:
-
-```css
-grid-template-columns: 200px 20px 5px 30px /* ... */
-```
-
-So, we're left with a simple place to put the widths of each column and all of
-the children will squish to match.
+This should be quite easy, I just need to make some components. There are
+already existing source code locations in the code paths for list rendering
+which handle rendering null propvals, they simply currently provide a default
+value instead of rendering them as empty.
 
 # Other Future Ideas
 
@@ -90,17 +51,10 @@ These are in priority order.
 
 # Completed Steps
 
-1. Page Insertion
-2. Lazy propval init
-
-- inserted pages will not have any rows in propvals
-- logic for rendering the overview needs to figure out how to deal with that
-
-3. Page overview
-
-- where page content can be edited
-- markdown time!
-
-4. Customizable column ordering
-5. Filter by arbitrary prop
-6. Sort by arbitrary prop
+- Page Insertion
+- Lazy propval init
+- Page overview
+- Customizable column ordering
+- Filter by arbitrary prop
+- Sort by arbitrary prop
+- Build a column header
