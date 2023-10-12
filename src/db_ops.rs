@@ -690,15 +690,31 @@ async fn get_page_list_ctx(
     Vec<models::FilterInt>,
     Vec<models::FilterIntRng>,
     Vec<models::Prop>,
+    Option<models::CollectionSort>,
 )> {
-    let (filters, collection_prop_set) = join!(
+    let sort_query = GetSortQuery { collection_id };
+    let (filters, collection_prop_set, sort_details) = join!(
         get_filters(db, collection_id),
-        get_prop_set(db, collection_id)
+        get_prop_set(db, collection_id),
+        models::CollectionSort::get(db, &sort_query)
     );
     let (filter_bool, filter_int, filter_int_rng) = filters?;
     let collection_prop_set = collection_prop_set?;
 
-    Ok((filter_bool, filter_int, filter_int_rng, collection_prop_set))
+    // Implicitly treating error as not-found here
+    let sort_details = if let Ok(d) = sort_details {
+        Some(d)
+    } else {
+        None
+    };
+
+    Ok((
+        filter_bool,
+        filter_int,
+        filter_int_rng,
+        collection_prop_set,
+        sort_details,
+    ))
 }
 
 pub async fn list_pages(
@@ -706,8 +722,13 @@ pub async fn list_pages(
     collection_id: i32,
     page_number: i32,
 ) -> Result<Vec<models::Page>> {
-    let (filter_bool, filter_int, filter_int_rng, collection_prop_set) =
-        get_page_list_ctx(db, collection_id).await?;
+    let (
+        filter_bool,
+        filter_int,
+        filter_int_rng,
+        collection_prop_set,
+        sort_details,
+    ) = get_page_list_ctx(db, collection_id).await?;
 
     let page_size = 100;
     let offset = page_number * page_size;
@@ -788,6 +809,12 @@ pub async fn list_pages(
             };
         }
     }
+
+    if let Some(sort) = sort_details {
+        let prop_id = sort.prop_id;
+        let order_name = sort.r#type.get_sql();
+        query.push(format!(" order by prop{prop_id}.value {order_name} "));
+    };
 
     query.push(format!(" limit {page_size} offset {offset} "));
 
@@ -1013,4 +1040,66 @@ pub async fn does_collection_have_capacity_for_additional_filters(
         .expect("idk... why would count(1) not return a count? WTF");
 
     Ok(count > 0)
+}
+
+pub struct GetSortQuery {
+    pub collection_id: i32,
+}
+
+#[async_trait]
+impl DbModel<GetSortQuery, ()> for models::CollectionSort {
+    async fn get(db: &PgPool, query: &GetSortQuery) -> Result<Self> {
+        struct Qres {
+            id: i32,
+            prop_id: Option<i32>,
+            type_id: Option<i32>,
+        }
+        let res = query_as!(
+            Qres,
+            "select id, sort_by_prop_id prop_id, sort_type_id type_id
+            from collection where id = $1",
+            query.collection_id
+        )
+        .fetch_one(db)
+        .await?;
+        let sort_type = if let Some(t) = res.type_id {
+            models::SortType::from_int(t)?
+        } else {
+            bail!("could not find sort type")
+        };
+        let sort_prop_id = if let Some(p) = res.prop_id {
+            p
+        } else {
+            bail!("could not find sort prop")
+        };
+
+        Ok(Self {
+            collection_id: res.id,
+            prop_id: sort_prop_id,
+            r#type: sort_type,
+        })
+    }
+    async fn list(_db: &PgPool, _query: &()) -> Result<Vec<Self>> {
+        todo!()
+    }
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            r#"
+            update collection set
+                sort_by_prop_id = $1,
+                sort_type_id = $2
+            where id = $3
+            "#,
+            self.prop_id,
+            self.r#type.get_int_repr(),
+            self.collection_id
+        )
+        .execute(db)
+        .await?;
+
+        Ok(())
+    }
+    async fn delete(self, _db: &PgPool) -> Result<()> {
+        todo!()
+    }
 }

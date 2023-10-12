@@ -112,21 +112,29 @@ impl Component for Collection {
             tooltip_text: "Edit Column Order",
         }
         .render();
-        let filter = HoverIcon {
+        let filter_icon = HoverIcon {
             children: Box::new(FilterIcon {}),
             tooltip_text: "View Filters",
         }
         .render();
         let filter_toolbar_placeholder =
             FilterToolbarPlaceholder { collection_id: id }.render();
+        let sort_icon = HoverIcon {
+            children: Box::new(SortIcon { collection_id: id }),
+            tooltip_text: "Configure Sorting",
+        }
+        .render();
+        let sort_toolbar_placeholder =
+            SortToolbarPlaceholder { collection_id: id }.render();
         format!(
             r#"
             <h1 class="serif text-xl my-4">{name}</h1>
             <a class="link" href="/collection/{id}/new-page">Create Page</a>
             <div class="mt-2 flex">
-                {col_order} {filter}
+                {col_order} {filter_icon} {sort_icon}
             </div>
             {filter_toolbar_placeholder}
+            {sort_toolbar_placeholder}
             <main hx-trigger="load" hx-get="/collection/{id}/list-pages">Loading Pages...</main>
         "#,
             id = self.id,
@@ -411,7 +419,7 @@ impl Component for NewPage {
                     <label for="title">Title</label>
                     <input class="rounded" type="text" name="title" id="title" value="{title}" />
                     {page_id}
-                    <button>Save</button>
+                    <button class="dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Save</button>
                 </form>
             "#,
         )
@@ -1052,7 +1060,18 @@ impl Component for AddFilterButton {
         format!(
             r#"
             <button
-                class="p-2 max-h-[45px] whitespace-nowrap rounded-full bg-blue-600 hover:bg-blue-500 shadow hover:shadow-none border-2 border-slate-600"
+                class="
+                    p-2
+                    max-h-[45px]
+                    whitespace-nowrap
+                    rounded-lg
+                    bg-blue-600
+                    hover:bg-blue-500
+                    shadow
+                    hover:shadow-none
+                    border-2
+                    border-slate-600
+                "
                 hx-get="/collection/{collection_id}/choose-prop-for-filter"
                 >
                 Add filter
@@ -1216,6 +1235,155 @@ impl Component for Div<'_> {
         let children = self.children.render();
         format!(
             r#"<div {hx_get} {hx_trigger} class="{class}">{children}</div>"#
+        )
+    }
+}
+
+pub struct SortIcon {
+    pub collection_id: i32,
+}
+impl Component for SortIcon {
+    fn render(&self) -> String {
+        r##"
+        <div id="sort-icon" class="rounded">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M12 17.25h8.25" />
+            </svg>
+        </div>
+        <script>
+            (() => {{
+            const iconElement = document.querySelector("#sort-icon");
+            iconElement.addEventListener('click', function () {{
+                if ([...iconElement.classList].includes('text-black')) {{
+                    iconElement.classList.remove('text-black');
+                    iconElement.classList.remove('bg-yellow-100');
+                    htmx.trigger('body', 'toggle-sort-toolbar');
+                }} else {{
+                    iconElement.classList.add('text-black');
+                    iconElement.classList.add('bg-yellow-100');
+                    htmx.trigger('body', 'toggle-sort-toolbar');
+                }}
+            }});
+            }})()
+        </script>
+        "##.into()
+    }
+}
+
+pub struct SortToolbar<'a> {
+    pub collection_id: i32,
+    pub default_selected_prop: Option<i32>,
+    pub prop_choices: &'a [models::Prop],
+    pub sort_type: models::SortType,
+}
+impl Component for SortToolbar<'_> {
+    fn render(&self) -> String {
+        let collection_id = self.collection_id;
+        let prop_options =
+            self.prop_choices
+                .iter()
+                .fold(String::new(), |mut str, prop| {
+                    let is_selected = if let Some(selected_prop) =
+                        self.default_selected_prop
+                    {
+                        if prop.id == selected_prop {
+                            "selected"
+                        } else {
+                            ""
+                        }
+                    } else {
+                        ""
+                    };
+                    let prop_id = prop.id;
+                    let prop_name = clean(&prop.name);
+                    str.push_str(&format!(
+                r#"<option {is_selected} value={prop_id}>{prop_name}</option>"#
+            ));
+                    str
+                });
+        let sort_order_options = match self.sort_type {
+            models::SortType::Asc => {
+                r#"<option selected value="1">Ascending</option>
+                   <option value="2">Descending</option>"#
+            }
+            models::SortType::Desc => {
+                r#"<option value="1">Ascending</option>
+                   <option selected value="2">Descending</option>"#
+            }
+        };
+        format!(
+            r#"<div
+                hx-get="/collection/{collection_id}/hide-sort-toolbar"
+                hx-trigger="toggle-sort-toolbar from:body"
+                >
+                    <form
+                        class="my-2"
+                        hx-post="/collection/{collection_id}/sort"
+                        >
+                        <select
+                            name="sort_by"
+                            class="dark:text-white text-sm dark:bg-slate-700 rounded"
+                            >
+                            {prop_options}
+                        </select>
+                        <select
+                            name="sort_order"
+                            class="dark:text-white text-sm dark:bg-slate-700 rounded"
+                        >
+                            {sort_order_options}
+                        </select>
+                        <button class="dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1">Save</button>
+                    </form>
+                </div>
+            "#
+        )
+    }
+}
+
+pub struct SortToolbarPlaceholder {
+    pub collection_id: i32,
+}
+impl Component for SortToolbarPlaceholder {
+    fn render(&self) -> String {
+        let collection_id = self.collection_id;
+        format!(
+            r#"
+            <div
+                hx-get="/collection/{collection_id}/show-sort-toolbar"
+                hx-trigger="toggle-sort-toolbar from:body"
+                ></div>
+            "#
+        )
+    }
+}
+
+pub struct SortOrderSavedConfirmation {
+    pub collection_id: i32,
+}
+impl Component for SortOrderSavedConfirmation {
+    fn render(&self) -> String {
+        let collection_id = self.collection_id;
+        format!(
+            r##"
+            <div
+                hx-get="/collection/{collection_id}/hide-sort-toolbar"
+                hx-trigger="load delay:3s"
+                class="my-2"
+                >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="inline bg-green-800 p-2 rounded-full w-8 h-8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                Sort order was saved
+                <script>
+                    setTimeout(() => {{
+                        const iconElement = document.querySelector("#sort-icon");
+                        iconElement.classList.remove('text-black');
+                        iconElement.classList.remove('bg-yellow-100');
+                        htmx.trigger('body', 'toggle-sort-toolbar');
+                    }}, 2000);
+                </script>
+            </div>
+            "##
         )
     }
 }

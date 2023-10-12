@@ -148,6 +148,21 @@ create table filter_int_range(
     "end" bigint not null
 );
 
+create table sort_type(
+    id serial primary key,
+    name varchar(255) not null
+);
+
+insert into sort_type (name) values
+    ('Ascending'),
+    ('Descending')
+;
+
+alter table collection add column sort_by_prop_id int references property(id);
+
+alter table collection add column sort_type_id int references sort_type(id);
+
+
 -- Starter Data
 
 insert into collection (name) values ('Default Collection');

@@ -2,6 +2,7 @@ use super::{
     components,
     db_ops::{DbModel, PvGetQuery, PvListQuery},
 };
+use anyhow::{bail, Result};
 use async_trait::async_trait;
 use sqlx::PgPool;
 
@@ -246,4 +247,39 @@ pub struct FilterIntRng {
     pub prop_id: i32,
     pub start: i64,
     pub end: i64,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum SortType {
+    Asc,
+    Desc,
+}
+
+impl SortType {
+    pub fn from_int(n: i32) -> Result<Self> {
+        match n {
+            1 => Ok(SortType::Asc),
+            2 => Ok(SortType::Desc),
+            _ => bail!("unacceptable sort type"),
+        }
+    }
+    pub fn get_int_repr(&self) -> i32 {
+        match self {
+            Self::Asc => 1,
+            Self::Desc => 2,
+        }
+    }
+    pub fn get_sql(&self) -> &'static str {
+        match self {
+            Self::Asc => "ASC",
+            Self::Desc => "DESC",
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct CollectionSort {
+    pub collection_id: i32,
+    pub prop_id: i32,
+    pub r#type: SortType,
 }

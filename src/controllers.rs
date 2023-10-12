@@ -1047,3 +1047,93 @@ pub async fn delete_int_rng_filter(
 
     Ok((headers, ""))
 }
+
+pub async fn show_sort_toolbar(
+    State(AppState { db }): State<AppState>,
+    Path(collection_id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let props = models::Prop::list(
+        &db,
+        &db_ops::ListPropQuery {
+            collection_id: Some(collection_id),
+            order_in: None,
+            exact_ids: None,
+        },
+    )
+    .await?;
+    if let Ok(sort) = models::CollectionSort::get(
+        &db,
+        &db_ops::GetSortQuery { collection_id },
+    )
+    .await
+    {
+        Ok(components::SortToolbar {
+            collection_id,
+            prop_choices: &props[..],
+            sort_type: sort.r#type,
+            default_selected_prop: Some(sort.prop_id),
+        }
+        .render())
+    } else {
+        Ok(components::SortToolbar {
+            collection_id,
+            prop_choices: &props[..],
+            sort_type: models::SortType::Asc,
+            default_selected_prop: None,
+        }
+        .render())
+    }
+}
+
+pub async fn hide_sort_toolbar(
+    Path(collection_id): Path<i32>,
+) -> impl IntoResponse {
+    components::SortToolbarPlaceholder { collection_id }.render()
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SortForm {
+    pub sort_by: i32,
+    pub sort_order: i32,
+}
+
+pub async fn handle_sort_form_submit(
+    State(AppState { db }): State<AppState>,
+    Path(collection_id): Path<i32>,
+    Form(form): Form<SortForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    let new_sort = models::CollectionSort {
+        collection_id,
+        prop_id: form.sort_by,
+        r#type: models::SortType::from_int(form.sort_order)?,
+    };
+    // Implicitly treating 'error' as 'does not exist'
+    let existing_sort = if let Ok(sort) = models::CollectionSort::get(
+        &db,
+        &db_ops::GetSortQuery { collection_id },
+    )
+    .await
+    {
+        Some(sort)
+    } else {
+        None
+    };
+    let headers = HeaderMap::new();
+    Ok(
+        if existing_sort.is_none() || new_sort != existing_sort.unwrap() {
+            new_sort.save(&db).await?;
+            let headers = reload_table(headers);
+            (
+                headers,
+                components::SortOrderSavedConfirmation { collection_id }
+                    .render(),
+            )
+        } else {
+            (
+                headers,
+                components::SortOrderSavedConfirmation { collection_id }
+                    .render(),
+            )
+        },
+    )
+}
