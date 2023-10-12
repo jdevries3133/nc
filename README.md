@@ -2,41 +2,62 @@ Notion Clone!
 
 Next Steps
 
-1. Sort by arbitrary prop
+1. Build a column header
+2. Implement rendering for "empty" propvals
+3. Auth
+
+Release!
+
 2. Implement float
 3. Implement date
 4. Implement datetime
 5. Implement multistr (tags)
 6. Paginate the collection list view
 
-# Sort by Arbitrary Prop
+# Column Header
 
-Sorting is going to be simple AF compared to filtering.
+There are basically 3 options:
 
-Users will only be able to sort by one property, so it'll just be a select field
-of all the properties.
+1. mostly maintain the current layout strategy and harangue.
+2. CSS grid
+3. maintain flex, but use a `flex-col` layout instead
 
-There will also be a toggle to sort ascending and descending.
+In approach #3, we'd do something like this:
 
-Since for now, a collection can only have a single sort, we'll just slap the
-`sort_by_prop_id` and `sort_order_type_id` on the `collection` table directly.
+```html
+<div class="flex flex-col">
 
-We will also add a table `sort_order_type`, which will have two rows: `asc`, and
-`desc`.
+  <!-- This becomes the first column -->
+  <div>
+    <p>Title One</p>
+    <p>Title Two</P
+  </div>
 
-I have struggled with Postgres and Rust type enums in the scope of this project.
-For this sort type, I think I'm going to repeat what I did for `PropValTypes`.
-Keep the enum simple, and just do the conversion from int to enum and visa versa
-in the database op. I feel like there should be a better way, but I don't know
-what it is.
+  <!-- This becomes the second column, all of the first prop for each page -->
+  <div>
+    <input type="checkbox" />
+    <input type="checkbox" />
+  </div>
+</div>
+```
 
-For the UI, we can put a filter button next to our sort button. It will toggle
-the display of a toolbar just like the filter toolbar.
+The big benefit here is that by using flex, we maintain some flexibility in the
+layout. It will be easier to add column types as they'll naturally grow /
+shrink in width as needed.
 
-The filter toolbar will just contain a select element with each prop, a set of
-toggle buttons to switch order between ascending and descending. The select
-input will save on change, and the buttons obviously will save on click, where
-each action will cause the table to reload.
+However, choosing a pixel width for columns is hardly the most difficult part of
+adding new data-types. The downside of flex is it's just more fiddly overall,
+and mixed row heights (even trivially) becomes a pain in the butt for alignment.
+
+Thus, I think the best move is to dynamically generate some
+`grid-template-columns` CSS for the page. It will end up looking like this:
+
+```css
+grid-template-columns: 200px 20px 5px 30px /* ... */
+```
+
+So, we're left with a simple place to put the widths of each column and all of
+the children will squish to match.
 
 # Other Future Ideas
 
@@ -69,16 +90,17 @@ These are in priority order.
 
 # Completed Steps
 
-1. (done) Page Insertion
-2. (done) Lazy propval init
+1. Page Insertion
+2. Lazy propval init
 
 - inserted pages will not have any rows in propvals
 - logic for rendering the overview needs to figure out how to deal with that
 
-3. (done) Page overview
+3. Page overview
 
 - where page content can be edited
 - markdown time!
 
-4. (done) Customizable column ordering
-5. (done) Filter by arbitrary prop
+4. Customizable column ordering
+5. Filter by arbitrary prop
+6. Sort by arbitrary prop
