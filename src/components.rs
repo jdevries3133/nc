@@ -199,10 +199,12 @@ impl Component for PageList<'_> {
             }
         }
         let header = self.props.iter().fold(
-            String::from("<p>Title</p>"),
+            String::from(r#"<p class="text-center">Title</p>"#),
             |mut str, prop| {
                 let prop_name = clean(&prop.name);
-                str.push_str(&format!(r#"<p>{prop_name}</p>"#));
+                str.push_str(&format!(
+                    r#"<p class="text-center">{prop_name}</p>"#
+                ));
                 str
             },
         );
@@ -233,11 +235,11 @@ impl Component for ColumnOrderIcon {
         let cid = self.collection_id;
         format!(
             r#"
-                <a href="/collection/{cid}/prop-order">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 rotate-90">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
-                    </svg>
-                </a>
+            <a href="/collection/{cid}/prop-order">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 rotate-90">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
+                </svg>
+            </a>
             "#
         )
     }
@@ -366,13 +368,21 @@ impl Component for models::Content {
 
 impl Component for models::PvBool {
     fn render(&self) -> String {
-        let checked_state = if self.value { "checked" } else { "" };
         let page_id = self.page_id;
         let prop_id = self.prop_id;
+        if self.value.is_none() {
+            return NullPropvalButton {
+                post_href: &format!("/page/{page_id}/prop/{prop_id}/new-bool"),
+            }
+            .render();
+        };
+        let value = self.value.unwrap();
+        let checked_state = if value { "checked" } else { "" };
         format!(
             r#"
                 <input
                     hx-post="/page/{page_id}/prop/{prop_id}/bool"
+                    class="justify-self-center"
                     name="value"
                     type="checkbox"
                     {checked_state}
@@ -386,11 +396,17 @@ impl Component for models::PvInt {
     fn render(&self) -> String {
         let page_id = self.page_id;
         let prop_id = self.prop_id;
-        let value = self.value;
+        if self.value.is_none() {
+            return NullPropvalButton {
+                post_href: &format!("/page/{page_id}/prop/{prop_id}/new-int"),
+            }
+            .render();
+        };
+        let value = self.value.unwrap();
         format!(
             r#"
                 <input
-                    class="rounded text-sm w-24"
+                    class="rounded text-sm w-24 justify-self-center"
                     hx-post="/page/{page_id}/prop/{prop_id}/int"
                     name="value"
                     type="number"
@@ -1410,6 +1426,22 @@ impl Component for SortOrderSavedConfirmation {
                 </script>
             </div>
             "##
+        )
+    }
+}
+
+pub struct NullPropvalButton<'a> {
+    pub post_href: &'a str,
+}
+impl Component for NullPropvalButton<'_> {
+    fn render(&self) -> String {
+        let post_href = self.post_href;
+        format!(
+            r#"
+            <button
+                hx-get="{post_href}"
+                >--</button>
+            "#
         )
     }
 }

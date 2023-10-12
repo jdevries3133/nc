@@ -72,7 +72,7 @@ pub trait PropVal:
 
 #[derive(Clone, Debug)]
 pub struct PvBool {
-    pub value: bool,
+    pub value: Option<bool>,
     pub page_id: i32,
     pub prop_id: i32,
 }
@@ -86,7 +86,7 @@ impl PropVal for PvBool {
         PvBool::get(db, query).await.unwrap_or(PvBool {
             page_id: query.page_id,
             prop_id: query.prop_id,
-            value: false,
+            value: None,
         })
     }
     fn get_page_id(&self) -> i32 {
@@ -99,7 +99,7 @@ impl PropVal for PvBool {
 
 #[derive(Clone, Debug)]
 pub struct PvInt {
-    pub value: i64,
+    pub value: Option<i64>,
     pub page_id: i32,
     pub prop_id: i32,
 }
@@ -113,7 +113,7 @@ impl PropVal for PvInt {
         PvInt::get(db, query).await.unwrap_or(PvInt {
             page_id: query.page_id,
             prop_id: query.prop_id,
-            value: 0,
+            value: None,
         })
     }
     fn get_page_id(&self) -> i32 {

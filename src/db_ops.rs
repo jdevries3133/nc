@@ -64,28 +64,48 @@ pub struct PvListQuery {
     pub page_ids: Vec<i32>,
 }
 
+#[derive(Copy, Clone)]
+struct PvBoolQres {
+    page_id: i32,
+    prop_id: i32,
+    value: bool,
+}
+impl PvBoolQres {
+    fn into_pv_bool(self) -> models::PvBool {
+        models::PvBool {
+            page_id: self.page_id,
+            prop_id: self.prop_id,
+            value: Some(self.value),
+        }
+    }
+}
+
 #[async_trait]
 impl DbModel<PvGetQuery, PvListQuery> for models::PvBool {
     async fn get(db: &PgPool, query: &PvGetQuery) -> Result<Self> {
-        Ok(query_as!(
-            Self,
+        let res = query_as!(
+            PvBoolQres,
             "select page_id, prop_id, value from propval_bool
             where page_id = $1 and prop_id = $2",
             query.page_id,
             query.prop_id
         )
         .fetch_one(db)
-        .await?)
+        .await?;
+
+        Ok(res.into_pv_bool())
     }
     async fn list(db: &PgPool, query: &PvListQuery) -> Result<Vec<Self>> {
-        Ok(query_as!(
-            Self,
+        let res = query_as!(
+            PvBoolQres,
             "select page_id, prop_id, value from propval_bool
             where page_id = any($1)",
             &query.page_ids
         )
         .fetch_all(db)
-        .await?)
+        .await?;
+
+        Ok(res.iter().map(|r| r.into_pv_bool()).collect())
     }
     async fn save(&self, db: &PgPool) -> Result<()> {
         query!(
@@ -105,28 +125,47 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PvBool {
     }
 }
 
+struct PvIntQres {
+    page_id: i32,
+    prop_id: i32,
+    value: i64,
+}
+impl PvIntQres {
+    fn into_pv_int(self) -> models::PvInt {
+        models::PvInt {
+            page_id: self.page_id,
+            prop_id: self.prop_id,
+            value: Some(self.value),
+        }
+    }
+}
+
 #[async_trait]
 impl DbModel<PvGetQuery, PvListQuery> for models::PvInt {
     async fn get(db: &PgPool, query: &PvGetQuery) -> Result<Self> {
-        Ok(query_as!(
-            Self,
+        let res = query_as!(
+            PvIntQres,
             "select page_id, prop_id, value from propval_int
             where page_id = $1 and prop_id = $2",
             query.page_id,
             query.prop_id
         )
         .fetch_one(db)
-        .await?)
+        .await?;
+
+        Ok(res.into_pv_int())
     }
     async fn list(db: &PgPool, query: &PvListQuery) -> Result<Vec<Self>> {
-        Ok(query_as!(
-            Self,
+        let mut res = query_as!(
+            PvIntQres,
             "select page_id, prop_id, value from propval_int
             where page_id = any($1)",
             &query.page_ids
         )
         .fetch_all(db)
-        .await?)
+        .await?;
+
+        Ok(res.drain(..).map(|r| r.into_pv_int()).collect())
     }
     async fn save(&self, db: &PgPool) -> Result<()> {
         query!(
@@ -837,8 +876,13 @@ pub async fn list_pages(
                     let prop_alias = format!("prop{}", prop.id);
                     match prop.type_id {
                         models::PropValTypes::Int => {
-                            let value =
-                                row.try_get(&prop_alias as &str).unwrap_or(0);
+                            let value = if let Ok(value) =
+                                row.try_get(&prop_alias as &str)
+                            {
+                                Some(value)
+                            } else {
+                                None
+                            };
                             Box::new(models::PvInt {
                                 page_id: id,
                                 prop_id: prop.id,
@@ -846,9 +890,13 @@ pub async fn list_pages(
                             }) as _
                         }
                         models::PropValTypes::Bool => {
-                            let value = row
-                                .try_get(&prop_alias as &str)
-                                .unwrap_or(false);
+                            let value = if let Ok(value) =
+                                row.try_get(&prop_alias as &str)
+                            {
+                                Some(value)
+                            } else {
+                                None
+                            };
                             Box::new(models::PvBool {
                                 page_id: id,
                                 prop_id: prop.id,
@@ -1089,11 +1137,7 @@ impl DbModel<GetSortQuery, ()> for models::CollectionSort {
         todo!()
     }
     async fn save(&self, db: &PgPool) -> Result<()> {
-        let tp = if let Some(ref t) = self.r#type {
-            Some(t.get_int_repr())
-        } else {
-            None
-        };
+        let tp = self.r#type.as_ref().map(|t| t.get_int_repr());
         query!(
             r#"
             update collection set

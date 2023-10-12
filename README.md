@@ -7,11 +7,12 @@ Next Steps
 
 Release!
 
-1. Implement float
-2. Implement date
-3. Implement datetime
-4. Implement multistr (tags)
-5. Paginate the collection list view
+1. Get more prop & propval code into traits (i.e, controllers)
+2. Implement float
+3. Implement date
+4. Implement datetime
+5. Implement multistr (tags)
+6. Paginate the collection list view
 
 # Empty PropVal Rendering
 

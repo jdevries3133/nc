@@ -125,6 +125,17 @@ pub async fn collection_prop_order(
     })
 }
 
+pub async fn new_bool_propval_form(
+    Path((page_id, prop_id)): Path<(i32, i32)>,
+) -> impl IntoResponse {
+    models::PvBool {
+        page_id,
+        prop_id,
+        value: Some(false),
+    }
+    .render()
+}
+
 #[derive(Deserialize)]
 pub struct PvbForm {
     value: Option<String>,
@@ -141,12 +152,23 @@ pub async fn save_pv_bool(
     )
     .await;
     let new_val = value.is_some();
-    if new_val != pvb.value {
-        pvb.value = value.is_some();
+    if Some(new_val) != pvb.value {
+        pvb.value = Some(value.is_some());
         pvb.save(&db).await?;
     }
 
     Ok(pvb.render())
+}
+
+pub async fn new_int_propval_form(
+    Path((page_id, prop_id)): Path<(i32, i32)>,
+) -> impl IntoResponse {
+    models::PvInt {
+        page_id,
+        prop_id,
+        value: Some(0),
+    }
+    .render()
 }
 
 #[derive(Deserialize)]
@@ -165,8 +187,8 @@ pub async fn save_pv_int(
     .await;
 
     if let Some(v) = value {
-        if v != existing.value {
-            existing.value = v;
+        if Some(v) != existing.value {
+            existing.value = Some(v);
             existing.save(&db).await?;
         }
     };
