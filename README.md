@@ -2,8 +2,7 @@ Notion Clone!
 
 Next Steps
 
-1. Implement rendering for "empty" propvals
-2. Auth
+1. Auth
 
 Release!
 
@@ -14,12 +13,17 @@ Release!
 5. Implement multistr (tags)
 6. Paginate the collection list view
 
-# Empty PropVal Rendering
+# Auth
 
-This should be quite easy, I just need to make some components. There are
-already existing source code locations in the code paths for list rendering
-which handle rendering null propvals, they simply currently provide a default
-value instead of rendering them as empty.
+For auth, I'm just going to keep it reeeeeeal simple. I'm going to steal the
+ad-hoc authentication setup from my [lnk](https://github.com/jdevries3133/lnk)
+project.
+
+Although the above does have user registration, I'm going to disable it for now.
+There is still going to be just one shared collection in production for now
+since I'm not going to implement any complex resource ownership. I just want to
+do enough to get this thing stood up in prod and also not have it be hammered
+with spam.
 
 # Other Future Ideas
 
@@ -59,3 +63,4 @@ These are in priority order.
 - Filter by arbitrary prop
 - Sort by arbitrary prop
 - Build a column header
+- Implement rendering for "empty" propvals
