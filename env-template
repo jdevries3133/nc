@@ -4,4 +4,5 @@ POSTGRES_DB=nc
 
 SESSION_SECRET=superdupersecret
 
+# Note: DATABASE_URL is used by sqlx at compile-time
 DATABASE_URL=postgres://you:somepassword@localhost:5432/nc
