@@ -2,6 +2,16 @@ SHELL := /bin/bash
 ENV=source .env &&
 DB_CONTAINER_NAME := "nc_db"
 
+.PHONY: build
+.PHONY: setup
+.PHONY: dev
+.PHONY: db
+.PHONY: start-db
+.PHONY: stop-db
+.PHONY: reset-db
+.PHONY: watch-db
+.PHONY: shell-db
+
 build: setup
 	pnpm run build
 	cargo build --release
@@ -13,6 +23,7 @@ setup:
 	[[ ! -d node_modules ]] \
 		&& pnpm install \
 		|| true
+	[[ ! -f .env ]] && cp env-template .env || true
 
 dev: setup
 	npx concurrently --names 'tailwind,cargo' \
