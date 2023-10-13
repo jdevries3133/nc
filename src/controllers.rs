@@ -1,11 +1,12 @@
 use super::{
-    components,
+    auth, components,
     components::Component,
     db_ops,
     db_ops::DbModel,
     errors::ServerError,
     htmx, models,
     models::{AppState, PropVal},
+    pw, session,
 };
 use anyhow::Result;
 use axum::{
@@ -15,6 +16,7 @@ use axum::{
     Form,
 };
 use futures::join;
+
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 
@@ -389,8 +391,8 @@ pub async fn save_existing_page_form(
 
 #[derive(Debug, Deserialize)]
 pub struct PageForm {
-    pub id: Option<i32>,
-    pub title: String,
+    id: Option<i32>,
+    title: String,
 }
 pub async fn handle_page_submission(
     State(AppState { db }): State<AppState>,
@@ -679,8 +681,8 @@ pub async fn get_int_filter_form(
 
 #[derive(Deserialize)]
 pub struct IntForm {
-    pub value: i64,
-    pub r#type: i32,
+    value: i64,
+    r#type: i32,
 }
 pub async fn handle_int_form_submit(
     State(AppState { db }): State<AppState>,
@@ -751,9 +753,9 @@ pub async fn get_int_rng_filter_form(
 
 #[derive(Deserialize)]
 pub struct IntRngForm {
-    pub start: i64,
-    pub end: i64,
-    pub r#type: i32,
+    start: i64,
+    end: i64,
+    r#type: i32,
 }
 pub async fn handle_int_rng_form_submit(
     State(AppState { db }): State<AppState>,
@@ -838,7 +840,7 @@ pub async fn new_filter_type_select(
 
 #[derive(Deserialize)]
 pub struct NewFilterQuery {
-    pub type_id: Option<i32>,
+    type_id: Option<i32>,
 }
 
 pub async fn create_new_bool_filter(
@@ -1116,8 +1118,8 @@ pub async fn hide_sort_toolbar(
 
 #[derive(Debug, Deserialize)]
 pub struct SortForm {
-    pub sort_by: i32,
-    pub sort_order: i32,
+    sort_by: i32,
+    sort_order: i32,
 }
 
 pub async fn handle_sort_form_submit(
@@ -1170,4 +1172,99 @@ pub async fn handle_sort_form_submit(
             )
         },
     )
+}
+
+pub fn update_session(
+    mut headers: HeaderMap,
+    session: &session::Session,
+) -> HeaderMap {
+    let session_string = session::serialize_session(session);
+    let header_value = format!("session={session_string}; Path=/; HttpOnly");
+    headers.insert(
+        "Set-Cookie",
+        HeaderValue::from_str(&header_value)
+            .expect("stringified session can be turned into a header value"),
+    );
+
+    headers
+}
+
+pub async fn get_registration_form(headers: HeaderMap) -> impl IntoResponse {
+    let form = components::RegisterForm {};
+
+    if headers.contains_key("Hx-Request") {
+        form.render()
+    } else {
+        components::Page {
+            title: "Register",
+            children: Box::new(form),
+        }
+        .render()
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RegisterForm {
+    username: String,
+    email: String,
+    password: String,
+    secret_word: String,
+}
+
+pub async fn handle_registration(
+    State(AppState { db }): State<AppState>,
+    Form(form): Form<RegisterForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    let headers = HeaderMap::new();
+    if form.secret_word.to_lowercase() != "blorp" {
+        return Ok((
+            headers,
+            r#"<p hx-trigger="load delay:1s" hx-get="/authentication/register">Nice try ya chungus</p>"#,
+        ));
+    };
+    let hashed_pw = pw::hash_new(&form.password);
+    let user =
+        db_ops::create_user(&db, form.username, form.email, &hashed_pw).await?;
+    let session = session::Session { user };
+    let headers = update_session(headers, &session);
+
+    Ok((headers, "ya did it son"))
+}
+
+pub async fn get_login_form(headers: HeaderMap) -> impl IntoResponse {
+    let form = components::LoginForm {};
+
+    if headers.contains_key("Hx-Request") {
+        form.render()
+    } else {
+        components::Page {
+            title: "Login",
+            children: Box::new(form),
+        }
+        .render()
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LoginForm {
+    /// Username or email
+    identifier: String,
+    password: String,
+}
+
+pub async fn handle_login(
+    State(AppState { db }): State<AppState>,
+    Form(form): Form<LoginForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    println!("{form:?}");
+    let session =
+        auth::authenticate(&db, &form.identifier, &form.password).await;
+    let headers = HeaderMap::new();
+    if let Ok(session) = session {
+        let headers = update_session(headers, &session);
+
+        Ok((headers, "u good"))
+    } else {
+        Ok((headers, "u no is good"))
+    }
 }

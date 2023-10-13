@@ -46,3 +46,11 @@ pub fn get_routes() -> Router<models::AppState> {
         .route("/page/:page_id/prop/:prop_id/new-int",              get(controllers::new_int_propval_form))
         .route("/static/htmx-1.9.6",                                get(controllers::get_htmx_js))
 }
+
+pub fn get_auth_routes() -> Router<models::AppState> {
+    Router::new()
+        .route("/register",                          get(controllers::get_registration_form))
+        .route("/register",                          post(controllers::handle_registration))
+        .route("/login",                             get(controllers::get_login_form))
+        .route("/login",                             post(controllers::handle_login))
+}

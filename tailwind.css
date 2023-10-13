@@ -7,10 +7,17 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  input[type="number"], input[type="text"], input[type="checkbox"] {
+  input[type="number"],
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="checkbox"] {
     @apply text-white bg-slate-700;
   }
-  input[type="number"], input[type="text"] {
+  input[type="number"],
+  input[type="text"],
+  input[type="password"],
+  input[type="email"] {
     @apply rounded;
   }
   input[type="checkbox"] {

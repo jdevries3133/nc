@@ -1,14 +1,11 @@
-use super::errors::ServerError;
+use super::{auth};
 use axum::{
     http::{HeaderValue, Request},
     middleware::Next,
-    response::Response,
+    response::{Response, Redirect, IntoResponse},
 };
 
-pub async fn html_headers<B>(
-    request: Request<B>,
-    next: Next<B>,
-) -> Result<Response, ServerError> {
+pub async fn html_headers<B>(request: Request<B>, next: Next<B>) -> Response {
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
 
@@ -36,5 +33,19 @@ pub async fn html_headers<B>(
         );
     };
 
-    Ok(response)
+    response
+}
+
+pub async fn auth<B>(
+    request: Request<B>,
+    next: Next<B>,
+) -> Response {
+    let headers = request.headers();
+    let session = auth::get_user(headers).await;
+    if session.is_some() {
+        
+        next.run(request).await
+    } else {
+        Redirect::to("/authentication/login").into_response()
+    }
 }

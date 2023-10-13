@@ -6,6 +6,13 @@ create database nc;
 create schema nc;
 \c nc;
 
+create table users(
+    id serial primary key,
+    username varchar(255) unique not null,
+    email varchar(255) unique not null,
+    salt varchar(255) not null,
+    digest varchar(255) not null
+);
 
 create table collection(
     id serial primary key,

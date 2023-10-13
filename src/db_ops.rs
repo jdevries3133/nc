@@ -1,4 +1,4 @@
-use super::{config, config::PROP_SET_MAX, models, models::PropVal};
+use super::{config, config::PROP_SET_MAX, models, models::PropVal, pw};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use futures::join;
@@ -1157,4 +1157,52 @@ impl DbModel<GetSortQuery, ()> for models::CollectionSort {
     async fn delete(self, _db: &PgPool) -> Result<()> {
         todo!()
     }
+}
+
+pub struct GetUserQuery<'a> {
+    /// `identifier` can be a users username _or_ email
+    pub identifier: &'a str,
+}
+
+#[async_trait]
+impl DbModel<GetUserQuery<'_>, ()> for models::User {
+    async fn get(db: &PgPool, query: &GetUserQuery) -> Result<Self> {
+        Ok(query_as!(
+            Self,
+            "select id, username, email from users
+            where username = $1 or email = $1",
+            query.identifier
+        )
+        .fetch_one(db)
+        .await?)
+    }
+    async fn list(_db: &PgPool, _query: &()) -> Result<Vec<Self>> {
+        todo!()
+    }
+    async fn save(&self, _db: &PgPool) -> Result<()> {
+        todo!()
+    }
+    async fn delete(self, _db: &PgPool) -> Result<()> {
+        todo!();
+    }
+}
+
+pub async fn create_user(
+    db: &PgPool,
+    username: String,
+    email: String,
+    pw: &pw::HashedPw,
+) -> Result<models::User> {
+    let id = query_as!(
+        Id,
+        "insert into users (username, email, salt, digest) values ($1, $2, $3, $4)
+        returning id",
+        username, email, pw.salt, pw.digest
+    ).fetch_one(db).await?;
+
+    Ok(models::User {
+        id: id.id,
+        username,
+        email,
+    })
 }

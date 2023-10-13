@@ -1,17 +1,21 @@
-use axum::middleware::from_fn;
+use axum::{middleware::from_fn, Router};
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, net::SocketAddr};
 
+mod auth;
 mod components;
 mod config;
 mod controllers;
+mod crypto;
 mod db_ops;
 mod errors;
 mod htmx;
 mod middleware;
 mod models;
+mod pw;
 mod routes;
+mod session;
 
 #[tokio::main]
 async fn main() {
@@ -19,8 +23,16 @@ async fn main() {
 
     let db = create_pg_pool().await;
     let state = models::AppState { db };
-    let app = routes::get_routes()
+    let routes = routes::get_routes()
         .layer(from_fn(middleware::html_headers))
+        .layer(from_fn(middleware::auth));
+
+    let public_routes = routes::get_auth_routes()
+        .layer(from_fn(middleware::html_headers));
+
+    let app = Router::new()
+        .nest("/", routes)
+        .nest("/authentication", public_routes)
         .with_state(state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));

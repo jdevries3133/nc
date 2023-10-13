@@ -4,6 +4,8 @@ use super::{
 };
 use anyhow::{bail, Result};
 use async_trait::async_trait;
+
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
 #[derive(Debug, Clone)]
@@ -284,4 +286,11 @@ pub struct CollectionSort {
     pub collection_id: i32,
     pub prop_id: Option<i32>,
     pub r#type: Option<SortType>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct User {
+    pub id: i32,
+    pub username: String,
+    pub email: String,
 }

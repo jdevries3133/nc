@@ -1445,3 +1445,46 @@ impl Component for NullPropvalButton<'_> {
         )
     }
 }
+
+pub struct LoginForm;
+impl Component for LoginForm {
+    fn render(&self) -> String {
+        r#"
+            <form class="flex flex-col gap-2 max-w-md" hx-post="/authentication/login">
+                <h1 class="text-xl">Login</h1>
+                <label autocomplete="username" for="identifier">Username or Email</label>
+                <input type="text" id="identifier" name="identifier" />
+                <label for="passwored">Password</label>
+                <input autocomplete="current-password" type="password" id="password" name="password" />
+                <button class="dark:bg-slate-700 w-36 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Log In</button>
+            </form>
+            "#.to_string()
+    }
+}
+
+pub struct RegisterForm;
+impl Component for RegisterForm {
+    fn render(&self) -> String {
+        r#"
+            <form class="flex flex-col gap-2 max-w-md" hx-post="/authentication/register">
+                <h1 class="text-xl">Register for an Account</h1>
+                <label for="username">Username</label>
+                <input autocomplete="username" type="text" id="username" name="username" />
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" />
+                <label for="password">Password</label>
+                <input autocomplete="current-password" type="password" id="password" name="password" />
+                <label for="secret_word">Secret Word</label>
+                <p class="text-sm text-slate-100">
+                    What is the secret word? This app is under development and
+                    this is how I will prevent login spam, though you may take
+                    a look at the source code and find the secret word if you
+                    really want a sneak peek so bad. Let reading the source
+                    be your Captcha
+                </p>
+                <input type="text" id="secret_word" name="secret_word" />
+                <button class="dark:bg-slate-700 w-36 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Sign Up</button>
+            </form>
+            "#.to_string()
+    }
+}
