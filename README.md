@@ -2,10 +2,6 @@ Notion Clone!
 
 Next Steps
 
-1. Auth
-
-Release!
-
 1. Get more prop & propval code into traits (i.e, controllers)
 2. Implement float
 3. Implement date
@@ -13,17 +9,14 @@ Release!
 5. Implement multistr (tags)
 6. Paginate the collection list view
 
-# Auth
+# Get Prop & PropVal Code into Traits
 
-For auth, I'm just going to keep it reeeeeeal simple. I'm going to steal the
-ad-hoc authentication setup from my [lnk](https://github.com/jdevries3133/lnk)
-project.
+## Background
 
-Although the above does have user registration, I'm going to disable it for now.
-There is still going to be just one shared collection in production for now
-since I'm not going to implement any complex resource ownership. I just want to
-do enough to get this thing stood up in prod and also not have it be hammered
-with spam.
+The next stage of this project will be implementing additional propval types.
+Before doing that, I want to capture the repetition in the bool and int
+implementations in traits so that knocking out the other data-types will be
+easier.
 
 # Other Future Ideas
 
@@ -64,3 +57,4 @@ These are in priority order.
 - Sort by arbitrary prop
 - Build a column header
 - Implement rendering for "empty" propvals
+- Authentication
