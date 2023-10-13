@@ -1,6 +1,8 @@
-Notion Clone!
+# Notion Clone!
 
-Next Steps
+https://github.com/jdevries3133/nc/assets/58614260/ec0d6d17-0e32-429c-96a7-5ef0ca257c26
+
+# Next Steps
 
 1. Get more prop & propval code into traits (i.e, controllers)
 2. Implement float
