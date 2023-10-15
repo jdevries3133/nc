@@ -22,7 +22,7 @@ CONTAINER_EXACT_REF=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME):$(TAG)
 .PHONY: build-container
 .PHONY: debug-container
 
-check:
+check: setup
 	cargo clippy -- -D warnings
 	cargo fmt --check
 	cargo test
@@ -38,7 +38,14 @@ setup:
 	[[ ! -d node_modules ]] \
 		&& pnpm install \
 		|| true
+ifndef CI
+	@# we only want the `.env` file locally in practice. We never run the app
+	@# in CI (yet). The problem with having the `.env` file in CI is that
+	@# sqlx will pickup on the `DATABASE_URL` environment variable and try
+	@# to talk to a datbase that isn't there, causing compilation to fail.
+	@# See also https://github.com/launchbadge/sqlx/blob/540baf7df55a372cb79d8636d02b1361a495b344/sqlx-cli/README.md#force-building-in-offline-mode
 	[[ ! -f .env ]] && cp env-template .env || true
+endif
 
 dev: setup
 	npx concurrently --names 'tailwind,cargo' \
