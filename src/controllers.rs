@@ -1240,7 +1240,6 @@ pub async fn handle_login(
     State(AppState { db }): State<AppState>,
     Form(form): Form<LoginForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    println!("{form:?}");
     let session =
         auth::authenticate(&db, &form.identifier, &form.password).await;
     let headers = HeaderMap::new();
