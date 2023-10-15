@@ -359,7 +359,7 @@ pub async fn existing_page_form(
         components::PageOverview { page: &page }.render()
     } else {
         components::Page {
-            title: &format!("{}", page.title),
+            title: &page.title,
             children: Box::new(components::PageOverview { page: &page }),
         }
         .render()
