@@ -23,6 +23,9 @@ CONTAINER_EXACT_REF=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME):$(TAG)
 .PHONY: debug-container
 
 check: setup
+ifdef CI
+	pnpm run build
+endif
 	cargo clippy -- -D warnings
 	cargo fmt --check
 	cargo test
