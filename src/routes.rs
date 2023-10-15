@@ -47,6 +47,7 @@ pub fn get_routes() -> Router<models::AppState> {
         .route("/static/htmx-1.9.6",                                get(controllers::get_htmx_js))
 }
 
+#[rustfmt::skip]
 pub fn get_auth_routes() -> Router<models::AppState> {
     Router::new()
         .route("/register",                          get(controllers::get_registration_form))

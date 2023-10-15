@@ -16,7 +16,6 @@ use axum::{
     Form,
 };
 use futures::join;
-
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 
@@ -1174,21 +1173,6 @@ pub async fn handle_sort_form_submit(
     )
 }
 
-pub fn update_session(
-    mut headers: HeaderMap,
-    session: &session::Session,
-) -> HeaderMap {
-    let session_string = session::serialize_session(session);
-    let header_value = format!("session={session_string}; Path=/; HttpOnly");
-    headers.insert(
-        "Set-Cookie",
-        HeaderValue::from_str(&header_value)
-            .expect("stringified session can be turned into a header value"),
-    );
-
-    headers
-}
-
 pub async fn get_registration_form(headers: HeaderMap) -> impl IntoResponse {
     let form = components::RegisterForm {};
 
@@ -1226,7 +1210,7 @@ pub async fn handle_registration(
     let user =
         db_ops::create_user(&db, form.username, form.email, &hashed_pw).await?;
     let session = session::Session { user };
-    let headers = update_session(headers, &session);
+    let headers = session.update_headers(headers);
 
     Ok((headers, "ya did it son"))
 }
@@ -1261,7 +1245,7 @@ pub async fn handle_login(
         auth::authenticate(&db, &form.identifier, &form.password).await;
     let headers = HeaderMap::new();
     if let Ok(session) = session {
-        let headers = update_session(headers, &session);
+        let headers = session.update_headers(headers);
 
         Ok((headers, "u good"))
     } else {

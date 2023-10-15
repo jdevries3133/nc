@@ -1,8 +1,8 @@
-use super::{auth};
+use super::session;
 use axum::{
     http::{HeaderValue, Request},
     middleware::Next,
-    response::{Response, Redirect, IntoResponse},
+    response::{IntoResponse, Redirect, Response},
 };
 
 pub async fn html_headers<B>(request: Request<B>, next: Next<B>) -> Response {
@@ -36,14 +36,10 @@ pub async fn html_headers<B>(request: Request<B>, next: Next<B>) -> Response {
     response
 }
 
-pub async fn auth<B>(
-    request: Request<B>,
-    next: Next<B>,
-) -> Response {
+pub async fn auth<B>(request: Request<B>, next: Next<B>) -> Response {
     let headers = request.headers();
-    let session = auth::get_user(headers).await;
+    let session = session::Session::from_headers(headers);
     if session.is_some() {
-        
         next.run(request).await
     } else {
         Redirect::to("/authentication/login").into_response()

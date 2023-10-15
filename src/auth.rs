@@ -1,7 +1,5 @@
 use super::{db_ops, db_ops::DbModel, models, pw, session};
 use anyhow::{bail, Result};
-use axum::headers::HeaderMap;
-use regex::Regex;
 use sqlx::{postgres::PgPool, query_as};
 
 pub async fn authenticate(
@@ -28,20 +26,5 @@ pub async fn authenticate(
         Ok(session::Session { user })
     } else {
         bail!("wrong password")
-    }
-}
-
-pub async fn get_user(headers: &HeaderMap) -> Option<models::User> {
-    let cookie = headers.get("Cookie")?;
-    let cookie = cookie.to_str().unwrap_or("");
-    let re = Regex::new(r"session=(.*)").unwrap();
-    let captures = re.captures(cookie)?;
-    let token = &captures[1];
-    let deserialize_result = session::deserialize_session(token);
-
-    if let Ok(session) = deserialize_result {
-        Some(session.user)
-    } else {
-        None
     }
 }

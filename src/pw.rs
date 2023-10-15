@@ -29,7 +29,7 @@ fn hash(pw: &str, salt: &str) -> HashedPw {
     }
 }
 
-/// Hash a new password; random salt is generated
+/// Hash a new password; random salt is generated.
 pub fn hash_new(pw: &str) -> HashedPw {
     let salt = Uuid::new_v4();
     let salt_str = salt.clone().to_string();
@@ -39,6 +39,11 @@ pub fn hash_new(pw: &str) -> HashedPw {
 
 /// Check if a user's password `pw` matches a HashedPw from the database
 /// `truth`
+///
+/// # Bugs
+///
+/// This does not use a cryptographically secure string comparison, and may
+/// therefore be vulnerable to timing attack.
 pub fn check(pw: &str, truth: &HashedPw) -> Result<()> {
     let user_input_digest = hash(pw, &truth.salt).digest;
 
