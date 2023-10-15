@@ -10,6 +10,7 @@ CONTAINER_QUALNAME=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME)
 CONTAINER_EXACT_REF=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME):$(TAG)
 
 .PHONY: build
+.PHONY: check
 .PHONY: setup
 .PHONY: dev
 .PHONY: db
@@ -20,6 +21,11 @@ CONTAINER_EXACT_REF=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME):$(TAG)
 .PHONY: shell-db
 .PHONY: build-container
 .PHONY: debug-container
+
+check:
+	cargo clippy -- -D warnings
+	cargo fmt --check
+	cargo test
 
 build: setup
 	pnpm run build
