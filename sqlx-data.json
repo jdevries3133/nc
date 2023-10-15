@@ -1,0 +1,943 @@
+{
+  "db": "PostgreSQL",
+  "106f5d78bc426662bb5bfdaed77511e9b43d0302a6afc934e4f08315a68a7b77": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int2",
+          "Int4"
+        ]
+      }
+    },
+    "query": "update property set\n                name = $1,\n                \"order\" = $2\n            where id = $3"
+  },
+  "18839789d551d75935dfb98efe9666403f63fd02449c5736f762f80bd2fb7c3d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "collection_id",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "order",
+          "ordinal": 4,
+          "type_info": "Int2"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select id, type_id, collection_id, name, \"order\"\n        from property\n        where collection_id = $1"
+  },
+  "2b7408741b7610646bab42b50d41368a2b041ccf9b8d36b38a2e47c99887eefa": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 2,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select id, sort_by_prop_id prop_id, sort_type_id type_id\n            from collection where id = $1"
+  },
+  "2e883cabd85608084b9d373eab5bf6a311ada0b3311fb91d19a970aeca8efa22": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 4,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select\n                f.id,\n                ft.id type_id,\n                ft.name type_name,\n                f.prop_id,\n                f.value\n            from filter_int f\n            join filter_type ft on f.type_id = ft.id\n            join property p on p.id = f.prop_id\n            where p.collection_id = $1"
+  },
+  "31a0c1d28ab88972acd0dfd31632fec0a72fb7fe99b25766013654c53a18d6ea": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "update filter_int_range\n            set start = $1, \"end\" = $2, type_id = $3\n            where id = $4"
+  },
+  "37c9ce0734882f9afa71045a77289cf71038ed6a9f32f6cf54f87934ca407fe3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select name from collection where id = $1"
+  },
+  "3d1e8d22cf7686d1d5f414fe29df4db7ef995780e50c417624b0d2273ce3e169": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Text"
+        ]
+      }
+    },
+    "query": "insert into page_content (page_id, content) values ($1, $2)\n            on conflict (page_id)\n            do update set content = $2"
+  },
+  "3d3ac326d22ec03a7ca385c251d050e59f3513044da8d07ebb796bf41cecf9a4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "insert into propval_int (value, page_id, prop_id) values ($1, $2, $3)\n            on conflict (page_id, prop_id)\n            do update set value = $1"
+  },
+  "4b876a518c4ba0060b64a95bbc31fc1992b48c4d1d393a7decf56195b64cab4f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Bool",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "update filter_bool set value = $1, type_id = $2 where id = $3"
+  },
+  "4e7371d2e20daae3d1fb723ac810c3636046e35aba3788f20df56da73ef4447a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int8",
+          "Int8"
+        ]
+      }
+    },
+    "query": "insert into filter_int_range (type_id, prop_id, start, \"end\") values\n            ($1, $2, $3, $4)\n        returning (id)\n        "
+  },
+  "4f7a010f748e05613d087341bfed4fff3b6086bdbb10b4e130811da94deccc8b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            update collection set\n                sort_by_prop_id = $1,\n                sort_type_id = $2\n            where id = $3\n            "
+  },
+  "5b5fe3299cc41bd57e5dc20864f6b760358658a1771b4ef055433a77a8a6e8a6": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start",
+          "ordinal": 4,
+          "type_info": "Int8"
+        },
+        {
+          "name": "end",
+          "ordinal": 5,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select\n                f.id,\n                ft.id type_id,\n                ft.name type_name,\n                f.prop_id,\n                f.start,\n                f.end\n            from filter_int_range f\n            join filter_type ft on f.type_id = ft.id\n            join property p on p.id = f.prop_id\n            where p.collection_id = $1"
+  },
+  "6bbc02dd0822add89b45342ec01ee4b117ccf8b5ebf1e62a3a3052b33b6c8cba": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int4"
+        ]
+      }
+    },
+    "query": "update page set title = $1 where id = $2"
+  },
+  "6bea6af33fdb4b1e19d53335083104bb3372e67a52807e527095c9be5d66e11d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "insert into page (collection_id, title) values ($1, $2)"
+  },
+  "70110c383b7af1407cf18775e6765b82504230e636ab7793e8b21de6924fff2e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "insert into users (username, email, salt, digest) values ($1, $2, $3, $4)\n        returning id"
+  },
+  "71a9c26556e3efbab5fa21c88024ddd44868bd7bb8fd1d1a665ece043c50f5f7": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start",
+          "ordinal": 4,
+          "type_info": "Int8"
+        },
+        {
+          "name": "end",
+          "ordinal": 5,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select\n                f.id,\n                ft.id type_id,\n                ft.name type_name,\n                f.prop_id,\n                f.start,\n                f.end\n            from filter_int_range f\n            join filter_type ft on f.type_id = ft.id\n            where f.id = $1"
+  },
+  "8629d3284128a6797884c8b0cab591fa7ee8e4351d644e51f000408868344ddd": {
+    "describe": {
+      "columns": [
+        {
+          "name": "cnt",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select count(1) cnt from property p\n        left join filter_bool fb on p.id = fb.prop_id\n        left join filter_int fi on p.id = fi.prop_id\n        left join filter_int_range fri on p.id = fri.prop_id\n        where\n            p.collection_id = $1\n            and fb.id is null\n            and fi.id is null\n            and fri.id is null\n        "
+  },
+  "89af9b653ed38745137b46e5de046bce7173ce3b634bc9ef6c06ea57cfa48d98": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "delete from filter_bool where id = $1"
+  },
+  "8fbb2f266c986f05be884dda779c30e2024fe49e7f8663a6373732628765c5cf": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "email",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "select id, username, email from users\n            where username = $1 or email = $1"
+  },
+  "9778028288b975abf83e4e78c3b27848d382cc383bd74d2d03d41664cb8b6e19": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Bool"
+        ]
+      }
+    },
+    "query": "insert into filter_bool (type_id, prop_id, value) values\n            ($1, $2, $3)\n        returning (id)\n        "
+  },
+  "a4c4724d033e01062eebff18c045af55e5d2c19ab7a2f9876e08ef414dfcd02c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Int8"
+        ]
+      }
+    },
+    "query": "insert into filter_int (type_id, prop_id, value) values\n            ($1, $2, $3)\n        returning (id)\n        "
+  },
+  "b0212d86a6ad360b8ddc3fdd1ff67c22ce0bdd7524feaec79587d1b0bc052bcd": {
+    "describe": {
+      "columns": [
+        {
+          "name": "content",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "page_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select content, page_id from page_content where page_id = $1"
+  },
+  "b3b5a24622f95598870b11e8cae6f371853b70c2d76b3328f9ff82ba3c4e5d73": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "collection_id",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "name",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "order",
+          "ordinal": 4,
+          "type_info": "Int2"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select id, type_id, collection_id, name, \"order\"\n            from property\n            where id = $1"
+  },
+  "b8421044ba2dad3ebdd43515362042f24d6ec3a4aec6c9e2d6ad885d52c8d84f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 4,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select\n                f.id,\n                ft.id type_id,\n                ft.name type_name,\n                f.prop_id,\n                f.value\n            from filter_bool f\n            join filter_type ft on f.type_id = ft.id\n            where f.id = $1"
+  },
+  "c4fecadf6ab92864e9277ad5ed9a3ff20d3af01eff0da80cdb06ba5821e85be3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "delete from filter_int_range where id = $1"
+  },
+  "c7fb96ead85e5910b02706cdc6ab998e4cbf6578bbecb0777e0f8a445fa8260a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "update filter_int set value = $1, type_id = $2 where id = $3"
+  },
+  "c9d973567dc9e9cf630e6e6100d91a842f7715f4b95880a86f5153b17d7da266": {
+    "describe": {
+      "columns": [
+        {
+          "name": "page_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 2,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "select page_id, prop_id, value from propval_int\n            where page_id = any($1)"
+  },
+  "cb790255b5f08fcdf40acef94c6997dc6896511a51c11b93ab87e4d7def62ae3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 3,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select\n                f.id,\n                ft.id type_id,\n                f.prop_id,\n                f.value\n            from filter_int f\n            join filter_type ft on f.type_id = ft.id\n            where f.id = $1"
+  },
+  "cd4a03c40a3d05b71d81557aba466b50183e0ffb426d48883bc36d1bfa80e31b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 4,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select\n                f.id,\n                ft.id type_id,\n                ft.name type_name,\n                f.prop_id,\n                f.value\n            from filter_bool f\n            join filter_type ft on f.type_id = ft.id\n            join property p on p.id = f.prop_id\n            where p.collection_id = $1"
+  },
+  "e03e96472e0f78b53e31e86f7702dd80d455475d8c051c4e2284d42f1862403e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "salt",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "digest",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "SELECT salt, digest FROM users WHERE id = $1"
+  },
+  "e099fac065e614d068b79e25d89f1e9ab8f441352d545c6a444c550a31775c62": {
+    "describe": {
+      "columns": [
+        {
+          "name": "page_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 2,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "select page_id, prop_id, value from propval_int\n            where page_id = $1 and prop_id = $2"
+  },
+  "e9a654c09f7ca8824e74ec37d9097ddf5e04c7e8fac8124d648ea9ee7f0aba48": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Bool",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "insert into propval_bool (value, page_id, prop_id) values ($1, $2, $3)\n            on conflict (page_id, prop_id)\n            do update set value = $1"
+  },
+  "eb9c561e9a2623a14d5cd9c81ff4b9163b49f71add3cda3c71e4874871060740": {
+    "describe": {
+      "columns": [
+        {
+          "name": "page_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 2,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "select page_id, prop_id, value from propval_bool\n            where page_id = any($1)"
+  },
+  "eeb2d9ebea282454be9c8b0b4c99beedf991d6cd8d09ff2d8eba8837e5a29282": {
+    "describe": {
+      "columns": [
+        {
+          "name": "collection_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "title",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "content?",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select\n                p.collection_id collection_id, p.title title, pc.content as \"content?\"\n            from page p\n            left join page_content pc on pc.page_id = p.id\n            where p.id = $1"
+  },
+  "f1121a29c4ece812dcf30147ffed83db18776cfdb7ac8efbbec90eca8572c8c1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "delete from filter_int where id = $1"
+  },
+  "f39ec67dc039bb55ba5e89874062718fed045df4ad61c6756111359de182c8dc": {
+    "describe": {
+      "columns": [
+        {
+          "name": "page_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 2,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "select page_id, prop_id, value from propval_bool\n            where page_id = $1 and prop_id = $2"
+  }
+}
