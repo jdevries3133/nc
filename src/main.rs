@@ -35,7 +35,7 @@ async fn main() {
         .nest("/authentication", public_routes)
         .with_state(state);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
     println!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
@@ -44,16 +44,16 @@ async fn main() {
 }
 
 async fn create_pg_pool() -> sqlx::Pool<sqlx::Postgres> {
-    let pg_usr = &env::var("POSTGRES_USER")
+    let pg_usr = &env::var("POSTGRES_USERNAME")
         .expect("postgres user to be defined in environment")[..];
     let pg_pw = &env::var("POSTGRES_PASSWORD")
         .expect("postgres password to be defined in environment")[..];
     let pg_db = &env::var("POSTGRES_DB")
         .expect("postgres db name to be defined in environment")[..];
-    let db_url = &format!(
-        "postgres://{}:{}@localhost:5432/{}",
-        pg_usr, pg_pw, pg_db
-    )[..];
+    let pg_host = &env::var("POSTGRES_HOST")
+        .expect("postgres host to be defined in the environment")[..];
+    let db_url =
+        &format!("postgres://{pg_usr}:{pg_pw}@{pg_host}:5432/{pg_db}",)[..];
 
     PgPoolOptions::new()
         // Postgres default max connections is 100, and we'll take 'em

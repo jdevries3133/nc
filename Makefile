@@ -2,6 +2,13 @@ SHELL := /bin/bash
 ENV=source .env &&
 DB_CONTAINER_NAME := "nc_db"
 
+# The registry is presumed to be docker.io, which is the implicit default
+DOCKER_ACCOUNT=jdevries3133
+CONTAINER_NAME=nc
+TAG?=$(shell git describe --tags)
+CONTAINER_QUALNAME=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME)
+CONTAINER_EXACT_REF=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME):$(TAG)
+
 .PHONY: build
 .PHONY: setup
 .PHONY: dev
@@ -11,6 +18,8 @@ DB_CONTAINER_NAME := "nc_db"
 .PHONY: reset-db
 .PHONY: watch-db
 .PHONY: shell-db
+.PHONY: build-container
+.PHONY: debug-container
 
 build: setup
 	pnpm run build
@@ -39,7 +48,7 @@ start-db:
 	$(ENV) docker run \
         --name $(DB_CONTAINER_NAME) \
         -e POSTGRES_DATABASE="$$POSTGRES_DB" \
-        -e POSTGRES_USER="$$POSTGRES_USER" \
+        -e POSTGRES_USERNAME="$$POSTGRES_USERNAME" \
         -e POSTGRES_PASSWORD="$$POSTGRES_PASSWORD" \
         -v $(PWD)/initdb.sql:/docker-entrypoint-initdb.d/initdb.sql \
         -p 5432:5432 \
@@ -58,4 +67,26 @@ watch-db:
 
 shell-db:
 	$(ENV) PGPASSWORD=$$POSTGRES_PASSWORD \
-		psql -U "$$POSTGRES_USER" -h 0.0.0.0 $$POSTGRES_DB
+		psql -U "$$POSTGRES_USERNAME" -h 0.0.0.0 $$POSTGRES_DB
+
+build-container:
+	rustup target add x86_64-unknown-linux-musl
+	cargo build --release --target x86_64-unknown-linux-musl
+	docker buildx build --load --platform linux/amd64 -t $(CONTAINER_EXACT_REF) .
+
+# Run the above container locally, such that it can talk to the local
+# PostgreSQL database launched by `make start-db`. We expect here that the
+# local database is already running and the container has already been built.
+debug-container:
+	$(ENV) docker run \
+		-e RUST_BACKTRACE=1 \
+		-e POSTGRES_USERNAME="$$POSTGRES_USERNAME" \
+		-e POSTGRES_PASSWORD="$$POSTGRES_PASSWORD" \
+		-e POSTGRES_DB="$$POSTGRES_DB" \
+		-e POSTGRES_HOST="host.docker.internal" \
+		-e SESSION_SECRET="$$SESSION_SECRET" \
+		-p 8000:8000 \
+		$(CONTAINER_EXACT_REF)
+
+push-container: build-container
+	docker push $(CONTAINER_EXACT_REF)
