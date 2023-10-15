@@ -35,6 +35,9 @@ setup:
 	[[ ! -f ./src/htmx-1.9.6.vendor.js ]] \
 		&& curl -L https://unpkg.com/htmx.org@1.9.4 > src/htmx-1.9.6.vendor.js \
 		|| true
+ifdef CI
+	npm i -g pnpm
+endif
 	[[ ! -d node_modules ]] \
 		&& pnpm install \
 		|| true

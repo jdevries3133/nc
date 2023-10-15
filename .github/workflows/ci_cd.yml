@@ -16,6 +16,10 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          components: clippy,rustfmt
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
       - name: make check
         run: make check
 
