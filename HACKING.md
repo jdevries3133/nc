@@ -42,3 +42,21 @@ You can easily direct the program to your PostgreSQL instance of your choosing
 by simply changing the `.env` file. Note that the `.env` file is created by
 copying `env-template` the first time you run `make dev`. Naturally, it contains
 other handy config levers.
+
+# Auth & Getting Around
+
+Navigation and flows between routes has generally not yet joined the chat, so
+you need to know where to go if you're running the app locally:
+
+- `/authentication/register` to make an account
+- `/authentication/login` to log in if you already did so
+- `/collection/1` to view the one and only default collection, though you'll be
+  redirected to `/authentication/login` if you've not authenticated yet.
+- to logout, if you wish, delete your cookies!
+
+Once you get to `/collection/1`, there's a more complete navigation experience
+between the 3 views there:
+
+- main view (`/collection/1`)
+- add page (`/collection/1/new-page`)
+- reorder columns (`/collection/1/prop-order`)
