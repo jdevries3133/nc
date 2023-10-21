@@ -1,8 +1,7 @@
 /// HTMX utils
 use axum::http::{HeaderMap, HeaderValue};
 
-pub fn redirect(to: &str) -> HeaderMap {
-    let mut headers = HeaderMap::new();
+pub fn redirect(mut headers: HeaderMap, to: &str) -> HeaderMap {
     headers.insert(
         "Hx-Redirect",
         HeaderValue::from_str(to)

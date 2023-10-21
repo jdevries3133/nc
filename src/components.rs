@@ -93,10 +93,35 @@ impl Component for Page<'_> {
 pub struct Home;
 impl Component for Home {
     fn render(&self) -> String {
-        r#"
-        <h1>hi</h1>
-        "#
-        .into()
+        let design_link = ExternalLink {
+            children: Box::new(Text {
+                inner_text: &"Click here to learn more about the design and vision for the project"
+            }),
+            href: "https://github.com/jdevries3133/nc/blob/main/DESIGN.md"
+        }.render();
+        let roadmap_link = ExternalLink {
+            children: Box::new(Text {
+                inner_text: &"Click here to learn about the project roadmap",
+            }),
+            href: "https://github.com/jdevries3133/nc#next-steps",
+        }
+        .render();
+        format!(
+            r#"
+            <div class="prose bg-slate-200 rounded p-2">
+                <h1>Notion Clone!</h1>
+                <p>This is my simple Notion Clone, a work-in-progress.</p>
+                <p>{design_link}</p>
+                <p>{roadmap_link}</p>
+                <a href="/authentication/register">
+                    <p>Click here to create an account use the app</p>
+                </a>
+                <a href="/authentication/login">
+                    <p>Click here to login.</p>
+                </a>
+            </div>
+            "#
+        )
     }
 }
 
@@ -1480,11 +1505,32 @@ impl Component for RegisterForm {
                     this is how I will prevent login spam, though you may take
                     a look at the source code and find the secret word if you
                     really want a sneak peek so bad. Let reading the source
-                    be your Captcha
+                    be your Captcha.
                 </p>
                 <input type="text" id="secret_word" name="secret_word" />
                 <button class="dark:bg-slate-700 w-36 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Sign Up</button>
             </form>
             "#.to_string()
+    }
+}
+
+pub struct ExternalLink<'a> {
+    pub href: &'a str,
+    pub children: Box<dyn Component>,
+}
+impl Component for ExternalLink<'_> {
+    fn render(&self) -> String {
+        let children = self.children.render();
+        let href = self.href;
+        format!(
+            r#"
+            <a href={href}>
+                {children}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 inline">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+                </svg>
+            </a>
+            "#
+        )
     }
 }

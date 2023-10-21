@@ -411,9 +411,10 @@ pub async fn handle_page_submission(
     } else {
         db_ops::create_page(&db, collection_id, &form.title).await?;
     }
+    let headers = HeaderMap::new();
     Ok((
         axum::http::StatusCode::CREATED,
-        htmx::redirect(&format!("/collection/{collection_id}")),
+        htmx::redirect(headers, &format!("/collection/{collection_id}")),
         "OK",
     ))
 }
@@ -1211,8 +1212,8 @@ pub async fn handle_registration(
         db_ops::create_user(&db, form.username, form.email, &hashed_pw).await?;
     let session = session::Session { user };
     let headers = session.update_headers(headers);
-
-    Ok((headers, "ya did it son"))
+    let headers = htmx::redirect(headers, "/collection/1");
+    Ok((headers, "OK"))
 }
 
 pub async fn get_login_form(headers: HeaderMap) -> impl IntoResponse {
@@ -1245,9 +1246,12 @@ pub async fn handle_login(
     let headers = HeaderMap::new();
     if let Ok(session) = session {
         let headers = session.update_headers(headers);
-
-        Ok((headers, "u good"))
+        let headers = htmx::redirect(headers, "/collection/1");
+        Ok((headers, "OK"))
     } else {
-        Ok((headers, "u no is good"))
+        Ok((
+            headers,
+            r#"<p hx-trigger="load delay:1s" hx-get="/authentication/login">Nice try ya chungus</p>"#,
+        ))
     }
 }
