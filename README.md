@@ -24,6 +24,8 @@ easier.
 
 These are in priority order.
 
+- add a `created_at` timestamp and expiry. Otherwise, each user only has one
+  JWT for all time, which is quite cursed
 - hover tooltips are gross; we can do a better implementation with a bit of JS
 - improve UX around hover-tooltip-icons on mobile by changing them to a button
   with the icon and text
