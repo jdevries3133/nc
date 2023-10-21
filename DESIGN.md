@@ -79,6 +79,9 @@ experimentation on top of the database schema.
 After the aformentioned ad-hoc'ing, maybe we want to push props from the notion
 clone down into the database. That can be done with a single click!
 
+For this part of the project, I'd like to add a CLI to our main binary, probably
+using [argh](https://github.com/google/argh).
+
 ### Page Content is Internal Notes
 
 Notes about a row in the database will be the content of a page.
