@@ -2,10 +2,8 @@ use super::{controllers, models};
 use axum::routing::{delete, get, post, Router};
 
 #[rustfmt::skip]
-pub fn get_routes() -> Router<models::AppState> {
+pub fn get_protected_routes() -> Router<models::AppState> {
     Router::new()
-        .route("/",                                                 get(controllers::root))
-        .route("/ping",                                             get(controllers::pong))
         .route("/collection/:id",                                   get(controllers::get_collection))
         .route("/collection/:id",                                   post(controllers::handle_page_submission))
         .route("/collection/:id/new-page",                          get(controllers::new_page_form))
@@ -48,10 +46,12 @@ pub fn get_routes() -> Router<models::AppState> {
 }
 
 #[rustfmt::skip]
-pub fn get_auth_routes() -> Router<models::AppState> {
+pub fn get_public_routes() -> Router<models::AppState> {
     Router::new()
-        .route("/register",                          get(controllers::get_registration_form))
-        .route("/register",                          post(controllers::handle_registration))
-        .route("/login",                             get(controllers::get_login_form))
-        .route("/login",                             post(controllers::handle_login))
+        .route("/",                                  get(controllers::root))
+        .route("/ping",                              get(controllers::pong))
+        .route("/authentication/register",           get(controllers::get_registration_form))
+        .route("/authentication/register",           post(controllers::handle_registration))
+        .route("/authentication/login",              get(controllers::get_login_form))
+        .route("/authentication/login",              post(controllers::handle_login))
 }

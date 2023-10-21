@@ -23,16 +23,16 @@ async fn main() {
 
     let db = create_pg_pool().await;
     let state = models::AppState { db };
-    let routes = routes::get_routes()
+    let routes = routes::get_protected_routes()
         .layer(from_fn(middleware::html_headers))
         .layer(from_fn(middleware::auth));
 
     let public_routes =
-        routes::get_auth_routes().layer(from_fn(middleware::html_headers));
+        routes::get_public_routes().layer(from_fn(middleware::html_headers));
 
     let app = Router::new()
         .nest("/", routes)
-        .nest("/authentication", public_routes)
+        .nest("/", public_routes)
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
