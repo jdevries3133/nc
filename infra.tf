@@ -18,6 +18,11 @@ terraform {
   }
 }
 
+resource "random_password" "secret_key" {
+  length  = 48
+  special = false
+}
+
 provider "kubernetes" {
   config_path = "~/.kube/config"
 }
@@ -33,4 +38,8 @@ module "basic-deployment" {
   app_name  = "nc"
   container = "jdevries3133/nc:${data.external.git_describe.result.output}"
   domain    = "nc.jackdevries.com"
+
+  extra_env = {
+    SESSION_SECRET = random_password.secret_key.result
+  }
 }
