@@ -29,6 +29,7 @@ ifdef CI
 endif
 	cargo clippy -- -D warnings
 	cargo fmt --check
+	terraform fmt --check
 	cargo test
 
 build: setup
