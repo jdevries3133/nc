@@ -14,6 +14,7 @@ CONTAINER_EXACT_REF=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME):$(TAG)
 .PHONY: setup
 .PHONY: dev
 .PHONY: bootstrap
+.PHONY: deploy
 .PHONY: _start-db
 .PHONY: _stop-db
 .PHONY: watch-db
@@ -67,6 +68,12 @@ bootstrap: setup _stop-db
 	@echo "and run 'make dev' to get live-reloading started."
 	@echo "===================================================================="
 	$(ENV) ./target/debug/nc
+
+deploy:
+ifdef CI
+	terraform init
+endif
+	terraform apply -auto-approve
 
 _start-db:
 	$(ENV) docker run \
