@@ -42,7 +42,6 @@ pub fn get_protected_routes() -> Router<models::AppState> {
         .route("/page/:page_id/prop/:prop_id/int",                  post(controllers::save_pv_int))
         .route("/page/:page_id/prop/:prop_id/new-bool",             get(controllers::new_bool_propval_form))
         .route("/page/:page_id/prop/:prop_id/new-int",              get(controllers::new_int_propval_form))
-        .route("/static/htmx-1.9.6",                                get(controllers::get_htmx_js))
 }
 
 #[rustfmt::skip]
@@ -54,4 +53,5 @@ pub fn get_public_routes() -> Router<models::AppState> {
         .route("/authentication/register",           post(controllers::handle_registration))
         .route("/authentication/login",              get(controllers::get_login_form))
         .route("/authentication/login",              post(controllers::handle_login))
+        .route("/static/htmx-1.9.6",                                get(controllers::get_htmx_js))
 }
