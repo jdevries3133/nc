@@ -1,11 +1,5 @@
 create extension if not exists "uuid-ossp";
 
--- Ensure the database and schema names here match the databaes and schema
--- name in the `.env` file.
-create database nc;
-create schema nc;
-\c nc;
-
 create table users(
     id serial primary key,
     username varchar(255) unique not null,

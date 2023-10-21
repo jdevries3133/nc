@@ -1,6 +1,7 @@
+use anyhow::Result;
 use axum::{middleware::from_fn, Router};
 use dotenvy::dotenv;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{self, postgres::PgPoolOptions};
 use std::{env, net::SocketAddr};
 
 mod auth;
@@ -18,10 +19,11 @@ mod routes;
 mod session;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     dotenv().ok();
 
-    let db = create_pg_pool().await;
+    let db = create_pg_pool().await?;
+    sqlx::migrate!().run(&db).await?;
     let state = models::AppState { db };
     let routes = routes::get_protected_routes()
         .layer(from_fn(middleware::html_headers))
@@ -41,9 +43,11 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+
+    Ok(())
 }
 
-async fn create_pg_pool() -> sqlx::Pool<sqlx::Postgres> {
+async fn create_pg_pool() -> Result<sqlx::Pool<sqlx::Postgres>> {
     let pg_usr = &env::var("POSTGRES_USERNAME")
         .expect("postgres user to be defined in environment")[..];
     let pg_pw = &env::var("POSTGRES_PASSWORD")
@@ -55,11 +59,10 @@ async fn create_pg_pool() -> sqlx::Pool<sqlx::Postgres> {
     let db_url =
         &format!("postgres://{pg_usr}:{pg_pw}@{pg_host}:5432/{pg_db}",)[..];
 
-    PgPoolOptions::new()
+    Ok(PgPoolOptions::new()
         // Postgres default max connections is 100, and we'll take 'em
         // https://www.postgresql.org/docs/current/runtime-config-connection.html
         .max_connections(80)
         .connect(db_url)
-        .await
-        .expect("pool to be able to connect")
+        .await?)
 }
