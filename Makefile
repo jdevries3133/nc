@@ -21,6 +21,7 @@ CONTAINER_EXACT_REF=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME):$(TAG)
 .PHONY: shell-db
 .PHONY: build-container
 .PHONY: debug-container
+.PHONY: push-container
 
 check: setup
 ifdef CI
@@ -88,7 +89,8 @@ shell-db:
 	$(ENV) PGPASSWORD=$$POSTGRES_PASSWORD \
 		psql -U "$$POSTGRES_USERNAME" -h 0.0.0.0 $$POSTGRES_DB
 
-build-container:
+build-container: setup
+	pnpm run build
 	rustup target add x86_64-unknown-linux-musl
 	cargo build --release --target x86_64-unknown-linux-musl
 	docker buildx build --load --platform linux/amd64 -t $(CONTAINER_EXACT_REF) .
