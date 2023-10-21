@@ -39,7 +39,11 @@ pub async fn html_headers<B>(request: Request<B>, next: Next<B>) -> Response {
 pub async fn auth<B>(request: Request<B>, next: Next<B>) -> Response {
     let headers = request.headers();
     let session = session::Session::from_headers(headers);
-    if session.is_some() {
+    if let Some(session) = session {
+        let path = request.uri().path();
+        let method = request.method().as_str();
+        let username = session.user.username;
+        println!("{method} {path} from {username}");
         next.run(request).await
     } else {
         Redirect::to("/authentication/login").into_response()
