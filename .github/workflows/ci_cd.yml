@@ -67,9 +67,6 @@ jobs:
       - name: setup-musl
         run: sudo apt-get install -y musl-tools
 
-      - name: build the container
-        run: make build-container
-
       - name: push the container to Docker Hub
         run: make push-container
 
