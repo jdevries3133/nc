@@ -18,14 +18,21 @@ terraform {
   }
 }
 
+provider "kubernetes" {
+  config_path = "~/.kube/config"
+}
+
+provider "helm" {
+  kubernetes {
+    config_path = "~/.kube/config"
+  }
+}
+
 resource "random_password" "secret_key" {
   length  = 48
   special = false
 }
 
-provider "kubernetes" {
-  config_path = "~/.kube/config"
-}
 
 data "external" "git_describe" {
   program = ["sh", "-c", "echo '{\"output\": \"'\"$(git describe --tags)\"'\"}'"]
