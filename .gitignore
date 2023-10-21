@@ -3,3 +3,4 @@
 node_modules
 tailwind.generated.css
 src/htmx-1.9.6.vendor.js
+.terraform
