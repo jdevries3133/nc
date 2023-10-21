@@ -13,10 +13,9 @@ CONTAINER_EXACT_REF=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME):$(TAG)
 .PHONY: check
 .PHONY: setup
 .PHONY: dev
-.PHONY: db
-.PHONY: start-db
-.PHONY: stop-db
-.PHONY: reset-db
+.PHONY: bootstrap
+.PHONY: _start-db
+.PHONY: _stop-db
 .PHONY: watch-db
 .PHONY: shell-db
 .PHONY: build-container
@@ -59,31 +58,36 @@ dev: setup
 		'pnpm run dev' \
 		"cargo watch -x 'run --features live_reload'"
 
-db: reset-db watch-db
+bootstrap: setup _stop-db
+	SQLX_OFFLINE=true cargo build
+	make _start-db
+	@sleep 1  # give the DB time to startup
+	@echo "===================================================================="
+	@echo "Bootstrap complete! The app is running now, but you need to stop it"
+	@echo "and run 'make dev' to get live-reloading started."
+	@echo "===================================================================="
+	$(ENV) ./target/debug/nc
 
-start-db:
+_start-db:
 	$(ENV) docker run \
         --name $(DB_CONTAINER_NAME) \
         -e POSTGRES_DB="$$POSTGRES_DB" \
-        -e POSTGRES_USER="$$POSTGRES_USERNAME" \
+        -e POSTGRES_USER="$$POSTGRES_USER" \
         -e POSTGRES_PASSWORD="$$POSTGRES_PASSWORD" \
         -p 5432:5432 \
         -d \
         postgres:15
 
-stop-db:
+_stop-db:
 	docker kill $(DB_CONTAINER_NAME) || true
 	docker rm $(DB_CONTAINER_NAME) || true
-
-reset-db: stop-db
-	make start-db
 
 watch-db:
 	docker logs -f $(DB_CONTAINER_NAME)
 
 shell-db:
 	$(ENV) PGPASSWORD=$$POSTGRES_PASSWORD \
-		psql -U "$$POSTGRES_USERNAME" -h 0.0.0.0 $$POSTGRES_DB
+		psql -U "$$POSTGRES_USER" -h 0.0.0.0 $$POSTGRES_DB
 
 build-container: setup
 	pnpm run build
@@ -92,14 +96,12 @@ build-container: setup
 	docker buildx build --load --platform linux/amd64 -t $(CONTAINER_EXACT_REF) .
 
 # Run the above container locally, such that it can talk to the local
-# PostgreSQL database launched by `make start-db`. We expect here that the
+# PostgreSQL database launched by `make _start-db`. We expect here that the
 # local database is already running and the container has already been built.
 debug-container:
 	$(ENV) docker run \
 		-e RUST_BACKTRACE=1 \
-		-e POSTGRES_USERNAME="$$POSTGRES_USERNAME" \
-		-e POSTGRES_PASSWORD="$$POSTGRES_PASSWORD" \
-		-e POSTGRES_DB="$$POSTGRES_DB" \
+		-e DATABASE_URL="$$DATABASE_URL" \
 		-e POSTGRES_HOST="host.docker.internal" \
 		-e SESSION_SECRET="$$SESSION_SECRET" \
 		-p 8000:8000 \

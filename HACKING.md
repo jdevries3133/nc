@@ -1,6 +1,6 @@
 # Getting Started
 
-To run the project locally, you need the following tools:
+To run the project locally, you need the following CLI tools:
 
 - [docker CLI](https://docs.docker.com/engine/reference/commandline/cli/)
 - [cargo](https://rustup.rs/)
@@ -14,8 +14,16 @@ The following ports also must be free on your machine:
 - `5432` for PostgreSQL
 - `8000` for this application
 
-With those requirements met, running the project locally should be as simple as
-using the Makefile:
+You will need to bootstrap the app and database by performing on offline
+compilation using `./sqlx-data.json` -- there's a handy make rule to get you
+started;
+
+```
+make bootstrap
+```
+
+After running the bootstrap rule, the app will be running, but it won't
+live-reload. To run the typical dev scripts, stop the app and run the dev rule:
 
 ```
 make dev
@@ -31,8 +39,8 @@ There are some utilities in the Makefile for working with the database. In
 particular:
 
 ```
-make db        # reset the DB, and then live-tail the logs until you ctrl-C
 make shell-db  # attach to an interactive PostgreSQL shell inside the DB
+make watch-db  # live-tail the database logs
 ```
 
 # Other Database Options
@@ -42,6 +50,10 @@ You can easily direct the program to your PostgreSQL instance of your choosing
 by simply changing the `.env` file. Note that the `.env` file is created by
 copying `env-template` the first time you run `make dev`. Naturally, it contains
 other handy config levers.
+
+Note that the application only uses `DATABASE_URL`. The rest of the `POSTGRES_*`
+environment variables are only used in the Makefile and passed to the PostgreSQL
+Docker container during startup.
 
 # Auth & Getting Around
 

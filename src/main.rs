@@ -48,16 +48,8 @@ async fn main() -> Result<()> {
 }
 
 async fn create_pg_pool() -> Result<sqlx::Pool<sqlx::Postgres>> {
-    let pg_usr = &env::var("POSTGRES_USERNAME")
-        .expect("postgres user to be defined in environment")[..];
-    let pg_pw = &env::var("POSTGRES_PASSWORD")
-        .expect("postgres password to be defined in environment")[..];
-    let pg_db = &env::var("POSTGRES_DB")
-        .expect("postgres db name to be defined in environment")[..];
-    let pg_host = &env::var("POSTGRES_HOST")
-        .expect("postgres host to be defined in the environment")[..];
-    let db_url =
-        &format!("postgres://{pg_usr}:{pg_pw}@{pg_host}:5432/{pg_db}",)[..];
+    let db_url = &env::var("DATABASE_URL")
+        .expect("database url to be defined in the environment")[..];
 
     Ok(PgPoolOptions::new()
         // Postgres default max connections is 100, and we'll take 'em
