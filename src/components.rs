@@ -1534,7 +1534,7 @@ impl Component for RegisterForm {
                 <label for="password">Password</label>
                 <input autocomplete="current-password" type="password" id="password" name="password" />
                 <label for="secret_word">Secret Word</label>
-                <p class="text-sm text-slate-100">
+                <p class="text-sm dark:text-slate-100">
                     What is the secret word? This app is under development and
                     this is how I will prevent login spam, though you may take
                     a look at the source code and find the secret word if you
