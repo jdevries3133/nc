@@ -6,7 +6,9 @@ use super::{
     errors::ServerError,
     htmx, models,
     models::{AppState, PropVal},
-    pw, session,
+    pw,
+    routes::Route,
+    session,
 };
 use anyhow::Result;
 use axum::{
@@ -48,6 +50,19 @@ pub async fn pong() -> impl IntoResponse {
     "pong"
 }
 
+/// You may be wondering why this sits on a separate response while the
+/// tailwind styles are inlined into the page template and basically
+/// hard-coded into every initial response. This is because the CSS is a
+/// blocker for page rendering, so we want it right there in the initial
+/// response. Meanwhile, it's fine for the browser to fetch and run HTMX
+/// asynchronously since it doesn't really need to be on the page until the
+/// first user interaction.
+///
+/// Additionally, our HTMX version does not change very often. We can exploit
+/// browser cachine to mostly never need to serve this resource, making the
+/// app more responsive and cutting down on overall bandwidth. That's also why
+/// we have the HTMX version in the URL path -- because we need to bust the
+/// browser cache every time we upgrade.
 pub async fn get_htmx_js() -> impl IntoResponse {
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -412,9 +427,10 @@ pub async fn handle_page_submission(
         db_ops::create_page(&db, collection_id, &form.title).await?;
     }
     let headers = HeaderMap::new();
+    let collection_route = Route::Collection(Some(collection_id));
     Ok((
         axum::http::StatusCode::CREATED,
-        htmx::redirect(headers, &format!("/collection/{collection_id}")),
+        htmx::redirect(headers, &collection_route.as_string()),
         "OK",
     ))
 }
@@ -464,12 +480,12 @@ pub async fn get_filter_toolbar(
         && int_filters.is_empty()
         && int_rng_filters.is_empty()
     {
+        let hide_route =
+            Route::CollectionHideFilterToolbar(Some(collection_id));
         return Ok(components::Div {
             class: "my-2",
             hx_trigger: Some("toggle-filter-toolbar from:body"),
-            hx_get: Some(&format!(
-                "/collection/{collection_id}/hide-filter-toolbar"
-            )),
+            hx_get: Some(&hide_route.as_string()),
             children: Box::new(components::AddFilterButton { collection_id }),
         }
         .render());
@@ -1202,9 +1218,12 @@ pub async fn handle_registration(
 ) -> Result<impl IntoResponse, ServerError> {
     let headers = HeaderMap::new();
     if form.secret_word.to_lowercase() != "blorp" {
+        let register_route = Route::Register;
         return Ok((
             headers,
-            r#"<p hx-trigger="load delay:1s" hx-get="/authentication/register">Nice try ya chungus</p>"#,
+            format!(
+                r#"<p hx-trigger="load delay:1s" hx-get="{register_route}">Nice try ya chungus</p>"#
+            ),
         ));
     };
     let hashed_pw = pw::hash_new(&form.password);
@@ -1213,7 +1232,7 @@ pub async fn handle_registration(
     let session = session::Session { user };
     let headers = session.update_headers(headers);
     let headers = htmx::redirect(headers, "/collection/1");
-    Ok((headers, "OK"))
+    Ok((headers, "OK".to_string()))
 }
 
 pub async fn get_login_form(headers: HeaderMap) -> impl IntoResponse {
@@ -1247,11 +1266,14 @@ pub async fn handle_login(
     if let Ok(session) = session {
         let headers = session.update_headers(headers);
         let headers = htmx::redirect(headers, "/collection/1");
-        Ok((headers, "OK"))
+        Ok((headers, "OK".to_string()))
     } else {
+        let login_route = Route::Login;
         Ok((
             headers,
-            r#"<p hx-trigger="load delay:1s" hx-get="/authentication/login">Nice try ya chungus</p>"#,
+            format!(
+                r#"<p hx-trigger="load delay:1s" hx-get="{login_route}">Nice try ya chungus</p>"#
+            ),
         ))
     }
 }

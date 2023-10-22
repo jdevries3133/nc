@@ -3,7 +3,7 @@
 // are and clippy knows more than me, maybe not.
 #![allow(clippy::let_and_return)]
 
-use super::models;
+use super::{models, routes::Route};
 use ammonia::clean;
 use std::fmt::{Display, Write};
 
@@ -63,6 +63,7 @@ impl Component for Page<'_> {
         // Make sure you use `make build` in the Makefile to get both to happen
         // together
         let tailwind = include_str!("./tailwind.generated.css");
+        let htmx = Route::Htmx;
         format!(
             r#"
             <html>
@@ -76,7 +77,7 @@ impl Component for Page<'_> {
                 </head>
                 <body hx-boost="true" class="dark:bg-indigo-1000 dark:text-white mt-2 ml-2 sm:mt-8 sm:ml-8">
                     {body_html}
-                    <script src="/static/htmx-1.9.6"></script>
+                    <script src="{htmx}"></script>
                     <script>
                         htmx.config.defaultSwapStyle = "outerHTML"
                     </script>
@@ -106,6 +107,8 @@ impl Component for Home {
             href: "https://github.com/jdevries3133/nc#next-steps",
         }
         .render();
+        let register_route = Route::Register;
+        let login_route = Route::Login;
         format!(
             r#"
             <div class="prose bg-slate-200 rounded p-2">
@@ -113,10 +116,10 @@ impl Component for Home {
                 <p>This is my simple Notion Clone, a work-in-progress.</p>
                 <p>{design_link}</p>
                 <p>{roadmap_link}</p>
-                <a href="/authentication/register">
+                <a href="{register_route}">
                     <p>Click here to create an account use the app</p>
                 </a>
-                <a href="/authentication/login">
+                <a href="{login_route}">
                     <p>Click here to login.</p>
                 </a>
             </div>
@@ -151,19 +154,20 @@ impl Component for Collection {
         .render();
         let sort_toolbar_placeholder =
             SortToolbarPlaceholder { collection_id: id }.render();
+        let new_page_route = Route::CollectionNewPageForm(Some(id));
+        let list_page_route = Route::CollectionListPages(Some(id));
+        let name = clean(&self.name);
         format!(
             r#"
-            <h1 class="serif text-xl my-4">{name}</h1>
-            <a class="link" href="/collection/{id}/new-page">Create Page</a>
-            <div class="mt-2 flex">
-                {col_order} {filter_icon} {sort_icon}
-            </div>
-            {filter_toolbar_placeholder}
-            {sort_toolbar_placeholder}
-            <main hx-trigger="load" hx-get="/collection/{id}/list-pages">Loading Pages...</main>
-        "#,
-            id = self.id,
-            name = clean(&self.name)
+                <h1 class="serif text-xl my-4">{name}</h1>
+                <a class="link" href="{new_page_route}">Create Page</a>
+                <div class="mt-2 flex">
+                    {col_order} {filter_icon} {sort_icon}
+                </div>
+                {filter_toolbar_placeholder}
+                {sort_toolbar_placeholder}
+                <main hx-trigger="load" hx-get="{list_page_route}">Loading Pages...</main>
+            "#
         )
     }
 }
@@ -177,10 +181,12 @@ impl Component for PageList<'_> {
     fn render(&self) -> String {
         let collection_id = self.collection_id;
         if self.pages.is_empty() {
+            let list_page_route =
+                Route::CollectionListPages(Some(collection_id));
             return format!(
                 r#"
                 <div
-                    hx-get="/collection/{collection_id}/list-pages"
+                    hx-get="{list_page_route}"
                     hx-trigger="reload-pages from:body"
                     >
                     <div>
@@ -191,23 +197,23 @@ impl Component for PageList<'_> {
             );
         };
         let list = self.pages.iter().fold(String::new(), |mut str, page| {
-            let _ = write!(
-                str,
-                r#"
-                    <div class="flex gap-2">
-                        <a class="link" href="/page/{page_id}">Edit</a>
-                        <div class="max-w-[50vw] sm:max-w-xs truncate">{title}</div>
-                    </div>
-                    {other_props}
-                "#,
-                page_id = page.id,
-                title = clean(&page.title),
-                other_props = page
+                let page_route = Route::Page(Some(page.id));
+                let title = clean(&page.title);
+                let other_props = page
                     .props
                     .iter()
                     .map(|p| p.render())
                     .collect::<Vec<String>>()
-                    .join("")
+                    .join("");
+            let _ = write!(
+                str,
+                r#"
+                    <div class="flex gap-2">
+                        <a class="link" href="{page_route}">Edit</a>
+                        <div class="max-w-[50vw] sm:max-w-xs truncate">{title}</div>
+                    </div>
+                    {other_props}
+                "#,
             );
             str
         });
@@ -236,10 +242,11 @@ impl Component for PageList<'_> {
         // "+ 1" because we're accountign for the leftmost column containing
         // the "edit" button and the page title.
         let column_count = self.props.len() + 1;
+        let list_page_route = Route::CollectionListPages(Some(collection_id));
         format!(
             r#"
             <div
-                hx-get="/collection/{collection_id}/list-pages"
+                hx-get="{list_page_route}"
                 hx-trigger="reload-pages from:body"
                 class="mt-8 overflow-y-scroll grid gap-2"
                 style="grid-template-columns: repeat({column_count}, auto);"
@@ -258,9 +265,10 @@ struct ColumnOrderIcon {
 impl Component for ColumnOrderIcon {
     fn render(&self) -> String {
         let cid = self.collection_id;
+        let prop_order_route = Route::CollectionChangePropOrder(Some(cid));
         format!(
             r#"
-            <a href="/collection/{cid}/prop-order">
+            <a href="{prop_order_route}">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 rotate-90">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
                 </svg>
@@ -293,11 +301,11 @@ pub struct PageOverview<'a> {
 }
 impl Component for PageOverview<'_> {
     fn render(&self) -> String {
+        let collection_route = Route::Collection(Some(self.page.collection_id));
         let back_button = format!(
             r#"
-                <a class="block mb-2 link" href="/collection/{}">Back</a>
+                <a class="block mb-2 link" href="{collection_route}">Back</a>
             "#,
-            self.page.collection_id
         );
         [
             back_button,
@@ -320,9 +328,10 @@ impl Component for PageForm<'_> {
         let id = self.page.id;
         let title = &self.page.title;
         let collection_id = &self.page.collection_id;
+        let page_route = Route::PageSubmit;
         format!(
             r#"
-                <form hx-trigger="change" hx-post="/page">
+                <form hx-trigger="change" hx-post="{page_route}">
                     <input type="hidden" name="id" value="{id}" />
                     <input type="hidden" name="collection_id" value="{collection_id}" />
                     <input
@@ -348,22 +357,24 @@ impl Component for ContentDisplay<'_> {
         if let Some(content) = self.content {
             let rendered = markdown::to_html(&content.content);
             let cleaned = clean(&rendered);
+            let content_route = Route::PageContent(Some(page_id));
             format!(
                 r#"
                 <div
                     class="prose dark:prose-invert cursor-pointer"
-                    hx-get="/page/{page_id}/content"
+                    hx-get="{content_route}"
                 >
                     {cleaned}
                 </div>
             "#
             )
         } else {
+            let page_content_route = Route::PageContent(Some(page_id));
             format!(
                 r#"
                 <div
                     class="prose dark:prose-invert cursor-pointer"
-                    hx-get="/page/{page_id}/content"
+                    hx-get="{page_content_route}"
                 >
                     <p>Click to add content!</p>
                 </div>
@@ -377,10 +388,11 @@ impl Component for models::Content {
     fn render(&self) -> String {
         let page_id = self.page_id;
         let content = &self.content;
+        let page_content_route = Route::PageContent(Some(page_id));
         // next thing to do is handle submission of this form!
         format!(
             r#"
-                <form hx-trigger="change" hx-post="/page/{page_id}/content">
+                <form hx-trigger="change" hx-post="{page_content_route}">
                     <textarea
                         name="content"
                         class="w-[80vw] h-48"
@@ -396,17 +408,19 @@ impl Component for models::PvBool {
         let page_id = self.page_id;
         let prop_id = self.prop_id;
         if self.value.is_none() {
+            let route = Route::PageNewBoolProp(Some((page_id, prop_id)));
             return NullPropvalButton {
-                post_href: &format!("/page/{page_id}/prop/{prop_id}/new-bool"),
+                post_href: &route.as_string(),
             }
             .render();
         };
         let value = self.value.unwrap();
         let checked_state = if value { "checked" } else { "" };
+        let route = Route::PageBoolProp(Some((page_id, prop_id)));
         format!(
             r#"
                 <input
-                    hx-post="/page/{page_id}/prop/{prop_id}/bool"
+                    hx-post="{route}"
                     class="justify-self-center"
                     name="value"
                     type="checkbox"
@@ -422,17 +436,19 @@ impl Component for models::PvInt {
         let page_id = self.page_id;
         let prop_id = self.prop_id;
         if self.value.is_none() {
+            let route = Route::PageNewIntProp(Some((page_id, prop_id)));
             return NullPropvalButton {
-                post_href: &format!("/page/{page_id}/prop/{prop_id}/new-int"),
+                post_href: &route.as_string(),
             }
             .render();
         };
         let value = self.value.unwrap();
+        let route = Route::PageIntProp(Some((page_id, prop_id)));
         format!(
             r#"
                 <input
                     class="rounded text-sm w-24 justify-self-center"
-                    hx-post="/page/{page_id}/prop/{prop_id}/int"
+                    hx-post="{route}"
                     name="value"
                     type="number"
                     value={value}
@@ -449,7 +465,6 @@ pub struct NewPage {
 }
 impl Component for NewPage {
     fn render(&self) -> String {
-        let cid = self.collection_id;
         let page_id = if let Some(pid) = self.page_id {
             format!(r#"<input type="hidden" name="id" value="{pid}" />"#)
         } else {
@@ -460,16 +475,16 @@ impl Component for NewPage {
         } else {
             "".to_string()
         };
+        let collection_route = Route::Collection(Some(self.collection_id));
         let back_button = format!(
             r#"
-                <a class="block mb-2 link" href="/collection/{}">Back</a>
-            "#,
-            self.collection_id
+                <a class="block mb-2 link" href="{collection_route}">Back</a>
+            "#
         );
         format!(
             r#"
                 {back_button}
-                <form hx-post="/collection/{cid}">
+                <form hx-post="{collection_route}">
                     <h1 class="text-xl">New Page</h1>
                     <label for="title">Title</label>
                     <input class="rounded" type="text" name="title" id="title" value="{title}" />
@@ -521,29 +536,34 @@ impl Component for PropOrderForm {
                 let cid = p.collection_id;
                 let up = ArrowUp {}.render();
                 let down = ArrowDown {}.render();
+                let up_route =
+                    Route::CollectionIncrementPropOrder(Some((cid, pid)));
+                let down_route =
+                    Route::CollectionDecrementPropOrder(Some((cid, pid)));
                 format!(
                     r##"
-                <li class="flex">
-                    <span class="w-48 truncate">{name}</span>
-                    <a
-                        hx-post="/collection/{cid}/prop/{pid}/up"
-                        hx-target="closest div"
-                        hx-sync="closest ol:queue">{up}</a>
-                    <a 
-                        hx-post="/collection/{cid}/prop/{pid}/down"
-                        hx-target="closest div"
-                        hx-sync="closest ol:queue">{down}</a>
-                </li>
-                "##
+                    <li class="flex">
+                        <span class="w-48 truncate">{name}</span>
+                        <a
+                            hx-post="{up_route}"
+                            hx-target="closest div"
+                            hx-sync="closest ol:queue">{up}</a>
+                        <a 
+                            hx-post="{down_route}"
+                            hx-target="closest div"
+                            hx-sync="closest ol:queue">{down}</a>
+                    </li>
+                    "##
                 )
             })
             .collect::<Vec<String>>()
             .join("\n");
 
+        let collection_route = Route::Collection(Some(collection_id));
         format!(
             r#"
                 <div>
-                    <a class="link" href="/collection/{collection_id}">Back</a>
+                    <a class="link" href="{collection_route}">Back</a>
                     <ol class="ml-4 list-decimal"">{list_items}</ol>
                 </div>
             "#
@@ -646,14 +666,17 @@ impl Component for FilterToolbar<'_> {
                 acc
             },
         );
+        let hide_toolbar =
+            Route::CollectionHideSortToolbar(Some(collection_id));
+        let add_filter = Route::CollectionAddFilterButton(Some(collection_id));
         format!(
             r#"
             <div
-                hx-get="/collection/{collection_id}/hide-filter-toolbar"
+                hx-get="{hide_toolbar}"
                 hx-trigger="toggle-filter-toolbar from:body"
                 class="flex flex-row gap-2 mt-3 mb-4"
             >
-            <div hx-trigger="load" hx-get="/collection/{collection_id}/add-filter-button"></div>
+            <div hx-trigger="load" hx-get="{add_filter}"></div>
             {bool_rendered}{int_rendered}{int_rng_rendered}
             </div>
             "#
@@ -668,7 +691,7 @@ pub struct FilterBool<'a> {
 impl Component for FilterBool<'_> {
     fn render(&self) -> String {
         let prop_name = self.prop_name;
-        let href = &format!("/filter/bool/{}", self.filter.id);
+        let href = Route::FilterBool(Some(self.filter.id));
         let operation_name = self.filter.r#type.get_display_name();
         let val = if let models::FilterType::IsEmpty(..) = self.filter.r#type {
             ""
@@ -684,8 +707,8 @@ impl Component for FilterBool<'_> {
             operator_text: operation_name,
             predicate,
             // The same route is used for POST & delete
-            form_href: href,
-            delete_href: href,
+            form_href: &href.as_string(),
+            delete_href: &href.as_string(),
             filter_type: &self.filter.r#type,
         }
         .render();
@@ -701,7 +724,7 @@ pub struct FilterInt<'a> {
 }
 impl Component for FilterInt<'_> {
     fn render(&self) -> String {
-        let href = &format!("/filter/int/{}", self.filter.id);
+        let href = Route::FilterInt(Some(self.filter.id));
         let prop_name = self.prop_name;
         let operation_name = self.filter.r#type.get_display_name();
         let result = FilterChip {
@@ -711,8 +734,8 @@ impl Component for FilterInt<'_> {
                 inner_text: &self.filter.value,
             }),
             // The same href is used for POST & DELETE
-            form_href: href,
-            delete_href: href,
+            form_href: &href.as_string(),
+            delete_href: &href.as_string(),
             filter_type: &self.filter.r#type,
         }
         .render();
@@ -729,7 +752,7 @@ pub struct FilterIntRng<'a> {
 impl Component for FilterIntRng<'_> {
     fn render(&self) -> String {
         let prop_name = self.prop_name;
-        let href = &format!("/filter/int-rng/{}", self.filter.id);
+        let href = Route::FilterIntRng(Some(self.filter.id));
         let operation_name = self.filter.r#type.get_display_name();
         let start = self.filter.start;
         let end = self.filter.end;
@@ -738,8 +761,8 @@ impl Component for FilterIntRng<'_> {
             subject: prop_name,
             operator_text: operation_name,
             predicate: Box::new(predicate),
-            form_href: href,
-            delete_href: href,
+            form_href: &href.as_string(),
+            delete_href: &href.as_string(),
             filter_type: &self.filter.r#type,
         }
         .render();
@@ -868,13 +891,14 @@ impl Component for BoolFilterForm<'_> {
         }
         .render();
         let prop_name = self.prop_name;
-        let submit_url = format!("/filter/bool/{}", self.filter.id);
+        let submit_url = Route::FilterBool(Some(self.filter.id));
+        let chip_route = Route::FilterBoolChip(Some(self.filter.id));
         format!(
             r##"
             <div id="{container_id}" class="{FILTER_CONTAINER_STYLE} flex-col">
                 <div class="flex flex-row">
                     <button 
-                        hx-get="/filter/bool/{filter_id}/chip"
+                        hx-get="{chip_route}"
                         hx-target="#{container_id}""
                         >{chevron}</button>
                     <div class="flex flex-col">
@@ -926,7 +950,6 @@ pub struct IntFilterForm<'a> {
 impl Component for IntFilterForm<'_> {
     fn render(&self) -> String {
         let value = self.filter.value;
-        let id = self.filter.id;
         let prop_name = self.prop_name;
         let chevron = Chevron {
             variant: ChevronVariant::Open,
@@ -962,15 +985,17 @@ impl Component for IntFilterForm<'_> {
             } else {
                 ""
             };
+        let form_route = Route::FilterInt(Some(self.filter.id));
+        let chip_route = Route::FilterIntChip(Some(self.filter.id));
         format!(
             r#"
             <form
-                hx-post="/filter/int/{id}"
+                hx-post="{form_route}"
                 class="{FILTER_CONTAINER_STYLE}"
             >
                 <button 
                     class="self-start"
-                    hx-get="/filter/int/{id}/chip"
+                    hx-get="{chip_route}"
                     hx-target="closest form"
                     >{chevron}</button>
                 <div class="flex flex-col gap-2">
@@ -1009,7 +1034,6 @@ pub struct IntRngFilterForm<'a> {
 }
 impl Component for IntRngFilterForm<'_> {
     fn render(&self) -> String {
-        let id = self.filter.id;
         let prop_name = self.prop_name;
         let start = self.filter.start;
         let end = self.filter.end;
@@ -1025,14 +1049,16 @@ impl Component for IntRngFilterForm<'_> {
             models::FilterType::NotInRng(_) => "selected",
             _ => "",
         };
+        let form_route = Route::FilterIntRng(Some(self.filter.id));
+        let chip_route = Route::FilterIntRngChip(Some(self.filter.id));
         format!(
             r#"
             <form
-                hx-post="/filter/int-rng/{id}"
+                hx-post="{form_route}"
                 class="{FILTER_CONTAINER_STYLE}"
             >
                 <button 
-                    hx-get="/filter/int-rng/{id}/chip"
+                    hx-get="{chip_route}"
                     hx-target="closest form"
                     class="self-start"
                     >{chevron}</button>
@@ -1077,8 +1103,7 @@ impl Component for ChoosePropForFilter<'_> {
             self.props.iter().fold(String::new(), |mut acc, p| {
                 let prop_id = p.id;
                 let prop_name = clean(&p.name);
-
-                let href = format!("/prop/{prop_id}/new-filter-type-select");
+                let href = Route::PropNewFilterTypeSelect(Some(prop_id));
                 let type_string = match p.type_id {
                     models::PropValTypes::Int => "number",
                     models::PropValTypes::Bool => "checkbox",
@@ -1111,7 +1136,8 @@ pub struct AddFilterButton {
 }
 impl Component for AddFilterButton {
     fn render(&self) -> String {
-        let collection_id = self.collection_id;
+        let collection_route =
+            Route::CollectionChoosePropForFilter(Some(self.collection_id));
         format!(
             r#"
             <button
@@ -1127,7 +1153,7 @@ impl Component for AddFilterButton {
                     border-2
                     border-slate-600
                 "
-                hx-get="/collection/{collection_id}/choose-prop-for-filter"
+                hx-get="{collection_route}"
                 >
                 Add filter
             </button>
@@ -1146,11 +1172,11 @@ pub struct AddFilterButtonPlaceholder {
 }
 impl Component for AddFilterButtonPlaceholder {
     fn render(&self) -> String {
-        let collection_id = self.collection_id;
+        let route = Route::CollectionAddFilterButton(Some(self.collection_id));
         format!(
             r#"
             <div
-                hx-get="/collection/{collection_id}/add-filter-button"
+                hx-get="{route}"
                 hx-trigger="reload-add-filter-button"
             />
             "#
@@ -1377,14 +1403,17 @@ impl Component for SortToolbar<'_> {
                    <option value="2">Descending</option>"#
             }
         };
+        let hide_toolbar =
+            Route::CollectionHideSortToolbar(Some(collection_id));
+        let sort_route = Route::CollectionSort(Some(collection_id));
         format!(
             r#"<div
-                hx-get="/collection/{collection_id}/hide-sort-toolbar"
+                hx-get="{hide_toolbar}"
                 hx-trigger="toggle-sort-toolbar from:body"
                 >
                     <form
                         class="my-2"
-                        hx-post="/collection/{collection_id}/sort"
+                        hx-post="{sort_route}"
                         >
                         <select
                             name="sort_by"
@@ -1412,11 +1441,11 @@ pub struct SortToolbarPlaceholder {
 }
 impl Component for SortToolbarPlaceholder {
     fn render(&self) -> String {
-        let collection_id = self.collection_id;
+        let route = Route::CollectionShowSortToolbar(Some(self.collection_id));
         format!(
             r#"
             <div
-                hx-get="/collection/{collection_id}/show-sort-toolbar"
+                hx-get="{route}"
                 hx-trigger="toggle-sort-toolbar from:body"
                 ></div>
             "#
@@ -1429,11 +1458,11 @@ pub struct SortOrderSavedConfirmation {
 }
 impl Component for SortOrderSavedConfirmation {
     fn render(&self) -> String {
-        let collection_id = self.collection_id;
+        let route = Route::CollectionHideSortToolbar(Some(self.collection_id));
         format!(
             r##"
             <div
-                hx-get="/collection/{collection_id}/hide-sort-toolbar"
+                hx-get="{route}"
                 hx-trigger="load delay:3s"
                 class="my-2"
                 >
@@ -1474,8 +1503,10 @@ impl Component for NullPropvalButton<'_> {
 pub struct LoginForm;
 impl Component for LoginForm {
     fn render(&self) -> String {
-        r#"
-            <form class="flex flex-col gap-2 max-w-md" hx-post="/authentication/login">
+        let login_route = Route::Login;
+        format!(
+            r#"
+            <form class="flex flex-col gap-2 max-w-md" hx-post="{login_route}">
                 <h1 class="text-xl">Login</h1>
                 <label autocomplete="username" for="identifier">Username or Email</label>
                 <input type="text" id="identifier" name="identifier" />
@@ -1483,15 +1514,18 @@ impl Component for LoginForm {
                 <input autocomplete="current-password" type="password" id="password" name="password" />
                 <button class="dark:bg-slate-700 w-36 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Log In</button>
             </form>
-            "#.to_string()
+            "#
+        )
     }
 }
 
 pub struct RegisterForm;
 impl Component for RegisterForm {
     fn render(&self) -> String {
-        r#"
-            <form class="flex flex-col gap-2 max-w-md" hx-post="/authentication/register">
+        let register_route = Route::Register;
+        format!(
+            r#"
+            <form class="flex flex-col gap-2 max-w-md" hx-post="{register_route}">
                 <h1 class="text-xl">Register for an Account</h1>
                 <label for="username">Username</label>
                 <input autocomplete="username" type="text" id="username" name="username" />
@@ -1510,7 +1544,8 @@ impl Component for RegisterForm {
                 <input type="text" id="secret_word" name="secret_word" />
                 <button class="dark:bg-slate-700 w-36 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Sign Up</button>
             </form>
-            "#.to_string()
+            "#
+        )
     }
 }
 
