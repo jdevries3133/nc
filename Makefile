@@ -116,7 +116,6 @@ debug-container:
 	$(ENV) docker run \
 		-e RUST_BACKTRACE=1 \
 		-e DATABASE_URL="$$DATABASE_URL" \
-		-e POSTGRES_HOST="host.docker.internal" \
 		-e SESSION_SECRET="$$SESSION_SECRET" \
 		-p 8000:8000 \
 		$(CONTAINER_EXACT_REF)
