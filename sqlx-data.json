@@ -612,26 +612,6 @@
     },
     "query": "select page_id, prop_id, value from propval_float\n            where page_id = $1 and prop_id = $2"
   },
-  "8629d3284128a6797884c8b0cab591fa7ee8e4351d644e51f000408868344ddd": {
-    "describe": {
-      "columns": [
-        {
-          "name": "cnt",
-          "ordinal": 0,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Int4"
-        ]
-      }
-    },
-    "query": "select count(1) cnt from property p\n        left join filter_bool fb on p.id = fb.prop_id\n        left join filter_int fi on p.id = fi.prop_id\n        left join filter_int_range fri on p.id = fri.prop_id\n        where\n            p.collection_id = $1\n            and fb.id is null\n            and fi.id is null\n            and fri.id is null\n        "
-  },
   "89af9b653ed38745137b46e5de046bce7173ce3b634bc9ef6c06ea57cfa48d98": {
     "describe": {
       "columns": [],
@@ -838,6 +818,26 @@
       }
     },
     "query": "update filter_float_range\n            set start = $1, \"end\" = $2, type_id = $3\n            where id = $4"
+  },
+  "c496db17d340e1758ae80a65a42020d0c133ec27c8ddd1c2ed551cdaef25e021": {
+    "describe": {
+      "columns": [
+        {
+          "name": "cnt",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select count(1) cnt from property p\n        left join filter_bool fb on p.id = fb.prop_id\n        left join filter_int fi on p.id = fi.prop_id\n        left join filter_int_range fri on p.id = fri.prop_id\n        left join filter_float ffl on p.id = ffl.prop_id\n        left join filter_float_range fflr on p.id = fflr.prop_id\n        where\n            p.collection_id = $1\n            and fb.id is null\n            and fi.id is null\n            and fri.id is null\n            and ffl.id is null\n            and fflr is null\n        "
   },
   "c4fecadf6ab92864e9277ad5ed9a3ff20d3af01eff0da80cdb06ba5821e85be3": {
     "describe": {

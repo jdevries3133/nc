@@ -1495,11 +1495,15 @@ pub async fn does_collection_have_capacity_for_additional_filters(
         left join filter_bool fb on p.id = fb.prop_id
         left join filter_int fi on p.id = fi.prop_id
         left join filter_int_range fri on p.id = fri.prop_id
+        left join filter_float ffl on p.id = ffl.prop_id
+        left join filter_float_range fflr on p.id = fflr.prop_id
         where
             p.collection_id = $1
             and fb.id is null
             and fi.id is null
             and fri.id is null
+            and ffl.id is null
+            and fflr is null
         ",
         collection_id
     )
