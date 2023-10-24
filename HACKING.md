@@ -43,6 +43,19 @@ make shell-db  # attach to an interactive PostgreSQL shell inside the DB
 make watch-db  # live-tail the database logs
 ```
 
+Additionally, there is a rule for running CI just like it runs in CI!
+
+```
+make check
+```
+
+You will notice that there is a pre-push hook in `./githooks` which calls this
+Make rule. I recommend running `git config --local core.hooksPath githooks` to
+setup githooks for your local repo, which will run the checks locally before you
+push, giving some faster feedback. This is only truly crucial if you're given
+permission to push directly to the main branch, though, since CI will run these
+same checks for pull requests anyway.
+
 # Other Database Options
 
 Of course, the application will happily converse with any PostgreSQL instance.
