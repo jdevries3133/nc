@@ -451,7 +451,7 @@ impl Component for models::PvInt {
                     hx-post="{route}"
                     name="value"
                     type="number"
-                    value={value}
+                    value="{value}"
                 />
             "#
         )
@@ -479,7 +479,35 @@ impl Component for models::PvFloat {
                     name="value"
                     type="number"
                     step="0.01"
-                    value={value}
+                    value="{value}"
+                />
+            "#
+        )
+    }
+}
+
+impl Component for models::PvDate {
+    fn render(&self) -> String {
+        let page_id = self.page_id;
+        let prop_id = self.prop_id;
+        if self.value.is_none() {
+            let route = Route::PageNewDateProp(Some((page_id, prop_id)));
+            return NullPropvalButton {
+                post_href: &route.as_string(),
+            }
+            .render();
+        };
+        let value = self.value.unwrap();
+        let route = Route::PageDateProp(Some((page_id, prop_id)));
+        format!(
+            r#"
+                <input
+                    class="rounded text-sm w-32 justify-self-center"
+                    hx-post="{route}"
+                    hx-trigger="input changed delay:1s"
+                    name="value"
+                    type="date"
+                    value="{value}"
                 />
             "#
         )
@@ -651,6 +679,8 @@ pub struct FilterToolbar<'a> {
     pub int_rng_filters: Vec<models::FilterIntRng>,
     pub float_filters: Vec<models::FilterFloat>,
     pub float_rng_filters: Vec<models::FilterFloatRng>,
+    pub date_filters: Vec<models::FilterDate>,
+    pub date_rng_filters: Vec<models::FilterDateRng>,
     pub collection_id: i32,
     pub get_prop_name: &'a dyn Fn(i32) -> &'a str,
 }
@@ -722,6 +752,32 @@ impl Component for FilterToolbar<'_> {
                 acc
             },
         );
+        let date_rendered =
+            self.date_filters
+                .iter()
+                .fold(String::new(), |mut acc, filter| {
+                    acc.push_str(
+                        &FilterDate {
+                            filter,
+                            prop_name: (self.get_prop_name)(filter.prop_id),
+                        }
+                        .render_chip(),
+                    );
+                    acc
+                });
+        let date_rng_rendered = self.date_rng_filters.iter().fold(
+            String::new(),
+            |mut acc, filter| {
+                acc.push_str(
+                    &FilterDateRng {
+                        filter,
+                        prop_name: (self.get_prop_name)(filter.prop_id),
+                    }
+                    .render_chip(),
+                );
+                acc
+            },
+        );
         let hide_toolbar =
             Route::CollectionHideSortToolbar(Some(collection_id));
         let add_filter = Route::CollectionAddFilterButton(Some(collection_id));
@@ -733,7 +789,13 @@ impl Component for FilterToolbar<'_> {
                 class="flex flex-row gap-2 mt-3 mb-4"
             >
             <div hx-trigger="load" hx-get="{add_filter}"></div>
-            {bool_rendered}{int_rendered}{int_rng_rendered}{float_rendered}{float_rng_rendered}
+                {bool_rendered}
+                {int_rendered}
+                {int_rng_rendered}
+                {float_rendered}
+                {float_rng_rendered}
+                {date_rendered}
+                {date_rng_rendered}
             </div>
             "#
         )
@@ -954,8 +1016,8 @@ impl FilterUi for FilterIntRng<'_> {
         let start = self.filter.start;
         let end = self.filter.end;
         let predicate = FilterRngPredicate {
-            start: Numbah::Int(start),
-            end: Numbah::Int(end),
+            start: format!("{start}"),
+            end: format!("{end}"),
         };
         let result = FilterChip {
             subject: prop_name,
@@ -1147,8 +1209,8 @@ impl FilterUi for FilterFloatRng<'_> {
         let start = self.filter.start;
         let end = self.filter.end;
         let predicate = FilterRngPredicate {
-            start: Numbah::Float(start),
-            end: Numbah::Float(end),
+            start: format!("{start}"),
+            end: format!("{end}"),
         };
         let result = FilterChip {
             subject: prop_name,
@@ -1180,6 +1242,199 @@ impl FilterUi for FilterFloatRng<'_> {
         };
         let form_route = Route::FilterFloatRng(Some(self.filter.id));
         let chip_route = Route::FilterFloatRngChip(Some(self.filter.id));
+        format!(
+            r#"
+            <form
+                hx-post="{form_route}"
+                class="{FILTER_CONTAINER_STYLE}"
+            >
+                <button 
+                    hx-get="{chip_route}"
+                    hx-target="closest form"
+                    class="self-start"
+                    >{chevron}</button>
+                <div class="flex flex-col gap-2">
+                    <h1 class="text-xl">{prop_name}</h1>
+                    <div>
+                        <label class="text-sm" for="type">Filter Type</label>
+                        <select
+                            id="type"
+                            name="type"
+                            class="dark:text-white text-sm dark:bg-slate-700 rounded"
+                            >
+                                <option {type_5_selected} value="5">Is Inside Range</option>
+                                <option {type_6_selected} value="6">Is Not Inside Range</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="start">Start</label>
+                        <input id="start" name="start" type="number" step="0.01" value="{start}" />
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="end">End</label>
+                        <input id="end" name="end" type="number" step="0.01" value="{end}" />
+                    </div>
+                    <div>
+                        <button class="dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Save</button>
+                    </div>
+                </div>
+            </form>
+            "#
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct FilterDate<'a> {
+    pub filter: &'a models::FilterDate,
+    pub prop_name: &'a str,
+}
+impl FilterUi for FilterDate<'_> {
+    fn render_chip(&self) -> String {
+        let href = Route::FilterDate(Some(self.filter.id));
+        let prop_name = self.prop_name;
+        let operation_name = self.filter.r#type.get_display_name();
+        let result = FilterChip {
+            subject: prop_name,
+            operator_text: operation_name,
+            predicate: Box::new(Text {
+                inner_text: &self.filter.value,
+            }),
+            // The same href is used for POST & DELETE
+            form_href: &href.as_string(),
+            delete_href: &href.as_string(),
+            filter_type: &self.filter.r#type,
+        }
+        .render();
+
+        result
+    }
+    fn render_form(&self) -> String {
+        let value = self.filter.value;
+        let prop_name = self.prop_name;
+        let chevron = Chevron {
+            variant: ChevronVariant::Open,
+        }
+        .render();
+        let type_1_selected =
+            if let models::FilterType::Eq(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_2_selected =
+            if let models::FilterType::Neq(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_3_selected =
+            if let models::FilterType::Gt(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_4_selected =
+            if let models::FilterType::Lt(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_7_selected =
+            if let models::FilterType::IsEmpty(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let form_route = Route::FilterDate(Some(self.filter.id));
+        let chip_route = Route::FilterDateChip(Some(self.filter.id));
+        format!(
+            r#"
+            <form
+                hx-post="{form_route}"
+                class="{FILTER_CONTAINER_STYLE}"
+            >
+                <button 
+                    class="self-start"
+                    hx-get="{chip_route}"
+                    hx-target="closest form"
+                    >{chevron}</button>
+                <div class="flex flex-col gap-2">
+                    <h1 class="text-lg">{prop_name}</h1>
+                    <div>
+                        <label class="text-sm" for="type">Filter Type</label>
+                        <select
+                            id="type"
+                            name="type"
+                            class="dark:text-white text-sm dark:bg-slate-700 rounded"
+                            >
+                            <option {type_1_selected} value="1">Exactly Equals</option>
+                            <option {type_2_selected} value="2">Does not Equal</option>
+                            <option {type_3_selected} value="3">Is Greater Than</option>
+                            <option {type_4_selected} value="4">Is Less Than</option>
+                            <option {type_7_selected} value="7">Is Empty</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="value">Value</label>
+                        <input id="value" name="value" type="date" value="{value}" />
+                    </div>
+                    <div>
+                        <button class="dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Save</button>
+                    </div>
+                </div>
+            </form>
+            "#
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct FilterDateRng<'a> {
+    pub filter: &'a models::FilterDateRng,
+    pub prop_name: &'a str,
+}
+impl FilterUi for FilterDateRng<'_> {
+    fn render_chip(&self) -> String {
+        let prop_name = self.prop_name;
+        let href = Route::FilterDateRng(Some(self.filter.id));
+        let operation_name = self.filter.r#type.get_display_name();
+        let start = self.filter.start;
+        let end = self.filter.end;
+        let predicate = FilterRngPredicate {
+            start: start.to_string(),
+            end: end.to_string(),
+        };
+        let result = FilterChip {
+            subject: prop_name,
+            operator_text: operation_name,
+            predicate: Box::new(predicate),
+            form_href: &href.as_string(),
+            delete_href: &href.as_string(),
+            filter_type: &self.filter.r#type,
+        }
+        .render();
+
+        result
+    }
+    fn render_form(&self) -> String {
+        let prop_name = self.prop_name;
+        let start = self.filter.start;
+        let end = self.filter.end;
+        let chevron = Chevron {
+            variant: ChevronVariant::Open,
+        }
+        .render();
+        let type_5_selected = match self.filter.r#type {
+            models::FilterType::InRng(_) => "selected",
+            _ => "",
+        };
+        let type_6_selected = match self.filter.r#type {
+            models::FilterType::NotInRng(_) => "selected",
+            _ => "",
+        };
+        let form_route = Route::FilterDateRng(Some(self.filter.id));
+        let chip_route = Route::FilterDateRngChip(Some(self.filter.id));
         format!(
             r#"
             <form
@@ -1270,24 +1525,9 @@ impl<T: Display> Component for Text<'_, T> {
     }
 }
 
-enum Numbah {
-    Float(f64),
-    Int(i64),
-}
-impl std::fmt::Display for Numbah {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Float(numbahhh) => write!(f, "{}", numbahhh),
-            Self::Int(nuuuuummmmmmmbahhhhh) => {
-                write!(f, "{}", nuuuuummmmmmmbahhhhh)
-            }
-        }
-    }
-}
-
 struct FilterRngPredicate {
-    start: Numbah,
-    end: Numbah,
+    start: String,
+    end: String,
 }
 impl Component for FilterRngPredicate {
     fn render(&self) -> String {
@@ -1359,6 +1599,7 @@ impl Component for ChoosePropForFilter<'_> {
                     models::PropValTypes::Int => "integer",
                     models::PropValTypes::Bool => "checkbox",
                     models::PropValTypes::Float => "percent",
+                    models::PropValTypes::Date => "date",
                     _ => todo!(),
                 };
                 acc.push_str(&format!(
@@ -1445,7 +1686,8 @@ fn get_slug(
         models::FilterType::Neq(_)
         | models::FilterType::Lt(_)
         | models::FilterType::Gt(_)
-        | models::FilterType::Eq(_) => match prop_type {
+        | models::FilterType::Eq(_)
+        | models::FilterType::IsEmpty(_) => match prop_type {
             models::PropValTypes::Bool => {
                 format!("new-bool-filter?type_id={filter_type_id}")
             }
@@ -1454,6 +1696,9 @@ fn get_slug(
             }
             models::PropValTypes::Float => {
                 format!("new-float-filter?type_id={filter_type_id}")
+            }
+            models::PropValTypes::Date => {
+                format!("new-date-filter?type_id={filter_type_id}")
             }
             _ => todo!(),
         },
@@ -1468,21 +1713,12 @@ fn get_slug(
                 models::PropValTypes::Float => {
                     format!("new-float-rng-filter?type_id={filter_type_id}")
                 }
+                models::PropValTypes::Date => {
+                    format!("new-date-rng-filter?type_id={filter_type_id}")
+                }
                 _ => todo!(),
             }
         }
-        models::FilterType::IsEmpty(_) => match prop_type {
-            models::PropValTypes::Bool => {
-                format!("new-bool-filter?type_id={filter_type_id}")
-            }
-            models::PropValTypes::Int => {
-                format!("new-int-filter?type_id={filter_type_id}")
-            }
-            models::PropValTypes::Float => {
-                format!("new-float-filter?type_id={filter_type_id}")
-            }
-            _ => todo!(),
-        },
     }
 }
 

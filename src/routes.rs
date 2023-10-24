@@ -38,6 +38,8 @@ pub enum Route {
     PropNewIntRngFilter(Option<i32>),
     PropNewFloatFilter(Option<i32>),
     PropNewFloatRngFilter(Option<i32>),
+    PropNewDateFilter(Option<i32>),
+    PropNewDateRngFilter(Option<i32>),
     FilterBoolChip(Option<i32>),
     /// Has GET (returning a form), POST (accepting submission), and DELETE
     FilterBool(Option<i32>),
@@ -52,15 +54,22 @@ pub enum Route {
     FilterFloatRngChip(Option<i32>),
     /// Has GET (returning a form), POST (accepting submission), and DELETE
     FilterFloatRng(Option<i32>),
+    FilterDateChip(Option<i32>),
+    FilterDate(Option<i32>),
+    FilterDateRngChip(Option<i32>),
+    /// Has GET (returning a form), POST (accepting submission), and DELETE
+    FilterDateRng(Option<i32>),
     Page(Option<i32>),
     PageSubmit,
     PageContent(Option<i32>),
     PageBoolProp(Option<(i32, i32)>),
     PageIntProp(Option<(i32, i32)>),
     PageFloatProp(Option<(i32, i32)>),
+    PageDateProp(Option<(i32, i32)>),
     PageNewBoolProp(Option<(i32, i32)>),
     PageNewIntProp(Option<(i32, i32)>),
     PageNewFloatProp(Option<(i32, i32)>),
+    PageNewDateProp(Option<(i32, i32)>),
     Root,
     Ping,
     Register,
@@ -157,6 +166,14 @@ impl Route {
                 Some(id) => format!("/prop/{id}/new-float-rng-filter"),
                 None => "/prop/:id/new-float-rng-filter".into(),
             },
+            Self::PropNewDateFilter(params) => match params {
+                Some(id) => format!("/prop/{id}/new-date-filter"),
+                None => "/prop/:id/new-date-filter".into(),
+            },
+            Self::PropNewDateRngFilter(params) => match params {
+                Some(id) => format!("/prop/{id}/new-date-rng-filter"),
+                None => "/prop/:id/new-date-rng-filter".into(),
+            },
             Self::FilterBoolChip(params) => match params {
                 Some(id) => format!("/filter/bool/{id}/chip"),
                 None => "/filter/bool/:id/chip".into(),
@@ -197,6 +214,22 @@ impl Route {
                 Some(id) => format!("/filter/float-rng/{id}"),
                 None => "/filter/float-rng/:id".into(),
             },
+            Self::FilterDateChip(params) => match params {
+                Some(id) => format!("/filter/date/{id}/chip"),
+                None => "/filter/date/:id/chip".into(),
+            },
+            Self::FilterDate(params) => match params {
+                Some(id) => format!("/filter/date/{id}"),
+                None => "/filter/date/:id".into(),
+            },
+            Self::FilterDateRngChip(params) => match params {
+                Some(id) => format!("/filter/date-rng/{id}/chip"),
+                None => "/filter/date-rng/:id/chip".into(),
+            },
+            Self::FilterDateRng(params) => match params {
+                Some(id) => format!("/filter/date-rng/{id}"),
+                None => "/filter/date-rng/:id".into(),
+            },
             Self::Page(params) => match params {
                 Some(id) => format!("/page/{id}"),
                 None => "/page/:page_id".into(),
@@ -224,6 +257,12 @@ impl Route {
                 }
                 None => "/page/:page_id/prop/:prop_id/float".into(),
             },
+            Self::PageDateProp(params) => match params {
+                Some((page_id, prop_id)) => {
+                    format!("/page/{page_id}/prop/{prop_id}/date")
+                }
+                None => "/page/:page_id/prop/:prop_id/date".into(),
+            },
             Self::PageNewBoolProp(params) => match params {
                 Some((page_id, prop_id)) => {
                     format!("/page/{page_id}/prop/{prop_id}/new-bool")
@@ -241,6 +280,12 @@ impl Route {
                     format!("/page/{page_id}/prop/{prop_id}/new-float")
                 }
                 None => "/page/:page_id/prop/:prop_id/new-float".into(),
+            },
+            Self::PageNewDateProp(params) => match params {
+                Some((page_id, prop_id)) => {
+                    format!("/page/{page_id}/prop/{prop_id}/new-date")
+                }
+                None => "/page/:page_id/prop/:prop_id/new-date".into(),
             },
             Self::Root => "/".into(),
             Self::Ping => "/ping".into(),
@@ -340,6 +385,14 @@ pub fn get_protected_routes() -> Router<models::AppState> {
             post(controllers::create_new_float_rng_filter),
         )
         .route(
+            &Route::PropNewDateFilter(None).as_string(),
+            post(controllers::create_new_date_filter),
+        )
+        .route(
+            &Route::PropNewDateRngFilter(None).as_string(),
+            post(controllers::create_new_date_rng_filter),
+        )
+        .route(
             &Route::FilterBoolChip(None).as_string(),
             get(controllers::get_bool_filter_chip),
         )
@@ -420,6 +473,38 @@ pub fn get_protected_routes() -> Router<models::AppState> {
             get(controllers::get_float_rng_filter_chip),
         )
         .route(
+            &Route::FilterDate(None).as_string(),
+            get(controllers::get_date_filter_form),
+        )
+        .route(
+            &Route::FilterDate(None).as_string(),
+            post(controllers::handle_date_form_submit),
+        )
+        .route(
+            &Route::FilterDate(None).as_string(),
+            delete(controllers::delete_date_filter),
+        )
+        .route(
+            &Route::FilterDateChip(None).as_string(),
+            get(controllers::get_date_filter_chip),
+        )
+        .route(
+            &Route::FilterDateRng(None).as_string(),
+            get(controllers::get_date_rng_filter_form),
+        )
+        .route(
+            &Route::FilterDateRng(None).as_string(),
+            post(controllers::handle_date_rng_form_submit),
+        )
+        .route(
+            &Route::FilterDateRng(None).as_string(),
+            delete(controllers::delete_date_rng_filter),
+        )
+        .route(
+            &Route::FilterDateRngChip(None).as_string(),
+            get(controllers::get_date_rng_filter_chip),
+        )
+        .route(
             &Route::Page(None).as_string(),
             get(controllers::existing_page_form),
         )
@@ -448,6 +533,10 @@ pub fn get_protected_routes() -> Router<models::AppState> {
             post(controllers::save_pv_float),
         )
         .route(
+            &Route::PageDateProp(None).as_string(),
+            post(controllers::save_pv_date),
+        )
+        .route(
             &Route::PageNewBoolProp(None).as_string(),
             get(controllers::new_bool_propval_form),
         )
@@ -458,6 +547,10 @@ pub fn get_protected_routes() -> Router<models::AppState> {
         .route(
             &Route::PageNewFloatProp(None).as_string(),
             get(controllers::new_float_propval_form),
+        )
+        .route(
+            &Route::PageNewDateProp(None).as_string(),
+            get(controllers::new_date_propval_form),
         )
 }
 

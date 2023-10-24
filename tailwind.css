@@ -11,13 +11,15 @@
   input[type="text"],
   input[type="password"],
   input[type="email"],
-  input[type="checkbox"] {
+  input[type="checkbox"],
+  input[type="date"] {
     @apply text-white bg-slate-700;
   }
   input[type="number"],
   input[type="text"],
   input[type="password"],
-  input[type="email"] {
+  input[type="email"],
+  input[type="date"]{
     @apply rounded;
   }
   input[type="checkbox"] {

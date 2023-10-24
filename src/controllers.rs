@@ -222,6 +222,17 @@ pub async fn new_float_propval_form(
     .render()
 }
 
+pub async fn new_date_propval_form(
+    Path((page_id, prop_id)): Path<(i32, i32)>,
+) -> impl IntoResponse {
+    models::PvDate {
+        page_id,
+        prop_id,
+        value: Some(chrono::Local::now().date_naive()),
+    }
+    .render()
+}
+
 #[derive(Deserialize)]
 pub struct PvFloatForm {
     value: Option<f64>,
@@ -232,6 +243,30 @@ pub async fn save_pv_float(
     Form(PvFloatForm { value }): Form<PvFloatForm>,
 ) -> Result<impl IntoResponse, ServerError> {
     let mut existing = models::PvFloat::get_or_init(
+        &db,
+        &db_ops::PvGetQuery { prop_id, page_id },
+    )
+    .await;
+
+    if let Some(v) = value {
+        if Some(v) != existing.value {
+            existing.value = Some(v);
+            existing.save(&db).await?;
+        }
+    };
+    Ok(existing.render())
+}
+
+#[derive(Deserialize)]
+pub struct PvDateForm {
+    value: Option<chrono::NaiveDate>,
+}
+pub async fn save_pv_date(
+    State(AppState { db }): State<AppState>,
+    Path((page_id, prop_id)): Path<(i32, i32)>,
+    Form(PvDateForm { value }): Form<PvDateForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    let mut existing = models::PvDate::get_or_init(
         &db,
         &db_ops::PvGetQuery { prop_id, page_id },
     )
@@ -515,12 +550,16 @@ pub async fn get_filter_toolbar(
         int_rng_filters,
         float_filters,
         float_rng_filters,
+        date_filters,
+        date_rng_filters,
     ) = db_ops::get_filters(&db, collection_id).await?;
     if bool_filters.is_empty()
         && int_filters.is_empty()
         && int_rng_filters.is_empty()
         && float_filters.is_empty()
         && float_rng_filters.is_empty()
+        && date_filters.is_empty()
+        && date_rng_filters.is_empty()
     {
         let hide_route =
             Route::CollectionHideFilterToolbar(Some(collection_id));
@@ -540,7 +579,9 @@ pub async fn get_filter_toolbar(
             + int_filters.len()
             + int_rng_filters.len()
             + float_filters.len()
-            + float_rng_filters.len(),
+            + float_rng_filters.len()
+            + date_filters.len()
+            + date_rng_filters.len(),
     );
     for f in &bool_filters[..] {
         all_props.push(f.prop_id);
@@ -555,6 +596,12 @@ pub async fn get_filter_toolbar(
         all_props.push(f.prop_id);
     }
     for f in &float_rng_filters[..] {
+        all_props.push(f.prop_id);
+    }
+    for f in &date_filters[..] {
+        all_props.push(f.prop_id);
+    }
+    for f in &date_filters[..] {
         all_props.push(f.prop_id);
     }
     let prop_query = db_ops::ListPropQuery {
@@ -580,6 +627,8 @@ pub async fn get_filter_toolbar(
         int_rng_filters,
         float_filters,
         float_rng_filters,
+        date_filters,
+        date_rng_filters,
         get_prop_name: &get_prop_name,
     }
     .render())
@@ -752,6 +801,41 @@ pub async fn get_float_filter_chip(
     .render_chip())
 }
 
+pub async fn get_date_filter_chip(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        &models::FilterDate::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+
+    Ok(components::FilterDate {
+        filter,
+        prop_name: &related_prop.name,
+    }
+    .render_chip())
+}
+
+pub async fn get_date_rng_filter_chip(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        &models::FilterDateRng::get(&db, &db_ops::GetFilterQuery { id })
+            .await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+
+    Ok(components::FilterDateRng {
+        filter,
+        prop_name: &related_prop.name,
+    }
+    .render_chip())
+}
+
 pub async fn get_float_rng_filter_chip(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
@@ -816,6 +900,41 @@ pub async fn get_float_rng_filter_form(
             .await?;
 
     Ok(components::FilterFloatRng {
+        filter,
+        prop_name: &related_prop.name,
+    }
+    .render_form())
+}
+
+pub async fn get_date_filter_form(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        &models::FilterDate::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+
+    Ok(components::FilterDate {
+        filter,
+        prop_name: &related_prop.name,
+    }
+    .render_form())
+}
+
+pub async fn get_date_rng_filter_form(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        &models::FilterDateRng::get(&db, &db_ops::GetFilterQuery { id })
+            .await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+
+    Ok(components::FilterDateRng {
         filter,
         prop_name: &related_prop.name,
     }
@@ -897,6 +1016,42 @@ pub async fn handle_float_form_submit(
 }
 
 #[derive(Deserialize)]
+pub struct DateForm {
+    value: chrono::NaiveDate,
+    r#type: i32,
+}
+pub async fn handle_date_form_submit(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+    Form(form): Form<DateForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        models::FilterDate::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+    let mut headers = HeaderMap::new();
+    let form_type = models::FilterType::new(form.r#type, "".into());
+    let new_filter = models::FilterDate {
+        id: filter.id,
+        prop_id: filter.prop_id,
+        r#type: form_type,
+        value: form.value,
+    };
+    new_filter.save(&db).await?;
+    headers = reload_table(headers);
+
+    Ok((
+        headers,
+        components::FilterDate {
+            filter: &new_filter,
+            prop_name: &related_prop.name,
+        }
+        .render_chip(),
+    ))
+}
+
+#[derive(Deserialize)]
 pub struct FloatRngForm {
     start: f64,
     end: f64,
@@ -950,6 +1105,44 @@ pub async fn get_int_rng_filter_chip(
         prop_name: &related_prop.name,
     }
     .render_chip())
+}
+
+#[derive(Deserialize)]
+pub struct DateRngForm {
+    start: chrono::NaiveDate,
+    end: chrono::NaiveDate,
+    r#type: i32,
+}
+pub async fn handle_date_rng_form_submit(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+    Form(form): Form<DateRngForm>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        models::FilterDateRng::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    let related_prop =
+        models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
+            .await?;
+    let mut headers = HeaderMap::new();
+    let form_type = models::FilterType::new(form.r#type, "".into());
+    let new_filter = models::FilterDateRng {
+        id: filter.id,
+        prop_id: filter.prop_id,
+        r#type: form_type,
+        start: form.start,
+        end: form.end,
+    };
+    new_filter.save(&db).await?;
+    headers = reload_table(headers);
+
+    Ok((
+        headers,
+        components::FilterDateRng {
+            filter: &new_filter,
+            prop_name: &related_prop.name,
+        }
+        .render_chip(),
+    ))
 }
 
 pub async fn get_int_rng_filter_form(
@@ -1021,7 +1214,7 @@ pub async fn choose_prop_for_filter(
         },
     )
     .await?;
-    let (fb, fi, fir, ffl, fflr) =
+    let (fb, fi, fir, ffl, fflr, fd, fdr) =
         db_ops::get_filters(&db, collection_id).await?;
     let mut props_with_filter = HashSet::new();
     for f in fb {
@@ -1037,6 +1230,12 @@ pub async fn choose_prop_for_filter(
         props_with_filter.insert(f.prop_id);
     }
     for f in fflr {
+        props_with_filter.insert(f.prop_id);
+    }
+    for f in fd {
+        props_with_filter.insert(f.prop_id);
+    }
+    for f in fdr {
         props_with_filter.insert(f.prop_id);
     }
 
@@ -1342,6 +1541,116 @@ pub async fn create_new_float_rng_filter(
     ))
 }
 
+pub async fn create_new_date_filter(
+    State(AppState { db }): State<AppState>,
+    Path(prop_id): Path<i32>,
+    Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
+) -> Result<impl IntoResponse, ServerError> {
+    let r#type = if let Some(type_id) = type_id {
+        models::FilterType::new(type_id, "".into())
+    } else {
+        models::FilterType::Eq("".into())
+    };
+    let query = db_ops::GetPropQuery { id: prop_id };
+    let (prop, filter) = join!(
+        models::Prop::get(&db, &query),
+        models::FilterDate::create(&db, prop_id, r#type)
+    );
+    let related_prop = prop?;
+    let filter = filter?;
+
+    let headers = HeaderMap::new();
+    let headers = reload_table(headers);
+
+    let has_capacity =
+        db_ops::does_collection_have_capacity_for_additional_filters(
+            &db,
+            related_prop.collection_id,
+        )
+        .await?;
+    let add_filter_button = if has_capacity {
+        components::AddFilterButton {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    } else {
+        components::AddFilterButtonPlaceholder {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    };
+
+    Ok((
+        headers,
+        [
+            r#"<div class="flex flex-row gap-2">"#,
+            &add_filter_button,
+            &components::FilterDate {
+                filter: &filter,
+                prop_name: &related_prop.name,
+            }
+            .render_form(),
+            "</div>",
+        ]
+        .join(""),
+    ))
+}
+
+pub async fn create_new_date_rng_filter(
+    State(AppState { db }): State<AppState>,
+    Path(prop_id): Path<i32>,
+    Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
+) -> Result<impl IntoResponse, ServerError> {
+    let r#type = if let Some(type_id) = type_id {
+        models::FilterType::new(type_id, "".into())
+    } else {
+        models::FilterType::Eq("".into())
+    };
+    let query = db_ops::GetPropQuery { id: prop_id };
+    let (prop, filter) = join!(
+        models::Prop::get(&db, &query),
+        models::FilterDateRng::create(&db, prop_id, r#type)
+    );
+    let related_prop = prop?;
+    let filter = filter?;
+
+    let headers = HeaderMap::new();
+    let headers = reload_table(headers);
+
+    let has_capacity =
+        db_ops::does_collection_have_capacity_for_additional_filters(
+            &db,
+            related_prop.collection_id,
+        )
+        .await?;
+    let add_filter_button = if has_capacity {
+        components::AddFilterButton {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    } else {
+        components::AddFilterButtonPlaceholder {
+            collection_id: related_prop.collection_id,
+        }
+        .render()
+    };
+
+    Ok((
+        headers,
+        [
+            r#"<div class="flex flex-row gap-2">"#,
+            &add_filter_button,
+            &components::FilterDateRng {
+                filter: &filter,
+                prop_name: &related_prop.name,
+            }
+            .render_form(),
+            r#"</div>"#,
+        ]
+        .join(""),
+    ))
+}
+
 /// I pulled this out into a separate request because it requires its own
 /// database query. We only want to show the filter button if there are
 /// props in the workspace that do not have any filters already.
@@ -1439,6 +1748,35 @@ pub async fn delete_float_rng_filter(
     Ok((headers, ""))
 }
 
+pub async fn delete_date_filter(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        models::FilterDate::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    filter.delete(&db).await?;
+
+    let headers = HeaderMap::new();
+    let headers = reload_table(headers);
+    let headers = reload_add_filter_button(headers);
+
+    Ok((headers, ""))
+}
+
+pub async fn delete_date_rng_filter(
+    State(AppState { db }): State<AppState>,
+    Path(id): Path<i32>,
+) -> Result<impl IntoResponse, ServerError> {
+    let filter =
+        models::FilterDateRng::get(&db, &db_ops::GetFilterQuery { id }).await?;
+    filter.delete(&db).await?;
+
+    let headers = HeaderMap::new();
+    let headers = reload_table(headers);
+    let headers = reload_add_filter_button(headers);
+
+    Ok((headers, ""))
+}
 pub async fn show_sort_toolbar(
     State(AppState { db }): State<AppState>,
     Path(collection_id): Path<i32>,

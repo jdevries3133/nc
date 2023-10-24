@@ -161,6 +161,33 @@ pub struct Page {
     pub content: Option<Content>,
 }
 
+#[derive(Clone, Debug)]
+pub struct PvDate {
+    pub value: Option<chrono::NaiveDate>,
+    pub page_id: i32,
+    pub prop_id: i32,
+}
+
+#[async_trait]
+impl PropVal for PvDate {
+    async fn get_or_init(db: &PgPool, query: &PvGetQuery) -> Self
+    where
+        Self: Sized,
+    {
+        Self::get(db, query).await.unwrap_or(Self {
+            page_id: query.page_id,
+            prop_id: query.prop_id,
+            value: None,
+        })
+    }
+    fn get_page_id(&self) -> i32 {
+        self.page_id
+    }
+    fn get_prop_id(&self) -> i32 {
+        self.prop_id
+    }
+}
+
 #[derive(Debug)]
 pub struct Content {
     pub page_id: i32,
@@ -256,6 +283,15 @@ impl FilterType {
                 FilterType::NotInRng("Is Not Inside Range".into()),
                 FilterType::IsEmpty("Is Empty".into()),
             ],
+            PropValTypes::Date => vec![
+                FilterType::Eq("Exactly Equals".into()),
+                FilterType::Gt("Does not Equal".into()),
+                FilterType::Neq("Is Greater Than".into()),
+                FilterType::Lt("Is Less Than".into()),
+                FilterType::InRng("Is Inside Range".into()),
+                FilterType::NotInRng("Is Not Inside Range".into()),
+                FilterType::IsEmpty("Is Empty".into()),
+            ],
             _ => todo!(),
         }
     }
@@ -301,6 +337,23 @@ pub struct FilterFloatRng {
     pub prop_id: i32,
     pub start: f64,
     pub end: f64,
+}
+
+#[derive(Clone, Debug)]
+pub struct FilterDate {
+    pub id: i32,
+    pub r#type: FilterType,
+    pub prop_id: i32,
+    pub value: chrono::NaiveDate,
+}
+
+#[derive(Clone, Debug)]
+pub struct FilterDateRng {
+    pub id: i32,
+    pub r#type: FilterType,
+    pub prop_id: i32,
+    pub start: chrono::NaiveDate,
+    pub end: chrono::NaiveDate,
 }
 
 #[derive(Debug, Eq, PartialEq)]

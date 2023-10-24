@@ -245,6 +245,66 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PvFloat {
     }
 }
 
+struct PvDateQres {
+    page_id: i32,
+    prop_id: i32,
+    value: chrono::NaiveDate,
+}
+impl PvDateQres {
+    fn into_pv_date(self) -> models::PvDate {
+        models::PvDate {
+            page_id: self.page_id,
+            prop_id: self.prop_id,
+            value: Some(self.value),
+        }
+    }
+}
+
+#[async_trait]
+impl DbModel<PvGetQuery, PvListQuery> for models::PvDate {
+    async fn get(db: &PgPool, query: &PvGetQuery) -> Result<Self> {
+        let res = query_as!(
+            PvDateQres,
+            "select page_id, prop_id, value from propval_date
+            where page_id = $1 and prop_id = $2",
+            query.page_id,
+            query.prop_id
+        )
+        .fetch_one(db)
+        .await?;
+
+        Ok(res.into_pv_date())
+    }
+    async fn list(db: &PgPool, query: &PvListQuery) -> Result<Vec<Self>> {
+        let mut res = query_as!(
+            PvDateQres,
+            "select page_id, prop_id, value from propval_date
+            where page_id = any($1)",
+            &query.page_ids
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(res.drain(..).map(|r| r.into_pv_date()).collect())
+    }
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            "insert into propval_date (value, page_id, prop_id) values ($1, $2, $3)
+            on conflict (page_id, prop_id)
+            do update set value = $1",
+            self.value,
+            self.page_id,
+            self.prop_id
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+    async fn delete(self, _db: &PgPool) -> Result<()> {
+        todo!()
+    }
+}
+
 pub struct GetPageQuery {
     pub id: i32,
 }
@@ -1112,6 +1172,267 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterFloatRng {
     }
 }
 
+#[async_trait]
+impl FilterDb for models::FilterDate {
+    async fn create(
+        db: &PgPool,
+        prop_id: i32,
+        r#type: models::FilterType,
+    ) -> Result<Self> {
+        let Id { id } = query_as!(
+            Id,
+            "insert into filter_date (type_id, prop_id, value) values
+            ($1, $2, $3)
+            returning (id)
+        ",
+            r#type.get_int_repr(),
+            prop_id,
+            chrono::Local::now().date_naive()
+        )
+        .fetch_one(db)
+        .await?;
+
+        Ok(models::FilterDate {
+            id,
+            prop_id,
+            r#type,
+            value: chrono::Local::now().date_naive(),
+        })
+    }
+}
+
+#[async_trait]
+impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterDate {
+    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
+        struct Qres {
+            id: i32,
+            type_id: i32,
+            prop_id: i32,
+            value: chrono::NaiveDate,
+        }
+        let res = query_as!(
+            Qres,
+            "select
+                f.id,
+                ft.id type_id,
+                f.prop_id,
+                f.value
+            from filter_date f
+            join filter_type ft on f.type_id = ft.id
+            where f.id = $1",
+            query.id
+        )
+        .fetch_one(db)
+        .await?;
+
+        let filter_type = models::FilterType::new(res.type_id, "".into());
+
+        Ok(Self {
+            id: res.id,
+            prop_id: res.prop_id,
+            value: res.value,
+            r#type: filter_type,
+        })
+    }
+    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
+        struct Qres {
+            id: i32,
+            type_id: i32,
+            type_name: String,
+            prop_id: i32,
+            value: chrono::NaiveDate,
+        }
+        let res = query_as!(
+            Qres,
+            "select
+                f.id,
+                ft.id type_id,
+                ft.name type_name,
+                f.prop_id,
+                f.value
+            from filter_date f
+            join filter_type ft on f.type_id = ft.id
+            join property p on p.id = f.prop_id
+            where p.collection_id = $1",
+            query.collection_id
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(res
+            .iter()
+            .map(|r| {
+                let filter_type =
+                    models::FilterType::new(r.type_id, r.type_name.clone());
+                Self {
+                    id: r.id,
+                    prop_id: r.prop_id,
+                    value: r.value,
+                    r#type: filter_type,
+                }
+            })
+            .collect())
+    }
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            "update filter_date set value = $1, type_id = $2 where id = $3",
+            self.value,
+            self.r#type.get_int_repr(),
+            self.id
+        )
+        .execute(db)
+        .await?;
+
+        Ok(())
+    }
+    async fn delete(self, db: &PgPool) -> Result<()> {
+        query!("delete from filter_date where id = $1", self.id)
+            .execute(db)
+            .await?;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl FilterDb for models::FilterDateRng {
+    async fn create(
+        db: &PgPool,
+        prop_id: i32,
+        r#type: models::FilterType,
+    ) -> Result<Self> {
+        let start =
+            (chrono::Local::now() - chrono::Duration::days(10)).date_naive();
+        let end = chrono::Local::now().date_naive();
+        let Id { id } = query_as!(
+        Id,
+        r#"insert into filter_date_range (type_id, prop_id, start, "end") values
+            ($1, $2, $3, $4)
+        returning (id)
+        "#,
+        r#type.get_int_repr(),
+        prop_id,
+        start,
+        end
+    )
+    .fetch_one(db)
+    .await?;
+
+        Ok(models::FilterDateRng {
+            id,
+            prop_id,
+            r#type,
+            start,
+            end,
+        })
+    }
+}
+
+#[async_trait]
+impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterDateRng {
+    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
+        struct Qres {
+            id: i32,
+            type_id: i32,
+            type_name: String,
+            prop_id: i32,
+            start: chrono::NaiveDate,
+            end: chrono::NaiveDate,
+        }
+        let res = query_as!(
+            Qres,
+            "select
+                f.id,
+                ft.id type_id,
+                ft.name type_name,
+                f.prop_id,
+                f.start,
+                f.end
+            from filter_date_range f
+            join filter_type ft on f.type_id = ft.id
+            where f.id = $1",
+            query.id
+        )
+        .fetch_one(db)
+        .await?;
+
+        let filter_type =
+            models::FilterType::new(res.type_id, res.type_name.clone());
+
+        Ok(Self {
+            id: res.id,
+            prop_id: res.prop_id,
+            start: res.start,
+            end: res.end,
+            r#type: filter_type,
+        })
+    }
+    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
+        struct Qres {
+            id: i32,
+            type_id: i32,
+            type_name: String,
+            prop_id: i32,
+            start: chrono::NaiveDate,
+            end: chrono::NaiveDate,
+        }
+        let res = query_as!(
+            Qres,
+            "select
+                f.id,
+                ft.id type_id,
+                ft.name type_name,
+                f.prop_id,
+                f.start,
+                f.end
+            from filter_date_range f
+            join filter_type ft on f.type_id = ft.id
+            join property p on p.id = f.prop_id
+            where p.collection_id = $1",
+            query.collection_id
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(res
+            .iter()
+            .map(|r| {
+                let filter_type =
+                    models::FilterType::new(r.type_id, r.type_name.clone());
+                Self {
+                    id: r.id,
+                    prop_id: r.prop_id,
+                    start: r.start,
+                    end: r.end,
+                    r#type: filter_type,
+                }
+            })
+            .collect())
+    }
+    async fn save(&self, db: &PgPool) -> Result<()> {
+        query!(
+            r#"update filter_date_range
+            set start = $1, "end" = $2, type_id = $3
+            where id = $4"#,
+            self.start,
+            self.end,
+            self.r#type.get_int_repr(),
+            self.id
+        )
+        .execute(db)
+        .await?;
+
+        Ok(())
+    }
+    async fn delete(self, db: &PgPool) -> Result<()> {
+        query!("delete from filter_date_range where id = $1", self.id)
+            .execute(db)
+            .await?;
+
+        Ok(())
+    }
+}
+
 pub async fn get_filters(
     db: &PgPool,
     collection_id: i32,
@@ -1121,6 +1442,8 @@ pub async fn get_filters(
     Vec<models::FilterIntRng>,
     Vec<models::FilterFloat>,
     Vec<models::FilterFloatRng>,
+    Vec<models::FilterDate>,
+    Vec<models::FilterDateRng>,
 )> {
     let filter_query = ListFilterQuery { collection_id };
     let (
@@ -1129,18 +1452,24 @@ pub async fn get_filters(
         filter_int_rng,
         filter_float,
         filter_float_rng,
+        filter_date,
+        filter_date_rng,
     ) = join!(
         models::FilterBool::list(db, &filter_query),
         models::FilterInt::list(db, &filter_query),
         models::FilterIntRng::list(db, &filter_query),
         models::FilterFloat::list(db, &filter_query),
-        models::FilterFloatRng::list(db, &filter_query)
+        models::FilterFloatRng::list(db, &filter_query),
+        models::FilterDate::list(db, &filter_query),
+        models::FilterDateRng::list(db, &filter_query)
     );
     let filter_bool = filter_bool?;
     let filter_int = filter_int?;
     let filter_int_rng = filter_int_rng?;
     let filter_float = filter_float?;
     let filter_float_rng = filter_float_rng?;
+    let filter_date = filter_date?;
+    let filter_date_rng = filter_date_rng?;
 
     Ok((
         filter_bool,
@@ -1148,6 +1477,8 @@ pub async fn get_filters(
         filter_int_rng,
         filter_float,
         filter_float_rng,
+        filter_date,
+        filter_date_rng,
     ))
 }
 
@@ -1160,6 +1491,8 @@ async fn get_page_list_ctx(
     Vec<models::FilterIntRng>,
     Vec<models::FilterFloat>,
     Vec<models::FilterFloatRng>,
+    Vec<models::FilterDate>,
+    Vec<models::FilterDateRng>,
     Vec<models::Prop>,
     Option<models::CollectionSort>,
 )> {
@@ -1175,6 +1508,8 @@ async fn get_page_list_ctx(
         filter_int_rng,
         filter_float,
         filter_float_rng,
+        filter_date,
+        filter_date_rng,
     ) = filters?;
     let collection_prop_set = collection_prop_set?;
 
@@ -1191,6 +1526,8 @@ async fn get_page_list_ctx(
         filter_int_rng,
         filter_float,
         filter_float_rng,
+        filter_date,
+        filter_date_rng,
         collection_prop_set,
         sort_details,
     ))
@@ -1207,6 +1544,8 @@ pub async fn list_pages(
         filter_int_rng,
         filter_float,
         filter_float_rng,
+        filter_date,
+        filter_date_rng,
         collection_prop_set,
         sort_details,
     ) = get_page_list_ctx(db, collection_id).await?;
@@ -1230,7 +1569,10 @@ pub async fn list_pages(
             models::PropValTypes::Int => "propval_int",
             models::PropValTypes::Bool => "propval_bool",
             models::PropValTypes::Float => "propval_float",
-            _ => todo!(),
+            models::PropValTypes::Date => "propval_date",
+            _ => {
+                todo!()
+            }
         };
         query.push(format!(
             "left join {table} as prop{prop_id}
@@ -1245,7 +1587,9 @@ pub async fn list_pages(
         && filter_int.is_empty()
         && filter_int_rng.is_empty()
         && filter_float.is_empty()
-        && filter_float_rng.is_empty())
+        && filter_float_rng.is_empty()
+        && filter_date.is_empty()
+        && filter_date_rng.is_empty())
     {
         query.push("where ");
 
@@ -1305,6 +1649,36 @@ pub async fn list_pages(
             }
         }
         for filter in &filter_float_rng[..] {
+            let prop_id = filter.prop_id;
+            let start = filter.start;
+            let end = filter.end;
+            match &filter.r#type {
+                models::FilterType::InRng(..) => {
+                    // The value here is a boolean, not a user-input string, so I think that
+                    // direct interpolation without binding is safe.
+                    sep.push(format!("prop{prop_id}.value > {start} "));
+                    sep.push(format!("prop{prop_id}.value < {end} "));
+                }
+                models::FilterType::NotInRng(..) => {
+                    sep.push(format!("prop{prop_id}.value < {start} "));
+                    sep.push(format!("prop{prop_id}.value > {end} "));
+                }
+                ty => panic!("type {ty:?} not supported for int range filters"),
+            };
+        }
+        for filter in &filter_date[..] {
+            let prop_id = filter.prop_id;
+            if let models::FilterType::IsEmpty(..) = filter.r#type {
+                sep.push(format!("prop{prop_id}.value is null"));
+            } else {
+                let operator = &filter.r#type.get_operator_str();
+                let value = filter.value.to_string();
+                // The value here is a boolean, not a user-input string, so I think that
+                // direct interpolation without binding is safe.
+                sep.push(format!("prop{prop_id}.value {operator} '{value}' "));
+            }
+        }
+        for filter in &filter_date_rng[..] {
             let prop_id = filter.prop_id;
             let start = filter.start;
             let end = filter.end;
@@ -1387,6 +1761,20 @@ pub async fn list_pages(
                                 None
                             };
                             Box::new(models::PvFloat {
+                                page_id: id,
+                                prop_id: prop.id,
+                                value,
+                            }) as _
+                        }
+                        models::PropValTypes::Date => {
+                            let value = if let Ok(value) =
+                                row.try_get(&prop_alias as &str)
+                            {
+                                Some(value)
+                            } else {
+                                None
+                            };
+                            Box::new(models::PvDate {
                                 page_id: id,
                                 prop_id: prop.id,
                                 value,
@@ -1497,13 +1885,17 @@ pub async fn does_collection_have_capacity_for_additional_filters(
         left join filter_int_range fri on p.id = fri.prop_id
         left join filter_float ffl on p.id = ffl.prop_id
         left join filter_float_range fflr on p.id = fflr.prop_id
+        left join filter_date fd on p.id = fd.prop_id
+        left join filter_date_range fdr on p.id = fdr.prop_id
         where
             p.collection_id = $1
             and fb.id is null
             and fi.id is null
             and fri.id is null
             and ffl.id is null
-            and fflr is null
+            and fflr.id is null
+            and fd.id is null
+            and fdr.id is null
         ",
         collection_id
     )

@@ -1,5 +1,28 @@
 {
   "db": "PostgreSQL",
+  "0f7d00f2ac66a46beece5c04ef1836ea6cdb64c483393ceec2ab5ce52605385e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Date",
+          "Date"
+        ]
+      }
+    },
+    "query": "insert into filter_date_range (type_id, prop_id, start, \"end\") values\n            ($1, $2, $3, $4)\n        returning (id)\n        "
+  },
   "106f5d78bc426662bb5bfdaed77511e9b43d0302a6afc934e4f08315a68a7b77": {
     "describe": {
       "columns": [],
@@ -57,6 +80,20 @@
       }
     },
     "query": "select id, type_id, collection_id, name, \"order\"\n        from property\n        where collection_id = $1"
+  },
+  "1e9c3c22ee4b70f74c20a27d3807fe69fd1bc342538a4ae25a9984d482001c45": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Date",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "insert into propval_date (value, page_id, prop_id) values ($1, $2, $3)\n            on conflict (page_id, prop_id)\n            do update set value = $1"
   },
   "2ae8175e84bfcb90d3dd6f778db59b59bbebe4a2eef16aaaf534788cd245141d": {
     "describe": {
@@ -133,6 +170,56 @@
       }
     },
     "query": "select id, sort_by_prop_id prop_id, sort_type_id type_id\n            from collection where id = $1"
+  },
+  "2d418498f6e689a01d40cc86d6f2dc6ecc6945aa201073225f6b44c00e1d9b19": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start",
+          "ordinal": 4,
+          "type_info": "Date"
+        },
+        {
+          "name": "end",
+          "ordinal": 5,
+          "type_info": "Date"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select\n                f.id,\n                ft.id type_id,\n                ft.name type_name,\n                f.prop_id,\n                f.start,\n                f.end\n            from filter_date_range f\n            join filter_type ft on f.type_id = ft.id\n            join property p on p.id = f.prop_id\n            where p.collection_id = $1"
   },
   "2e883cabd85608084b9d373eab5bf6a311ada0b3311fb91d19a970aeca8efa22": {
     "describe": {
@@ -385,6 +472,89 @@
     },
     "query": "select\n                f.id,\n                ft.id type_id,\n                ft.name type_name,\n                f.prop_id,\n                f.start,\n                f.end\n            from filter_int_range f\n            join filter_type ft on f.type_id = ft.id\n            join property p on p.id = f.prop_id\n            where p.collection_id = $1"
   },
+  "62263e4d39f4c4612347d709dc1e595976f1176a7599faebf985874e99fff349": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "start",
+          "ordinal": 4,
+          "type_info": "Date"
+        },
+        {
+          "name": "end",
+          "ordinal": 5,
+          "type_info": "Date"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select\n                f.id,\n                ft.id type_id,\n                ft.name type_name,\n                f.prop_id,\n                f.start,\n                f.end\n            from filter_date_range f\n            join filter_type ft on f.type_id = ft.id\n            where f.id = $1"
+  },
+  "626416b1527c9644dd2c60319bca0c6ff6c7d2b0847003ca2433ed6a2c7d3031": {
+    "describe": {
+      "columns": [
+        {
+          "name": "page_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 2,
+          "type_info": "Date"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "select page_id, prop_id, value from propval_date\n            where page_id = $1 and prop_id = $2"
+  },
   "697c8b9ea04b8b6914c9dcdaa00d29ac70b051ca148c0c27db852edf44f4e507": {
     "describe": {
       "columns": [],
@@ -579,6 +749,20 @@
     },
     "query": "insert into filter_int (type_id, prop_id, value) values\n            ($1, $2, $3)\n            returning (id)\n        "
   },
+  "7967c33b2a3343c28e86951c35f18726447fef47b587ce3d7b7eb09b1286f022": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Date",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "update filter_date set value = $1, type_id = $2 where id = $3"
+  },
   "82ad4f814aad9f76c5a3da855e7ea0bd4ae88ffc0c2c83c2e4171ff77d2a3079": {
     "describe": {
       "columns": [
@@ -612,6 +796,18 @@
     },
     "query": "select page_id, prop_id, value from propval_float\n            where page_id = $1 and prop_id = $2"
   },
+  "82b6aa93de7e25d1ee5d107ee512509dd17a94faa32d2d05a600e59e9478a3eb": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "delete from filter_date_range where id = $1"
+  },
   "89af9b653ed38745137b46e5de046bce7173ce3b634bc9ef6c06ea57cfa48d98": {
     "describe": {
       "columns": [],
@@ -623,6 +819,18 @@
       }
     },
     "query": "delete from filter_bool where id = $1"
+  },
+  "8d19eebe547ed344596cc72fb00c618e64a2d21bf1ba13d98e4ed139a8a1ad47": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "delete from filter_date where id = $1"
   },
   "8fbb2f266c986f05be884dda779c30e2024fe49e7f8663a6373732628765c5cf": {
     "describe": {
@@ -819,25 +1027,52 @@
     },
     "query": "update filter_float_range\n            set start = $1, \"end\" = $2, type_id = $3\n            where id = $4"
   },
-  "c496db17d340e1758ae80a65a42020d0c133ec27c8ddd1c2ed551cdaef25e021": {
+  "be2378dc4faf59ba46e47732538ae829f22a75d75d70c6a8985b6236c32725e2": {
     "describe": {
-      "columns": [
-        {
-          "name": "cnt",
-          "ordinal": 0,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        null
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
         "Left": [
+          "Date",
+          "Date",
+          "Int4",
           "Int4"
         ]
       }
     },
-    "query": "select count(1) cnt from property p\n        left join filter_bool fb on p.id = fb.prop_id\n        left join filter_int fi on p.id = fi.prop_id\n        left join filter_int_range fri on p.id = fri.prop_id\n        left join filter_float ffl on p.id = ffl.prop_id\n        left join filter_float_range fflr on p.id = fflr.prop_id\n        where\n            p.collection_id = $1\n            and fb.id is null\n            and fi.id is null\n            and fri.id is null\n            and ffl.id is null\n            and fflr is null\n        "
+    "query": "update filter_date_range\n            set start = $1, \"end\" = $2, type_id = $3\n            where id = $4"
+  },
+  "bf43e684493590404b8e5a0a20a8dfb72a2e7ac00c8f2e081a0181b628fdb1e3": {
+    "describe": {
+      "columns": [
+        {
+          "name": "page_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 2,
+          "type_info": "Date"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "select page_id, prop_id, value from propval_date\n            where page_id = any($1)"
   },
   "c4fecadf6ab92864e9277ad5ed9a3ff20d3af01eff0da80cdb06ba5821e85be3": {
     "describe": {
@@ -979,6 +1214,88 @@
     },
     "query": "select\n                f.id,\n                ft.id type_id,\n                ft.name type_name,\n                f.prop_id,\n                f.value\n            from filter_bool f\n            join filter_type ft on f.type_id = ft.id\n            join property p on p.id = f.prop_id\n            where p.collection_id = $1"
   },
+  "d0b7ae6ea57528fdd9e85edd94de19db1b2c8a528e78b9309ac27e0e6bff5100": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 2,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 3,
+          "type_info": "Date"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select\n                f.id,\n                ft.id type_id,\n                f.prop_id,\n                f.value\n            from filter_date f\n            join filter_type ft on f.type_id = ft.id\n            where f.id = $1"
+  },
+  "dea7291ef2b7b6545a05dcab2fca0fa8c5530c114613ccd4031b7d6d36ff3397": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "type_name",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 3,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 4,
+          "type_info": "Date"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select\n                f.id,\n                ft.id type_id,\n                ft.name type_name,\n                f.prop_id,\n                f.value\n            from filter_date f\n            join filter_type ft on f.type_id = ft.id\n            join property p on p.id = f.prop_id\n            where p.collection_id = $1"
+  },
   "e03e96472e0f78b53e31e86f7702dd80d455475d8c051c4e2284d42f1862403e": {
     "describe": {
       "columns": [
@@ -1037,6 +1354,28 @@
       }
     },
     "query": "select page_id, prop_id, value from propval_int\n            where page_id = $1 and prop_id = $2"
+  },
+  "e2fcaca8f2eb71e3936e10ec0d87cd7a89d5dd8ec847cc09138fba33408c354f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4",
+          "Date"
+        ]
+      }
+    },
+    "query": "insert into filter_date (type_id, prop_id, value) values\n            ($1, $2, $3)\n            returning (id)\n        "
   },
   "e9a654c09f7ca8824e74ec37d9097ddf5e04c7e8fac8124d648ea9ee7f0aba48": {
     "describe": {
@@ -1165,6 +1504,26 @@
       }
     },
     "query": "select\n                p.collection_id collection_id, p.title title, pc.content as \"content?\"\n            from page p\n            left join page_content pc on pc.page_id = p.id\n            where p.id = $1"
+  },
+  "ef0b6eb309fbd8820d7c4b570703ed57b118f636f710c02252dbb79efa8de3a1": {
+    "describe": {
+      "columns": [
+        {
+          "name": "cnt",
+          "ordinal": 0,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      }
+    },
+    "query": "select count(1) cnt from property p\n        left join filter_bool fb on p.id = fb.prop_id\n        left join filter_int fi on p.id = fi.prop_id\n        left join filter_int_range fri on p.id = fri.prop_id\n        left join filter_float ffl on p.id = ffl.prop_id\n        left join filter_float_range fflr on p.id = fflr.prop_id\n        left join filter_date fd on p.id = fd.prop_id\n        left join filter_date_range fdr on p.id = fdr.prop_id\n        where\n            p.collection_id = $1\n            and fb.id is null\n            and fi.id is null\n            and fri.id is null\n            and ffl.id is null\n            and fflr.id is null\n            and fd.id is null\n            and fdr.id is null\n        "
   },
   "eff62a9d13739d1d84041c2c34c41c2b677c5119d2826a6c5269bc82dd8df72c": {
     "describe": {
