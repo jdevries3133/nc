@@ -13,12 +13,22 @@ https://github.com/jdevries3133/nc/assets/58614260/ec0d6d17-0e32-429c-96a7-5ef0c
 
 # Get Prop & PropVal Code into Traits
 
-## Background
+I think a filter trait is the main thing that is missing:
 
-The next stage of this project will be implementing additional propval types.
-Before doing that, I want to capture the repetition in the bool and int
-implementations in traits so that knocking out the other data-types will be
-easier.
+```
+trait Filter<T>: db_ops::DbModel {
+  fn render_chip() -> String;
+  fn render_form() -> String;
+  fn create(prop_id: i32, type: FilterType, value: T);
+}
+```
+
+I feel that the PropValue trait is satisfactory, and I can always add to that
+trait as needed.
+
+Then, I think I'm in a good place to implement the additional data types.
+Obviously, multi-str will be a bit of a special child; I think I'll cross that
+bridge when I come to it.
 
 # Other Future Ideas
 
