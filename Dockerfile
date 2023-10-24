@@ -1,3 +1,3 @@
-FROM alpine:3.18
+FROM scratch
 COPY ./target/x86_64-unknown-linux-musl/release/nc nc
 ENTRYPOINT [ "./nc" ]
