@@ -22,6 +22,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Session {
     pub user: User,
+    /// Unix seconds timestamp when the token was issued. I'll do token
+    /// revocation later.
+    pub created_at: u64,
 }
 impl Session {
     /// Parse the session from request headers, validating the cookie
@@ -111,11 +114,12 @@ mod tests {
                 username: "Jack".to_string(),
                 email: "jack@jack.com".to_string(),
             },
+            created_at: 0,
         }
     }
 
     const SERIALIZED_SESSION: &str =
-        "eyJ1c2VyIjp7ImlkIjoxLCJ1c2VybmFtZSI6IkphY2siLCJlbWFpbCI6ImphY2tAamFjay5jb20ifX0:LfHxWjYfG4U7uYkneVf8ZadB3C2z8qV3a8kp1Tnt1sU";
+    "eyJ1c2VyIjp7ImlkIjoxLCJ1c2VybmFtZSI6IkphY2siLCJlbWFpbCI6ImphY2tAamFjay5jb20ifSwiY3JlYXRlZF9hdCI6MH0:tTtL11Cqgbd3jzCWiPinY8oMJUi6TdqOHlhCIo+gyBk";
 
     #[test]
     fn test_serialize_session() {

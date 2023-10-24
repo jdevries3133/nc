@@ -1229,7 +1229,13 @@ pub async fn handle_registration(
     let hashed_pw = pw::hash_new(&form.password);
     let user =
         db_ops::create_user(&db, form.username, form.email, &hashed_pw).await?;
-    let session = session::Session { user };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)?
+        .as_secs();
+    let session = session::Session {
+        user,
+        created_at: now,
+    };
     let headers = session.update_headers(headers);
     let headers = htmx::redirect(headers, "/collection/1");
     Ok((headers, "OK".to_string()))

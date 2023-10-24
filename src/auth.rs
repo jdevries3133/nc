@@ -23,7 +23,13 @@ pub async fn authenticate(
     .await?;
 
     if pw::check(password, &truth).is_ok() {
-        Ok(session::Session { user })
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_secs();
+        Ok(session::Session {
+            user,
+            created_at: now,
+        })
     } else {
         bail!("wrong password")
     }
