@@ -36,6 +36,8 @@ pub enum Route {
     PropNewBoolFilter(Option<i32>),
     PropNewIntFilter(Option<i32>),
     PropNewIntRngFilter(Option<i32>),
+    PropNewFloatFilter(Option<i32>),
+    PropNewFloatRngFilter(Option<i32>),
     FilterBoolChip(Option<i32>),
     /// Has GET (returning a form), POST (accepting submission), and DELETE
     FilterBool(Option<i32>),
@@ -45,13 +47,20 @@ pub enum Route {
     FilterIntRngChip(Option<i32>),
     /// Has GET (returning a form), POST (accepting submission), and DELETE
     FilterIntRng(Option<i32>),
+    FilterFloatChip(Option<i32>),
+    FilterFloat(Option<i32>),
+    FilterFloatRngChip(Option<i32>),
+    /// Has GET (returning a form), POST (accepting submission), and DELETE
+    FilterFloatRng(Option<i32>),
     Page(Option<i32>),
     PageSubmit,
     PageContent(Option<i32>),
     PageBoolProp(Option<(i32, i32)>),
     PageIntProp(Option<(i32, i32)>),
+    PageFloatProp(Option<(i32, i32)>),
     PageNewBoolProp(Option<(i32, i32)>),
     PageNewIntProp(Option<(i32, i32)>),
+    PageNewFloatProp(Option<(i32, i32)>),
     Root,
     Ping,
     Register,
@@ -136,9 +145,17 @@ impl Route {
                 Some(id) => format!("/prop/{id}/new-int-filter"),
                 None => "/prop/:id/new-int-filter".into(),
             },
-            Route::PropNewIntRngFilter(params) => match params {
+            Self::PropNewIntRngFilter(params) => match params {
                 Some(id) => format!("/prop/{id}/new-int-rng-filter"),
                 None => "/prop/:id/new-int-rng-filter".into(),
+            },
+            Self::PropNewFloatFilter(params) => match params {
+                Some(id) => format!("/prop/{id}/new-float-filter"),
+                None => "/prop/:id/new-float-filter".into(),
+            },
+            Self::PropNewFloatRngFilter(params) => match params {
+                Some(id) => format!("/prop/{id}/new-float-rng-filter"),
+                None => "/prop/:id/new-float-rng-filter".into(),
             },
             Self::FilterBoolChip(params) => match params {
                 Some(id) => format!("/filter/bool/{id}/chip"),
@@ -164,6 +181,22 @@ impl Route {
                 Some(id) => format!("/filter/int-rng/{id}"),
                 None => "/filter/int-rng/:id".into(),
             },
+            Self::FilterFloatChip(params) => match params {
+                Some(id) => format!("/filter/float/{id}/chip"),
+                None => "/filter/float/:id/chip".into(),
+            },
+            Self::FilterFloat(params) => match params {
+                Some(id) => format!("/filter/float/{id}"),
+                None => "/filter/float/:id".into(),
+            },
+            Self::FilterFloatRngChip(params) => match params {
+                Some(id) => format!("/filter/float-rng/{id}/chip"),
+                None => "/filter/float-rng/:id/chip".into(),
+            },
+            Self::FilterFloatRng(params) => match params {
+                Some(id) => format!("/filter/float-rng/{id}"),
+                None => "/filter/float-rng/:id".into(),
+            },
             Self::Page(params) => match params {
                 Some(id) => format!("/page/{id}"),
                 None => "/page/:page_id".into(),
@@ -185,6 +218,12 @@ impl Route {
                 }
                 None => "/page/:page_id/prop/:prop_id/int".into(),
             },
+            Self::PageFloatProp(params) => match params {
+                Some((page_id, prop_id)) => {
+                    format!("/page/{page_id}/prop/{prop_id}/float")
+                }
+                None => "/page/:page_id/prop/:prop_id/float".into(),
+            },
             Self::PageNewBoolProp(params) => match params {
                 Some((page_id, prop_id)) => {
                     format!("/page/{page_id}/prop/{prop_id}/new-bool")
@@ -196,6 +235,12 @@ impl Route {
                     format!("/page/{page_id}/prop/{prop_id}/new-int")
                 }
                 None => "/page/:page_id/prop/:prop_id/new-int".into(),
+            },
+            Self::PageNewFloatProp(params) => match params {
+                Some((page_id, prop_id)) => {
+                    format!("/page/{page_id}/prop/{prop_id}/new-float")
+                }
+                None => "/page/:page_id/prop/:prop_id/new-float".into(),
             },
             Self::Root => "/".into(),
             Self::Ping => "/ping".into(),
@@ -287,6 +332,14 @@ pub fn get_protected_routes() -> Router<models::AppState> {
             post(controllers::create_new_int_rng_filter),
         )
         .route(
+            &Route::PropNewFloatFilter(None).as_string(),
+            post(controllers::create_new_float_filter),
+        )
+        .route(
+            &Route::PropNewFloatRngFilter(None).as_string(),
+            post(controllers::create_new_float_rng_filter),
+        )
+        .route(
             &Route::FilterBoolChip(None).as_string(),
             get(controllers::get_bool_filter_chip),
         )
@@ -335,6 +388,38 @@ pub fn get_protected_routes() -> Router<models::AppState> {
             delete(controllers::delete_int_rng_filter),
         )
         .route(
+            &Route::FilterFloat(None).as_string(),
+            get(controllers::get_float_filter_form),
+        )
+        .route(
+            &Route::FilterFloat(None).as_string(),
+            post(controllers::handle_float_form_submit),
+        )
+        .route(
+            &Route::FilterFloat(None).as_string(),
+            delete(controllers::delete_float_filter),
+        )
+        .route(
+            &Route::FilterFloatChip(None).as_string(),
+            get(controllers::get_float_filter_chip),
+        )
+        .route(
+            &Route::FilterFloatRng(None).as_string(),
+            get(controllers::get_float_rng_filter_form),
+        )
+        .route(
+            &Route::FilterFloatRng(None).as_string(),
+            post(controllers::handle_float_rng_form_submit),
+        )
+        .route(
+            &Route::FilterFloatRng(None).as_string(),
+            delete(controllers::delete_float_rng_filter),
+        )
+        .route(
+            &Route::FilterFloatRngChip(None).as_string(),
+            get(controllers::get_float_rng_filter_chip),
+        )
+        .route(
             &Route::Page(None).as_string(),
             get(controllers::existing_page_form),
         )
@@ -359,12 +444,20 @@ pub fn get_protected_routes() -> Router<models::AppState> {
             post(controllers::save_pv_int),
         )
         .route(
+            &Route::PageFloatProp(None).as_string(),
+            post(controllers::save_pv_float),
+        )
+        .route(
             &Route::PageNewBoolProp(None).as_string(),
             get(controllers::new_bool_propval_form),
         )
         .route(
             &Route::PageNewIntProp(None).as_string(),
             get(controllers::new_int_propval_form),
+        )
+        .route(
+            &Route::PageNewFloatProp(None).as_string(),
+            get(controllers::new_float_propval_form),
         )
 }
 

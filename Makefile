@@ -27,6 +27,12 @@ check: setup
 ifdef CI
 	pnpm run build
 endif
+ifndef CI
+	@# Locally, we want to ensure that `cargo sqlx prepare` was run, otherwise
+	@# the build will fail in CI. So, we'll run an offline build as part of
+	@# our checks
+	SQLX_OFFLINE=true cargo build
+endif
 	cargo clippy -- -D warnings
 	cargo fmt --check
 	terraform fmt --check
