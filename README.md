@@ -4,15 +4,71 @@ https://github.com/jdevries3133/nc/assets/58614260/ec0d6d17-0e32-429c-96a7-5ef0c
 
 # Next Steps
 
-2. Implement float
-3. Implement date
-4. Implement datetime
-5. Implement multistr (tags)
-6. Paginate the collection list view
+1. Implement date
+2. Implement datetime
+3. Implement multistr (tags)
+4. Paginate the collection list view
 
-# Implement Float
+# Implement Date
 
-Should be pure code vomitorium.
+Float was a ton more copying than I would have liked but it ultimately didn't
+take _that_ long and it was pretty mindless so I think I'm content to continue
+the code vomitorium.
+
+# Oopsie -- Should Have Enum'd
+
+I did sort of have a moment of realization that I could do this:
+
+```
+enum Value {
+  Bool,
+  Int,
+  Float
+}
+struct PropVal {
+  page_id: i32,
+  prop_id: i32,
+  value: Value
+}
+
+struct Filter {
+  // ... other fields
+  value: Value
+}
+```
+
+Then, I can still have nice and type-safe queries. Ultimately, the thing I was
+resisting in over-genericizinig my stuff was getting into the territory of
+needing to build queries dynamically (dynamically interpolating the table name),
+and thus losing compile-time type-safety. With this strategy, though, I can
+simply do things like this:
+
+```
+// "value_type" presumed to be a variant of `Value` above.
+let stuff = match value_type {
+  Bool => {
+    query_as!(
+      "select value from propval_bool where page_id = $1 and prop_id = $2",
+      page_id,
+      prop_id
+    )
+  },
+  Int => {
+    query_as!(
+      "select value from propval_int where page_id = $1 and prop_id = $2",
+      page_id,
+      prop_id
+    )
+  }
+}
+```
+
+Clearly, I'll be switching over this enum a whole lot, but I'll also remove a
+ton of code.
+
+Nonetheless, I'd prefer to code vomit through all the types, and then do a
+mammoth refactor to push the limits of the largest Rust refactoring I've done,
+so I can see how that goes.
 
 # Other Future Ideas
 
@@ -58,3 +114,4 @@ These are in priority order.
 - Add a `created_at` timestamp and expiry. Otherwise, each user only has one
 - Get more prop & propval code into traits (i.e, controllers)
   JWT for all time, which is quite cursed
+- Implement float
