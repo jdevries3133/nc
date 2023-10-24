@@ -1,8 +1,8 @@
 use super::{
     auth, components,
-    components::Component,
+    components::{Component, FilterUi},
     db_ops,
-    db_ops::DbModel,
+    db_ops::{DbModel, FilterDb},
     errors::ServerError,
     htmx, models,
     models::{AppState, PropVal},
@@ -547,7 +547,7 @@ pub async fn get_bool_filter_chip(
         filter,
         prop_name: &related_prop.name,
     }
-    .render())
+    .render_chip())
 }
 
 pub async fn get_bool_filter_form(
@@ -560,11 +560,11 @@ pub async fn get_bool_filter_form(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(components::BoolFilterForm {
+    Ok(components::FilterBool {
         filter,
         prop_name: &related_prop.name,
     }
-    .render())
+    .render_form())
 }
 
 fn trigger_event(
@@ -657,7 +657,7 @@ pub async fn handle_bool_form_submit(
             filter: &new_filter,
             prop_name: &related_prop.name,
         }
-        .render(),
+        .render_chip(),
     ))
 }
 
@@ -675,7 +675,7 @@ pub async fn get_int_filter_chip(
         filter,
         prop_name: &related_prop.name,
     }
-    .render())
+    .render_chip())
 }
 
 pub async fn get_int_filter_form(
@@ -688,11 +688,11 @@ pub async fn get_int_filter_form(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(components::IntFilterForm {
+    Ok(components::FilterInt {
         filter,
         prop_name: &related_prop.name,
     }
-    .render())
+    .render_form())
 }
 
 #[derive(Deserialize)]
@@ -729,7 +729,7 @@ pub async fn handle_int_form_submit(
             filter: &new_filter,
             prop_name: &related_prop.name,
         }
-        .render(),
+        .render_chip(),
     ))
 }
 
@@ -747,7 +747,7 @@ pub async fn get_int_rng_filter_chip(
         filter,
         prop_name: &related_prop.name,
     }
-    .render())
+    .render_chip())
 }
 
 pub async fn get_int_rng_filter_form(
@@ -760,11 +760,11 @@ pub async fn get_int_rng_filter_form(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(components::IntRngFilterForm {
+    Ok(components::FilterIntRng {
         filter,
         prop_name: &related_prop.name,
     }
-    .render())
+    .render_form())
 }
 
 #[derive(Deserialize)]
@@ -802,7 +802,7 @@ pub async fn handle_int_rng_form_submit(
             filter: &new_filter,
             prop_name: &related_prop.name,
         }
-        .render(),
+        .render_chip(),
     ))
 }
 
@@ -872,7 +872,7 @@ pub async fn create_new_bool_filter(
     let query = db_ops::GetPropQuery { id: prop_id };
     let (prop, filter) = join!(
         models::Prop::get(&db, &query),
-        db_ops::create_bool_filter(&db, prop_id, r#type)
+        models::FilterBool::create(&db, prop_id, r#type)
     );
     let related_prop = prop?;
     let filter = filter?;
@@ -903,11 +903,11 @@ pub async fn create_new_bool_filter(
         [
             r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
-            &components::BoolFilterForm {
+            &components::FilterBool {
                 filter: &filter,
                 prop_name: &related_prop.name,
             }
-            .render(),
+            .render_form(),
             "</div>",
         ]
         .join(""),
@@ -926,7 +926,7 @@ pub async fn create_new_int_filter(
     let query = db_ops::GetPropQuery { id: prop_id };
     let (prop, filter) = join!(
         models::Prop::get(&db, &query),
-        db_ops::create_int_filter(&db, prop_id, r#type)
+        models::FilterInt::create(&db, prop_id, r#type)
     );
     let related_prop = prop?;
     let filter = filter?;
@@ -957,11 +957,11 @@ pub async fn create_new_int_filter(
         [
             r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
-            &components::IntFilterForm {
+            &components::FilterInt {
                 filter: &filter,
                 prop_name: &related_prop.name,
             }
-            .render(),
+            .render_form(),
             "</div>",
         ]
         .join(""),
@@ -981,7 +981,7 @@ pub async fn create_new_int_rng_filter(
     let query = db_ops::GetPropQuery { id: prop_id };
     let (prop, filter) = join!(
         models::Prop::get(&db, &query),
-        db_ops::create_int_rng_filter(&db, prop_id, r#type)
+        models::FilterIntRng::create(&db, prop_id, r#type)
     );
     let related_prop = prop?;
     let filter = filter?;
@@ -1012,11 +1012,11 @@ pub async fn create_new_int_rng_filter(
         [
             r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
-            &components::IntRngFilterForm {
+            &components::FilterIntRng {
                 filter: &filter,
                 prop_name: &related_prop.name,
             }
-            .render(),
+            .render_form(),
             r#"</div>"#,
         ]
         .join(""),

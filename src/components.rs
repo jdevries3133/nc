@@ -636,7 +636,7 @@ impl Component for FilterToolbar<'_> {
                             filter,
                             prop_name: (self.get_prop_name)(filter.prop_id),
                         }
-                        .render(),
+                        .render_chip(),
                     );
                     acc
                 });
@@ -649,7 +649,7 @@ impl Component for FilterToolbar<'_> {
                             filter,
                             prop_name: (self.get_prop_name)(filter.prop_id),
                         }
-                        .render(),
+                        .render_chip(),
                     );
                     acc
                 });
@@ -661,7 +661,7 @@ impl Component for FilterToolbar<'_> {
                         filter,
                         prop_name: (self.get_prop_name)(filter.prop_id),
                     }
-                    .render(),
+                    .render_chip(),
                 );
                 acc
             },
@@ -684,12 +684,17 @@ impl Component for FilterToolbar<'_> {
     }
 }
 
+pub trait FilterUi {
+    fn render_chip(&self) -> String;
+    fn render_form(&self) -> String;
+}
+
 pub struct FilterBool<'a> {
     pub filter: &'a models::FilterBool,
     pub prop_name: &'a str,
 }
-impl Component for FilterBool<'_> {
-    fn render(&self) -> String {
+impl FilterUi for FilterBool<'_> {
+    fn render_chip(&self) -> String {
         let prop_name = self.prop_name;
         let href = Route::FilterBool(Some(self.filter.id));
         let operation_name = self.filter.r#type.get_display_name();
@@ -715,6 +720,64 @@ impl Component for FilterBool<'_> {
 
         result
     }
+    fn render_form(&self) -> String {
+        let filter_id = self.filter.id;
+        let container_id = format!("filter-{filter_id}-form");
+        let chevron = Chevron {
+            variant: ChevronVariant::Open,
+        }
+        .render();
+        let prop_name = self.prop_name;
+        let submit_url = Route::FilterBool(Some(self.filter.id));
+        let chip_route = Route::FilterBoolChip(Some(self.filter.id));
+        format!(
+            r##"
+            <div id="{container_id}" class="{FILTER_CONTAINER_STYLE} flex-col">
+                <div class="flex flex-row">
+                    <button 
+                        hx-get="{chip_route}"
+                        hx-target="#{container_id}""
+                        >{chevron}</button>
+                    <div class="flex flex-col">
+                        <p class="text-xl">{prop_name}</p>
+                        <p class="italic">update filter</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-center">
+                    <form
+                        hx-target="#{container_id}"
+                        hx-post="{submit_url}"
+                        >
+                            <input type="hidden" name="value" value="true" />
+                            <button
+                                class="bg-green-100 shadow hover:shadow-none hover:bg-green-200 dark:bg-green-700 dark:hover:bg-green-600 transition rounded-tl rounded-bl p-4"
+                                >
+                                True</button>
+                    </form>
+                    <form
+                        hx-target="#{container_id}"
+                        hx-post="{submit_url}"
+                        >
+                            <input type="hidden" name="value" value="is-empty" />
+                            <button
+                                class="bg-slate-100 shadow hover:shadow-none hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition p-4 whitespace-nowrap"
+                                >
+                                Is Empty</button>
+                    </form>
+                    <form
+                        hx-target="#{container_id}"
+                        hx-post="{submit_url}"
+                        >
+                        <input type="hidden" name="value" value="false" />
+                        <button
+                            class="bg-red-100 shadow hover:shadow-none hover:bg-red-200 dark:bg-red-700 hover:dark:bg-red-600 transition rounded-tr rounded-br p-4"
+                            >False</button>
+                    </form>
+                </div>
+            </div>
+            "##
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -722,8 +785,8 @@ pub struct FilterInt<'a> {
     pub filter: &'a models::FilterInt,
     pub prop_name: &'a str,
 }
-impl Component for FilterInt<'_> {
-    fn render(&self) -> String {
+impl FilterUi for FilterInt<'_> {
+    fn render_chip(&self) -> String {
         let href = Route::FilterInt(Some(self.filter.id));
         let prop_name = self.prop_name;
         let operation_name = self.filter.r#type.get_display_name();
@@ -742,6 +805,84 @@ impl Component for FilterInt<'_> {
 
         result
     }
+    fn render_form(&self) -> String {
+        let value = self.filter.value;
+        let prop_name = self.prop_name;
+        let chevron = Chevron {
+            variant: ChevronVariant::Open,
+        }
+        .render();
+        let type_1_selected =
+            if let models::FilterType::Eq(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_2_selected =
+            if let models::FilterType::Neq(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_3_selected =
+            if let models::FilterType::Gt(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_4_selected =
+            if let models::FilterType::Lt(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let type_7_selected =
+            if let models::FilterType::IsEmpty(..) = self.filter.r#type {
+                "selected"
+            } else {
+                ""
+            };
+        let form_route = Route::FilterInt(Some(self.filter.id));
+        let chip_route = Route::FilterIntChip(Some(self.filter.id));
+        format!(
+            r#"
+            <form
+                hx-post="{form_route}"
+                class="{FILTER_CONTAINER_STYLE}"
+            >
+                <button 
+                    class="self-start"
+                    hx-get="{chip_route}"
+                    hx-target="closest form"
+                    >{chevron}</button>
+                <div class="flex flex-col gap-2">
+                    <h1 class="text-lg">{prop_name}</h1>
+                    <div>
+                        <label class="text-sm" for="type">Filter Type</label>
+                        <select
+                            id="type"
+                            name="type"
+                            class="dark:text-white text-sm dark:bg-slate-700 rounded"
+                            >
+                            <option {type_1_selected} value="1">Exactly Equals</option>
+                            <option {type_2_selected} value="2">Does not Equal</option>
+                            <option {type_3_selected} value="3">Is Greater Than</option>
+                            <option {type_4_selected} value="4">Is Less Than</option>
+                            <option {type_7_selected} value="7">Is Empty</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="value">Value</label>
+                        <input id="value" name="value" type="number" value="{value}" />
+                    </div>
+                    <div>
+                        <button class="dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Save</button>
+                    </div>
+                </div>
+            </form>
+            "#
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -749,8 +890,8 @@ pub struct FilterIntRng<'a> {
     pub filter: &'a models::FilterIntRng,
     pub prop_name: &'a str,
 }
-impl Component for FilterIntRng<'_> {
-    fn render(&self) -> String {
+impl FilterUi for FilterIntRng<'_> {
+    fn render_chip(&self) -> String {
         let prop_name = self.prop_name;
         let href = Route::FilterIntRng(Some(self.filter.id));
         let operation_name = self.filter.r#type.get_display_name();
@@ -768,6 +909,64 @@ impl Component for FilterIntRng<'_> {
         .render();
 
         result
+    }
+    fn render_form(&self) -> String {
+        let prop_name = self.prop_name;
+        let start = self.filter.start;
+        let end = self.filter.end;
+        let chevron = Chevron {
+            variant: ChevronVariant::Open,
+        }
+        .render();
+        let type_5_selected = match self.filter.r#type {
+            models::FilterType::InRng(_) => "selected",
+            _ => "",
+        };
+        let type_6_selected = match self.filter.r#type {
+            models::FilterType::NotInRng(_) => "selected",
+            _ => "",
+        };
+        let form_route = Route::FilterIntRng(Some(self.filter.id));
+        let chip_route = Route::FilterIntRngChip(Some(self.filter.id));
+        format!(
+            r#"
+            <form
+                hx-post="{form_route}"
+                class="{FILTER_CONTAINER_STYLE}"
+            >
+                <button 
+                    hx-get="{chip_route}"
+                    hx-target="closest form"
+                    class="self-start"
+                    >{chevron}</button>
+                <div class="flex flex-col gap-2">
+                    <h1 class="text-xl">{prop_name}</h1>
+                    <div>
+                        <label class="text-sm" for="type">Filter Type</label>
+                        <select
+                            id="type"
+                            name="type"
+                            class="dark:text-white text-sm dark:bg-slate-700 rounded"
+                            >
+                                <option {type_5_selected} value="5">Is Inside Range</option>
+                                <option {type_6_selected} value="6">Is Not Inside Range</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="start">Start</label>
+                        <input id="start" name="start" type="number" value="{start}" />
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="end">End</label>
+                        <input id="end" name="end" type="number" value="{end}" />
+                    </div>
+                    <div>
+                        <button class="dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Save</button>
+                    </div>
+                </div>
+            </form>
+            "#
+        )
     }
 }
 
@@ -873,221 +1072,6 @@ impl Component for FilterChip<'_> {
                 {child}
                 {delete_btn}
             </div>
-            "#
-        )
-    }
-}
-
-pub struct BoolFilterForm<'a> {
-    pub filter: &'a models::FilterBool,
-    pub prop_name: &'a str,
-}
-impl Component for BoolFilterForm<'_> {
-    fn render(&self) -> String {
-        let filter_id = self.filter.id;
-        let container_id = format!("filter-{filter_id}-form");
-        let chevron = Chevron {
-            variant: ChevronVariant::Open,
-        }
-        .render();
-        let prop_name = self.prop_name;
-        let submit_url = Route::FilterBool(Some(self.filter.id));
-        let chip_route = Route::FilterBoolChip(Some(self.filter.id));
-        format!(
-            r##"
-            <div id="{container_id}" class="{FILTER_CONTAINER_STYLE} flex-col">
-                <div class="flex flex-row">
-                    <button 
-                        hx-get="{chip_route}"
-                        hx-target="#{container_id}""
-                        >{chevron}</button>
-                    <div class="flex flex-col">
-                        <p class="text-xl">{prop_name}</p>
-                        <p class="italic">update filter</p>
-                    </div>
-                </div>
-                <div class="flex items-center justify-center">
-                    <form
-                        hx-target="#{container_id}"
-                        hx-post="{submit_url}"
-                        >
-                            <input type="hidden" name="value" value="true" />
-                            <button
-                                class="bg-green-100 shadow hover:shadow-none hover:bg-green-200 dark:bg-green-700 dark:hover:bg-green-600 transition rounded-tl rounded-bl p-4"
-                                >
-                                True</button>
-                    </form>
-                    <form
-                        hx-target="#{container_id}"
-                        hx-post="{submit_url}"
-                        >
-                            <input type="hidden" name="value" value="is-empty" />
-                            <button
-                                class="bg-slate-100 shadow hover:shadow-none hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition p-4 whitespace-nowrap"
-                                >
-                                Is Empty</button>
-                    </form>
-                    <form
-                        hx-target="#{container_id}"
-                        hx-post="{submit_url}"
-                        >
-                        <input type="hidden" name="value" value="false" />
-                        <button
-                            class="bg-red-100 shadow hover:shadow-none hover:bg-red-200 dark:bg-red-700 hover:dark:bg-red-600 transition rounded-tr rounded-br p-4"
-                            >False</button>
-                    </form>
-                </div>
-            </div>
-            "##
-        )
-    }
-}
-
-pub struct IntFilterForm<'a> {
-    pub filter: &'a models::FilterInt,
-    pub prop_name: &'a str,
-}
-impl Component for IntFilterForm<'_> {
-    fn render(&self) -> String {
-        let value = self.filter.value;
-        let prop_name = self.prop_name;
-        let chevron = Chevron {
-            variant: ChevronVariant::Open,
-        }
-        .render();
-        let type_1_selected =
-            if let models::FilterType::Eq(..) = self.filter.r#type {
-                "selected"
-            } else {
-                ""
-            };
-        let type_2_selected =
-            if let models::FilterType::Neq(..) = self.filter.r#type {
-                "selected"
-            } else {
-                ""
-            };
-        let type_3_selected =
-            if let models::FilterType::Gt(..) = self.filter.r#type {
-                "selected"
-            } else {
-                ""
-            };
-        let type_4_selected =
-            if let models::FilterType::Lt(..) = self.filter.r#type {
-                "selected"
-            } else {
-                ""
-            };
-        let type_7_selected =
-            if let models::FilterType::IsEmpty(..) = self.filter.r#type {
-                "selected"
-            } else {
-                ""
-            };
-        let form_route = Route::FilterInt(Some(self.filter.id));
-        let chip_route = Route::FilterIntChip(Some(self.filter.id));
-        format!(
-            r#"
-            <form
-                hx-post="{form_route}"
-                class="{FILTER_CONTAINER_STYLE}"
-            >
-                <button 
-                    class="self-start"
-                    hx-get="{chip_route}"
-                    hx-target="closest form"
-                    >{chevron}</button>
-                <div class="flex flex-col gap-2">
-                    <h1 class="text-lg">{prop_name}</h1>
-                    <div>
-                        <label class="text-sm" for="type">Filter Type</label>
-                        <select
-                            id="type"
-                            name="type"
-                            class="dark:text-white text-sm dark:bg-slate-700 rounded"
-                            >
-                            <option {type_1_selected} value="1">Exactly Equals</option>
-                            <option {type_2_selected} value="2">Does not Equal</option>
-                            <option {type_3_selected} value="3">Is Greater Than</option>
-                            <option {type_4_selected} value="4">Is Less Than</option>
-                            <option {type_7_selected} value="7">Is Empty</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="value">Value</label>
-                        <input id="value" name="value" type="number" value="{value}" />
-                    </div>
-                    <div>
-                        <button class="dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Save</button>
-                    </div>
-                </div>
-            </form>
-            "#
-        )
-    }
-}
-
-pub struct IntRngFilterForm<'a> {
-    pub filter: &'a models::FilterIntRng,
-    pub prop_name: &'a str,
-}
-impl Component for IntRngFilterForm<'_> {
-    fn render(&self) -> String {
-        let prop_name = self.prop_name;
-        let start = self.filter.start;
-        let end = self.filter.end;
-        let chevron = Chevron {
-            variant: ChevronVariant::Open,
-        }
-        .render();
-        let type_5_selected = match self.filter.r#type {
-            models::FilterType::InRng(_) => "selected",
-            _ => "",
-        };
-        let type_6_selected = match self.filter.r#type {
-            models::FilterType::NotInRng(_) => "selected",
-            _ => "",
-        };
-        let form_route = Route::FilterIntRng(Some(self.filter.id));
-        let chip_route = Route::FilterIntRngChip(Some(self.filter.id));
-        format!(
-            r#"
-            <form
-                hx-post="{form_route}"
-                class="{FILTER_CONTAINER_STYLE}"
-            >
-                <button 
-                    hx-get="{chip_route}"
-                    hx-target="closest form"
-                    class="self-start"
-                    >{chevron}</button>
-                <div class="flex flex-col gap-2">
-                    <h1 class="text-xl">{prop_name}</h1>
-                    <div>
-                        <label class="text-sm" for="type">Filter Type</label>
-                        <select
-                            id="type"
-                            name="type"
-                            class="dark:text-white text-sm dark:bg-slate-700 rounded"
-                            >
-                                <option {type_5_selected} value="5">Is Inside Range</option>
-                                <option {type_6_selected} value="6">Is Not Inside Range</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col">
-                        <label for="start">Start</label>
-                        <input id="start" name="start" type="number" value="{start}" />
-                    </div>
-                    <div class="flex flex-col">
-                        <label for="end">End</label>
-                        <input id="end" name="end" type="number" value="{end}" />
-                    </div>
-                    <div>
-                        <button class="dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 transition shadow hover:shadow-none rounded p-1 block">Save</button>
-                    </div>
-                </div>
-            </form>
             "#
         )
     }

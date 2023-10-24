@@ -398,12 +398,46 @@ impl DbModel<GetPropQuery, ListPropQuery> for models::Prop {
     }
 }
 
-pub struct GetFilterQuery {
-    pub id: i32,
+#[async_trait]
+pub trait FilterDb: DbModel<GetFilterQuery, ListFilterQuery> {
+    /// Create a filter with the default value and persist it in the database
+    /// before returning it to the caller.
+    async fn create(
+        db: &PgPool,
+        prop_id: i32,
+        r#type: models::FilterType,
+    ) -> Result<Self>
+    where
+        Self: Sized;
 }
 
-pub struct ListFilterQuery {
-    pub collection_id: i32,
+#[async_trait]
+impl FilterDb for models::FilterBool {
+    async fn create(
+        db: &PgPool,
+        prop_id: i32,
+        r#type: models::FilterType,
+    ) -> Result<Self> {
+        let Id { id } = query_as!(
+            Id,
+            "insert into filter_bool (type_id, prop_id, value) values
+            ($1, $2, $3)
+        returning (id)
+        ",
+            r#type.get_int_repr(),
+            prop_id,
+            false
+        )
+        .fetch_one(db)
+        .await?;
+
+        Ok(models::FilterBool {
+            id,
+            prop_id,
+            r#type,
+            value: false,
+        })
+    }
 }
 
 #[async_trait]
@@ -503,6 +537,35 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterBool {
 }
 
 #[async_trait]
+impl FilterDb for models::FilterInt {
+    async fn create(
+        db: &PgPool,
+        prop_id: i32,
+        r#type: models::FilterType,
+    ) -> Result<Self> {
+        let Id { id } = query_as!(
+            Id,
+            "insert into filter_int (type_id, prop_id, value) values
+            ($1, $2, $3)
+        returning (id)
+        ",
+            r#type.get_int_repr(),
+            prop_id,
+            0
+        )
+        .fetch_one(db)
+        .await?;
+
+        Ok(models::FilterInt {
+            id,
+            prop_id,
+            r#type,
+            value: 0,
+        })
+    }
+}
+
+#[async_trait]
 impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
     async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
         struct Qres {
@@ -592,6 +655,37 @@ impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
             .await?;
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl FilterDb for models::FilterIntRng {
+    async fn create(
+        db: &PgPool,
+        prop_id: i32,
+        r#type: models::FilterType,
+    ) -> Result<Self> {
+        let Id { id } = query_as!(
+        Id,
+        r#"insert into filter_int_range (type_id, prop_id, start, "end") values
+            ($1, $2, $3, $4)
+        returning (id)
+        "#,
+        r#type.get_int_repr(),
+        prop_id,
+        0,
+        10
+    )
+    .fetch_one(db)
+    .await?;
+
+        Ok(models::FilterIntRng {
+            id,
+            prop_id,
+            r#type,
+            start: 0,
+            end: 10,
+        })
     }
 }
 
@@ -985,84 +1079,12 @@ pub async fn get_prop_set(
     }
 }
 
-pub async fn create_bool_filter(
-    db: &PgPool,
-    prop_id: i32,
-    r#type: models::FilterType,
-) -> Result<models::FilterBool> {
-    let Id { id } = query_as!(
-        Id,
-        "insert into filter_bool (type_id, prop_id, value) values
-            ($1, $2, $3)
-        returning (id)
-        ",
-        r#type.get_int_repr(),
-        prop_id,
-        true
-    )
-    .fetch_one(db)
-    .await?;
-
-    Ok(models::FilterBool {
-        id,
-        prop_id,
-        r#type,
-        value: false,
-    })
+pub struct GetFilterQuery {
+    pub id: i32,
 }
 
-pub async fn create_int_filter(
-    db: &PgPool,
-    prop_id: i32,
-    r#type: models::FilterType,
-) -> Result<models::FilterInt> {
-    let Id { id } = query_as!(
-        Id,
-        "insert into filter_int (type_id, prop_id, value) values
-            ($1, $2, $3)
-        returning (id)
-        ",
-        r#type.get_int_repr(),
-        prop_id,
-        0
-    )
-    .fetch_one(db)
-    .await?;
-
-    Ok(models::FilterInt {
-        id,
-        prop_id,
-        r#type,
-        value: 0,
-    })
-}
-
-pub async fn create_int_rng_filter(
-    db: &PgPool,
-    prop_id: i32,
-    r#type: models::FilterType,
-) -> Result<models::FilterIntRng> {
-    let Id { id } = query_as!(
-        Id,
-        r#"insert into filter_int_range (type_id, prop_id, start, "end") values
-            ($1, $2, $3, $4)
-        returning (id)
-        "#,
-        r#type.get_int_repr(),
-        prop_id,
-        0,
-        10
-    )
-    .fetch_one(db)
-    .await?;
-
-    Ok(models::FilterIntRng {
-        id,
-        prop_id,
-        r#type,
-        start: 0,
-        end: 10,
-    })
+pub struct ListFilterQuery {
+    pub collection_id: i32,
 }
 
 pub async fn does_collection_have_capacity_for_additional_filters(
