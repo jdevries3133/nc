@@ -4,11 +4,10 @@ https://github.com/jdevries3133/nc/assets/58614260/ec0d6d17-0e32-429c-96a7-5ef0c
 
 # Next Steps
 
-1. Great propval refactor
-2. Implement date
-3. Implement datetime
-4. Implement multistr (tags)
-5. Paginate the collection list view
+1. Great propval refactor (see [exact next steps](#exact-next-steps))
+2. Implement datetime
+3. Implement multistr (tags)
+4. Paginate the collection list view
 
 # Great Propval Refactor
 
@@ -135,7 +134,7 @@ job. Maybe most importantly, it'll be much more DRY than what we have now. Right
 now, there is so much copy-and-paste that any sort of change would be totally
 impossible.
 
-## Changes Required
+## Overview of Changes Required
 
 Ultimately, everything dealing with property values or filters other than routes
 and controllers will need to be rewritten. In the end, we will have a single
@@ -184,6 +183,11 @@ declaratively.
 - controllers will change to dispatch to these new internals
 - `db_ops::list_pages` will need some changes, but should be much simpler
   and easier to read afterwards, I hope
+
+## Exact Next Steps
+
+1. define the `PropVal` data-type, and migrate all PvBool functionality to it.
+2. migrate PvInf functionality to `PropVal`
 
 # Other Future Ideas
 
