@@ -11,6 +11,7 @@ mod controllers;
 mod crypto;
 mod db_ops;
 mod errors;
+mod great_enum_refactor;
 mod htmx;
 mod middleware;
 mod models;

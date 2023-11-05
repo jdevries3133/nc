@@ -4,7 +4,7 @@ use super::{
     db_ops,
     db_ops::{DbModel, FilterDb},
     errors::ServerError,
-    htmx, models,
+    great_enum_refactor, htmx, models,
     models::{AppState, PropVal},
     pw,
     routes::Route,
@@ -144,12 +144,12 @@ pub async fn collection_prop_order(
 pub async fn new_bool_propval_form(
     Path((page_id, prop_id)): Path<(i32, i32)>,
 ) -> impl IntoResponse {
-    models::PvBool {
+    let pvb = great_enum_refactor::models::PropVal {
         page_id,
         prop_id,
-        value: Some(false),
-    }
-    .render()
+        value: great_enum_refactor::models::Value::Bool(false),
+    };
+    pvb.render()
 }
 
 #[derive(Deserialize)]
@@ -162,17 +162,12 @@ pub async fn save_pv_bool(
     Path((page_id, prop_id)): Path<(i32, i32)>,
     Form(PvbForm { value }): Form<PvbForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let mut pvb = models::PvBool::get_or_init(
-        &db,
-        &db_ops::PvGetQuery { prop_id, page_id },
-    )
-    .await;
-    let new_val = value.is_some();
-    if Some(new_val) != pvb.value {
-        pvb.value = Some(value.is_some());
-        pvb.save(&db).await?;
-    }
-
+    let pvb = great_enum_refactor::models::PropVal {
+        page_id,
+        prop_id,
+        value: great_enum_refactor::models::Value::Bool(value.is_some()),
+    };
+    pvb.save(&db).await?;
     Ok(pvb.render())
 }
 
