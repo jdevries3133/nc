@@ -422,6 +422,38 @@
     },
     "query": "\n            update collection set\n                sort_by_prop_id = $1,\n                sort_type_id = $2\n            where id = $3\n            "
   },
+  "5ad87dbc505f24172a0d98aef5baa72eed5214391bfbd1c991f67b357f8eb8e5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "page_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 2,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "select page_id, prop_id, value\n            from propval_bool\n            where page_id = ANY($1)"
+  },
   "5b5fe3299cc41bd57e5dc20864f6b760358658a1771b4ef055433a77a8a6e8a6": {
     "describe": {
       "columns": [
@@ -763,6 +795,20 @@
     },
     "query": "update filter_date set value = $1, type_id = $2 where id = $3"
   },
+  "81ecf9fd87184b2a541c1993905d9ecd258b5d523e4c25f56e705d6f79ff4b70": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Bool",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "insert into propval_bool (value, page_id, prop_id) values ($1, $2, $3)\n                    on conflict (page_id, prop_id)\n                    do update set value = $1"
+  },
   "82ad4f814aad9f76c5a3da855e7ea0bd4ae88ffc0c2c83c2e4171ff77d2a3079": {
     "describe": {
       "columns": [
@@ -897,6 +943,39 @@
       }
     },
     "query": "insert into filter_bool (type_id, prop_id, value) values\n            ($1, $2, $3)\n        returning (id)\n        "
+  },
+  "b00bac4ebb6cd9d631764289060f15299be40e1160ab8e3f7b44907e0e24b666": {
+    "describe": {
+      "columns": [
+        {
+          "name": "page_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 2,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "select page_id, prop_id, value from propval_bool where page_id = $1 and prop_id = $2"
   },
   "b0212d86a6ad360b8ddc3fdd1ff67c22ce0bdd7524feaec79587d1b0bc052bcd": {
     "describe": {
