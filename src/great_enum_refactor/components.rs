@@ -37,6 +37,22 @@ impl Component for models::PropVal {
                         "#
                 )
             }
+            models::Value::Float(val) => {
+                let route =
+                    Route::PageFloatProp(Some((self.page_id, self.prop_id)));
+                format!(
+                    r#"
+                <input
+                    class="rounded text-sm w-24 justify-self-center"
+                    hx-post="{route}"
+                    name="value"
+                    type="number"
+                    step="0.01"
+                    value="{val}"
+                />
+            "#
+                )
+            }
         }
     }
 }

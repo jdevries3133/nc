@@ -2,6 +2,7 @@
 pub enum Value {
     Bool(bool),
     Int(i64),
+    Float(f64),
 }
 
 #[derive(Debug, Clone)]

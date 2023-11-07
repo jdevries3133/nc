@@ -18,6 +18,8 @@ use sqlx::{query, query_as, PgPool};
 #[derive(Clone, Copy)]
 pub enum ValueType {
     Bool,
+    Int,
+    Float,
 }
 
 pub struct PvGetQuery {
@@ -50,6 +52,8 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                 // this refactor.
                 match prop.type_id {
                     PropValTypes::Bool => ValueType::Bool,
+                    PropValTypes::Int => ValueType::Int,
+                    PropValTypes::Float => ValueType::Float,
                     _ => todo!(),
                 }
             }
@@ -58,11 +62,41 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
             ValueType::Bool => {
                 let value = query_as!(
                     Qres::<bool>,
-                    "select page_id, prop_id, value from propval_bool where page_id = $1 and prop_id = $2",
+                    "select page_id, prop_id, value
+                    from propval_bool
+                    where page_id = $1 and prop_id = $2",
                     query.page_id,
                     query.prop_id
-                ).fetch_one(db).await?;
+                )
+                .fetch_one(db)
+                .await?;
                 models::Value::Bool(value.value)
+            }
+            ValueType::Int => {
+                let value = query_as!(
+                    Qres::<i64>,
+                    "select page_id, prop_id, value
+                    from propval_int
+                    where page_id = $1 and prop_id = $2",
+                    query.page_id,
+                    query.prop_id
+                )
+                .fetch_one(db)
+                .await?;
+                models::Value::Int(value.value)
+            }
+            ValueType::Float => {
+                let value = query_as!(
+                    Qres::<f64>,
+                    "select page_id, prop_id, value
+                    from propval_float
+                    where page_id = $1 and prop_id = $2",
+                    query.page_id,
+                    query.prop_id
+                )
+                .fetch_one(db)
+                .await?;
+                models::Value::Float(value.value)
             }
         };
         Ok(models::PropVal {
@@ -126,6 +160,16 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
             models::Value::Int(val) => {
                 query!(
                     "insert into propval_int (value, page_id, prop_id) values ($1, $2, $3)
+                    on conflict (page_id, prop_id)
+                    do update set value = $1",
+                    val,
+                    self.page_id,
+                    self.prop_id
+                ).execute(db).await?
+            },
+            models::Value::Float(val) => {
+                query!(
+                    "insert into propval_float (value, page_id, prop_id) values ($1, $2, $3)
                     on conflict (page_id, prop_id)
                     do update set value = $1",
                     val,
