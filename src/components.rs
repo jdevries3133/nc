@@ -3,7 +3,7 @@
 // are and clippy knows more than me, maybe not.
 #![allow(clippy::let_and_return)]
 
-use super::{models, routes::Route};
+use super::{great_enum_refactor, models, routes::Route};
 use ammonia::clean;
 use std::fmt::{Display, Write};
 
@@ -202,7 +202,19 @@ impl Component for PageList<'_> {
                 let other_props = page
                     .props
                     .iter()
-                    .map(|p| p.render())
+                    .map(|p| match p {
+                        models::PvOrType::Pv(pv) => pv.render(),
+                        models::PvOrType::Tp(tp, prop_id) => {
+                            NullPropvalButton {
+                                post_href: &match tp {
+                                    great_enum_refactor::models::ValueType::Int => Route::PageNewIntProp(Some((page.id, *prop_id))).as_string(),
+                                    great_enum_refactor::models::ValueType::Bool => Route::PageNewBoolProp(Some((page.id, *prop_id))).as_string(),
+                                    great_enum_refactor::models::ValueType::Float => Route::PageNewFloatProp(Some((page.id, *prop_id))).as_string(),
+                                    great_enum_refactor::models::ValueType::Date => Route::PageNewDateProp(Some((page.id, *prop_id))).as_string(),
+                                }
+                            }.render()
+                        }
+                    })
                     .collect::<Vec<String>>()
                     .join("");
             let _ = write!(
@@ -402,118 +414,6 @@ impl Component for models::Content {
         )
     }
 }
-
-impl Component for models::PvBool {
-    fn render(&self) -> String {
-        let page_id = self.page_id;
-        let prop_id = self.prop_id;
-        if self.value.is_none() {
-            let route = Route::PageNewBoolProp(Some((page_id, prop_id)));
-            return NullPropvalButton {
-                post_href: &route.as_string(),
-            }
-            .render();
-        };
-        let value = self.value.unwrap();
-        let checked_state = if value { "checked" } else { "" };
-        let route = Route::PageBoolProp(Some((page_id, prop_id)));
-        format!(
-            r#"
-                <input
-                    hx-post="{route}"
-                    class="justify-self-center"
-                    name="value"
-                    type="checkbox"
-                    {checked_state}
-                />
-            "#
-        )
-    }
-}
-
-impl Component for models::PvInt {
-    fn render(&self) -> String {
-        let page_id = self.page_id;
-        let prop_id = self.prop_id;
-        if self.value.is_none() {
-            let route = Route::PageNewIntProp(Some((page_id, prop_id)));
-            return NullPropvalButton {
-                post_href: &route.as_string(),
-            }
-            .render();
-        };
-        let value = self.value.unwrap();
-        let route = Route::PageIntProp(Some((page_id, prop_id)));
-        format!(
-            r#"
-                <input
-                    class="rounded text-sm w-24 justify-self-center"
-                    hx-post="{route}"
-                    name="value"
-                    type="number"
-                    value="{value}"
-                />
-            "#
-        )
-    }
-}
-
-impl Component for models::PvFloat {
-    fn render(&self) -> String {
-        let page_id = self.page_id;
-        let prop_id = self.prop_id;
-        if self.value.is_none() {
-            let route = Route::PageNewFloatProp(Some((page_id, prop_id)));
-            return NullPropvalButton {
-                post_href: &route.as_string(),
-            }
-            .render();
-        };
-        let value = self.value.unwrap();
-        let route = Route::PageFloatProp(Some((page_id, prop_id)));
-        format!(
-            r#"
-                <input
-                    class="rounded text-sm w-24 justify-self-center"
-                    hx-post="{route}"
-                    name="value"
-                    type="number"
-                    step="0.01"
-                    value="{value}"
-                />
-            "#
-        )
-    }
-}
-
-impl Component for models::PvDate {
-    fn render(&self) -> String {
-        let page_id = self.page_id;
-        let prop_id = self.prop_id;
-        if self.value.is_none() {
-            let route = Route::PageNewDateProp(Some((page_id, prop_id)));
-            return NullPropvalButton {
-                post_href: &route.as_string(),
-            }
-            .render();
-        };
-        let value = self.value.unwrap();
-        let route = Route::PageDateProp(Some((page_id, prop_id)));
-        format!(
-            r#"
-                <input
-                    class="rounded text-sm w-32 justify-self-center"
-                    hx-post="{route}"
-                    hx-trigger="input changed delay:1s"
-                    name="value"
-                    type="date"
-                    value="{value}"
-                />
-            "#
-        )
-    }
-}
-
 pub struct NewPage {
     pub collection_id: i32,
     pub page_id: Option<i32>,
@@ -1596,11 +1496,10 @@ impl Component for ChoosePropForFilter<'_> {
                 let prop_name = clean(&p.name);
                 let href = Route::PropNewFilterTypeSelect(Some(prop_id));
                 let type_string = match p.type_id {
-                    models::PropValTypes::Int => "integer",
-                    models::PropValTypes::Bool => "checkbox",
-                    models::PropValTypes::Float => "percent",
-                    models::PropValTypes::Date => "date",
-                    _ => todo!(),
+                    great_enum_refactor::models::ValueType::Int => "integer",
+                    great_enum_refactor::models::ValueType::Bool => "checkbox",
+                    great_enum_refactor::models::ValueType::Float => "percent",
+                    great_enum_refactor::models::ValueType::Date => "date",
                 };
                 acc.push_str(&format!(
                     r#"
@@ -1679,7 +1578,7 @@ impl Component for AddFilterButtonPlaceholder {
 
 fn get_slug(
     filter_type: &models::FilterType,
-    prop_type: &models::PropValTypes,
+    prop_type: &great_enum_refactor::models::ValueType,
 ) -> String {
     let filter_type_id = filter_type.get_int_repr();
     match filter_type {
@@ -1688,35 +1587,33 @@ fn get_slug(
         | models::FilterType::Gt(_)
         | models::FilterType::Eq(_)
         | models::FilterType::IsEmpty(_) => match prop_type {
-            models::PropValTypes::Bool => {
+            great_enum_refactor::models::ValueType::Bool => {
                 format!("new-bool-filter?type_id={filter_type_id}")
             }
-            models::PropValTypes::Int => {
+            great_enum_refactor::models::ValueType::Int => {
                 format!("new-int-filter?type_id={filter_type_id}")
             }
-            models::PropValTypes::Float => {
+            great_enum_refactor::models::ValueType::Float => {
                 format!("new-float-filter?type_id={filter_type_id}")
             }
-            models::PropValTypes::Date => {
+            great_enum_refactor::models::ValueType::Date => {
                 format!("new-date-filter?type_id={filter_type_id}")
             }
-            _ => todo!(),
         },
         models::FilterType::InRng(_) | models::FilterType::NotInRng(_) => {
             match prop_type {
-                models::PropValTypes::Bool => {
+                great_enum_refactor::models::ValueType::Bool => {
                     panic!("in-rng and not-in-rng not supported for bool")
                 }
-                models::PropValTypes::Int => {
+                great_enum_refactor::models::ValueType::Int => {
                     format!("new-int-rng-filter?type_id={filter_type_id}")
                 }
-                models::PropValTypes::Float => {
+                great_enum_refactor::models::ValueType::Float => {
                     format!("new-float-rng-filter?type_id={filter_type_id}")
                 }
-                models::PropValTypes::Date => {
+                great_enum_refactor::models::ValueType::Date => {
                     format!("new-date-rng-filter?type_id={filter_type_id}")
                 }
-                _ => todo!(),
             }
         }
     }
@@ -1725,7 +1622,7 @@ fn get_slug(
 pub struct NewFilterTypeOptions<'a> {
     pub options: &'a Vec<models::FilterType>,
     pub prop_id: i32,
-    pub prop_type: &'a models::PropValTypes,
+    pub prop_type: &'a great_enum_refactor::models::ValueType,
 }
 impl Component for NewFilterTypeOptions<'_> {
     fn render(&self) -> String {

@@ -81,20 +81,6 @@
     },
     "query": "select id, type_id, collection_id, name, \"order\"\n        from property\n        where collection_id = $1"
   },
-  "1e9c3c22ee4b70f74c20a27d3807fe69fd1bc342538a4ae25a9984d482001c45": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Date",
-          "Int4",
-          "Int4"
-        ]
-      }
-    },
-    "query": "insert into propval_date (value, page_id, prop_id) values ($1, $2, $3)\n            on conflict (page_id, prop_id)\n            do update set value = $1"
-  },
   "22ce8a7704c2c5c1a500ec78e9d0a90b9385aad43b7784fd04d20ccc50122cb0": {
     "describe": {
       "columns": [],
@@ -120,38 +106,6 @@
       }
     },
     "query": "delete from filter_float where id = $1"
-  },
-  "2b1ecbed2d2a0f0fad8e0b20145a81c9375e41cd5df51fdff112a2e8e701d2cf": {
-    "describe": {
-      "columns": [
-        {
-          "name": "page_id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "prop_id",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "value",
-          "ordinal": 2,
-          "type_info": "Float8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4Array"
-        ]
-      }
-    },
-    "query": "select page_id, prop_id, value from propval_float\n            where page_id = any($1)"
   },
   "2b7408741b7610646bab42b50d41368a2b041ccf9b8d36b38a2e47c99887eefa": {
     "describe": {
@@ -403,20 +357,6 @@
       }
     },
     "query": "insert into page_content (page_id, content) values ($1, $2)\n            on conflict (page_id)\n            do update set content = $2"
-  },
-  "3d3ac326d22ec03a7ca385c251d050e59f3513044da8d07ebb796bf41cecf9a4": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Int8",
-          "Int4",
-          "Int4"
-        ]
-      }
-    },
-    "query": "insert into propval_int (value, page_id, prop_id) values ($1, $2, $3)\n            on conflict (page_id, prop_id)\n            do update set value = $1"
   },
   "3e477455889f228a337885f244a24c9da437e7ae23d016d0fcaa374f2e9a305a": {
     "describe": {
@@ -698,53 +638,6 @@
     },
     "query": "select\n                f.id,\n                ft.id type_id,\n                ft.name type_name,\n                f.prop_id,\n                f.start,\n                f.end\n            from filter_date_range f\n            join filter_type ft on f.type_id = ft.id\n            where f.id = $1"
   },
-  "626416b1527c9644dd2c60319bca0c6ff6c7d2b0847003ca2433ed6a2c7d3031": {
-    "describe": {
-      "columns": [
-        {
-          "name": "page_id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "prop_id",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "value",
-          "ordinal": 2,
-          "type_info": "Date"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Int4"
-        ]
-      }
-    },
-    "query": "select page_id, prop_id, value from propval_date\n            where page_id = $1 and prop_id = $2"
-  },
-  "697c8b9ea04b8b6914c9dcdaa00d29ac70b051ca148c0c27db852edf44f4e507": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Float8",
-          "Int4",
-          "Int4"
-        ]
-      }
-    },
-    "query": "insert into propval_float (value, page_id, prop_id) values ($1, $2, $3)\n            on conflict (page_id, prop_id)\n            do update set value = $1"
-  },
   "6a49a406d8e002b3f5a6d436953be79ac6d7707227ade21eb30865140616e195": {
     "describe": {
       "columns": [
@@ -985,39 +878,6 @@
       }
     },
     "query": "insert into propval_bool (value, page_id, prop_id) values ($1, $2, $3)\n                    on conflict (page_id, prop_id)\n                    do update set value = $1"
-  },
-  "82ad4f814aad9f76c5a3da855e7ea0bd4ae88ffc0c2c83c2e4171ff77d2a3079": {
-    "describe": {
-      "columns": [
-        {
-          "name": "page_id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "prop_id",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "value",
-          "ordinal": 2,
-          "type_info": "Float8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Int4"
-        ]
-      }
-    },
-    "query": "select page_id, prop_id, value from propval_float\n            where page_id = $1 and prop_id = $2"
   },
   "82b6aa93de7e25d1ee5d107ee512509dd17a94faa32d2d05a600e59e9478a3eb": {
     "describe": {
@@ -1279,38 +1139,6 @@
     },
     "query": "update filter_date_range\n            set start = $1, \"end\" = $2, type_id = $3\n            where id = $4"
   },
-  "bf43e684493590404b8e5a0a20a8dfb72a2e7ac00c8f2e081a0181b628fdb1e3": {
-    "describe": {
-      "columns": [
-        {
-          "name": "page_id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "prop_id",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "value",
-          "ordinal": 2,
-          "type_info": "Date"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4Array"
-        ]
-      }
-    },
-    "query": "select page_id, prop_id, value from propval_date\n            where page_id = any($1)"
-  },
   "c4fecadf6ab92864e9277ad5ed9a3ff20d3af01eff0da80cdb06ba5821e85be3": {
     "describe": {
       "columns": [],
@@ -1336,38 +1164,6 @@
       }
     },
     "query": "update filter_int set value = $1, type_id = $2 where id = $3"
-  },
-  "c9d973567dc9e9cf630e6e6100d91a842f7715f4b95880a86f5153b17d7da266": {
-    "describe": {
-      "columns": [
-        {
-          "name": "page_id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "prop_id",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "value",
-          "ordinal": 2,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4Array"
-        ]
-      }
-    },
-    "query": "select page_id, prop_id, value from propval_int\n            where page_id = any($1)"
   },
   "cb790255b5f08fcdf40acef94c6997dc6896511a51c11b93ab87e4d7def62ae3": {
     "describe": {
@@ -1592,39 +1388,6 @@
     },
     "query": "SELECT salt, digest FROM users WHERE id = $1"
   },
-  "e099fac065e614d068b79e25d89f1e9ab8f441352d545c6a444c550a31775c62": {
-    "describe": {
-      "columns": [
-        {
-          "name": "page_id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "prop_id",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "value",
-          "ordinal": 2,
-          "type_info": "Int8"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Int4"
-        ]
-      }
-    },
-    "query": "select page_id, prop_id, value from propval_int\n            where page_id = $1 and prop_id = $2"
-  },
   "e2fcaca8f2eb71e3936e10ec0d87cd7a89d5dd8ec847cc09138fba33408c354f": {
     "describe": {
       "columns": [
@@ -1692,52 +1455,6 @@
       }
     },
     "query": "select page_id, prop_id, value\n            from propval_date\n            where page_id = ANY($1)"
-  },
-  "e9a654c09f7ca8824e74ec37d9097ddf5e04c7e8fac8124d648ea9ee7f0aba48": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Bool",
-          "Int4",
-          "Int4"
-        ]
-      }
-    },
-    "query": "insert into propval_bool (value, page_id, prop_id) values ($1, $2, $3)\n            on conflict (page_id, prop_id)\n            do update set value = $1"
-  },
-  "eb9c561e9a2623a14d5cd9c81ff4b9163b49f71add3cda3c71e4874871060740": {
-    "describe": {
-      "columns": [
-        {
-          "name": "page_id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "prop_id",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "value",
-          "ordinal": 2,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4Array"
-        ]
-      }
-    },
-    "query": "select page_id, prop_id, value from propval_bool\n            where page_id = any($1)"
   },
   "ec305f4780ca2c9906a7cc387d40ebb4194bfd7bbd979a4e2a00308ab719c6e3": {
     "describe": {
@@ -1902,39 +1619,6 @@
       }
     },
     "query": "delete from filter_int where id = $1"
-  },
-  "f39ec67dc039bb55ba5e89874062718fed045df4ad61c6756111359de182c8dc": {
-    "describe": {
-      "columns": [
-        {
-          "name": "page_id",
-          "ordinal": 0,
-          "type_info": "Int4"
-        },
-        {
-          "name": "prop_id",
-          "ordinal": 1,
-          "type_info": "Int4"
-        },
-        {
-          "name": "value",
-          "ordinal": 2,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Int4",
-          "Int4"
-        ]
-      }
-    },
-    "query": "select page_id, prop_id, value from propval_bool\n            where page_id = $1 and prop_id = $2"
   },
   "f5c9a63857e628a4dcd728d7156a58f87f71a392b5166f34421e2dce1c5858be": {
     "describe": {

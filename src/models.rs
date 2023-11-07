@@ -1,155 +1,25 @@
-use super::{
-    components,
-    db_ops::{DbModel, PvGetQuery, PvListQuery},
-};
+use super::great_enum_refactor;
 use anyhow::{bail, Result};
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
 #[derive(Debug, Clone)]
 pub struct Prop {
     pub id: i32,
-    pub type_id: PropValTypes,
+    pub type_id: great_enum_refactor::models::ValueType,
     pub collection_id: i32,
     pub name: String,
     pub order: i16,
 }
 
-/// This is only really used for adapting from `property.type_id` in the
-/// database to one of our `Pv*` structs
-#[derive(Copy, Clone, Debug)]
-pub enum PropValTypes {
-    Bool,
-    Int,
-    Float,
-    Str,
-    MultiString,
-    Date,
-    DateTime,
-}
-
-/// Will panic if an invalid PropValTypes is passed in
-pub fn propval_type_from_int(int: i32) -> PropValTypes {
-    match int {
-        1 => PropValTypes::Bool,
-        2 => PropValTypes::Int,
-        3 => PropValTypes::Float,
-        4 => PropValTypes::Str,
-        5 => PropValTypes::MultiString,
-        6 => PropValTypes::Date,
-        7 => PropValTypes::DateTime,
-        _ => panic!("invalid prop-type {int}"),
-    }
-}
-
-/// A PropVal implementation corresponds with each `propval_*` table in the
-/// database. It provides generic mechanisms for dealing with values on page
-/// properties.
-#[async_trait]
-pub trait PropVal:
-    components::Component + DbModel<PvGetQuery, PvListQuery> + std::fmt::Debug
-{
-    /// Get the existing database model using the `DbModel::get` method. If any
-    /// error occurs (which is most likely caused by the row not currently
-    /// existing), return a default model instead.
-
-    // Implementers are a bit leaky, because it's possible that i.e, we get a
-    // network error connecting to the database, and then read that as "does
-    // not exist" and give the default back instead of propagating back the
-    // underlying error. Fixing this is a bit tricky because I decided my
-    // `DbModel::get` method would return `Result<T>` instead of
-    // `Result<Option<T>>`, so there is no disambiguation between an error
-    // (including not found), versus another type of error. So, I'll accept
-    // the leakiness now, deferring a refactor to `Result<Option<T>>` in the
-    // `DbModel` trait for later, which, when corrected, would affect all
-    // implementation of this function.
-    async fn get_or_init(db: &PgPool, query: &PvGetQuery) -> Self
-    where
-        Self: Sized;
-    fn get_page_id(&self) -> i32;
-    fn get_prop_id(&self) -> i32;
-}
-
-#[derive(Clone, Debug)]
-pub struct PvBool {
-    pub value: Option<bool>,
-    pub page_id: i32,
-    pub prop_id: i32,
-}
-
-#[async_trait]
-impl PropVal for PvBool {
-    async fn get_or_init(db: &PgPool, query: &PvGetQuery) -> Self
-    where
-        Self: Sized,
-    {
-        Self::get(db, query).await.unwrap_or(Self {
-            page_id: query.page_id,
-            prop_id: query.prop_id,
-            value: None,
-        })
-    }
-    fn get_page_id(&self) -> i32 {
-        self.page_id
-    }
-    fn get_prop_id(&self) -> i32 {
-        self.prop_id
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct PvInt {
-    pub value: Option<i64>,
-    pub page_id: i32,
-    pub prop_id: i32,
-}
-
-#[async_trait]
-impl PropVal for PvInt {
-    async fn get_or_init(db: &PgPool, query: &PvGetQuery) -> Self
-    where
-        Self: Sized,
-    {
-        Self::get(db, query).await.unwrap_or(Self {
-            page_id: query.page_id,
-            prop_id: query.prop_id,
-            value: None,
-        })
-    }
-    fn get_page_id(&self) -> i32 {
-        self.page_id
-    }
-    fn get_prop_id(&self) -> i32 {
-        self.prop_id
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct PvFloat {
-    pub value: Option<f64>,
-    pub page_id: i32,
-    pub prop_id: i32,
-}
-
-#[async_trait]
-impl PropVal for PvFloat {
-    async fn get_or_init(db: &PgPool, query: &PvGetQuery) -> Self
-    where
-        Self: Sized,
-    {
-        Self::get(db, query).await.unwrap_or(Self {
-            page_id: query.page_id,
-            prop_id: query.prop_id,
-            value: None,
-        })
-    }
-    fn get_page_id(&self) -> i32 {
-        self.page_id
-    }
-    fn get_prop_id(&self) -> i32 {
-        self.prop_id
-    }
+/// Basically just needed for glue to get the old list page query moved
+/// over to the new model. Maybe this will stay forever - who knows! Either
+/// way, we're definitely cooking with enums now, baby.
+#[derive(Debug)]
+pub enum PvOrType {
+    Pv(great_enum_refactor::models::PropVal),
+    /// second item is `prop_id`
+    Tp(great_enum_refactor::models::ValueType, i32),
 }
 
 #[derive(Debug)]
@@ -157,35 +27,8 @@ pub struct Page {
     pub id: i32,
     pub collection_id: i32,
     pub title: String,
-    pub props: Vec<Box<dyn PropVal>>,
+    pub props: Vec<PvOrType>,
     pub content: Option<Content>,
-}
-
-#[derive(Clone, Debug)]
-pub struct PvDate {
-    pub value: Option<chrono::NaiveDate>,
-    pub page_id: i32,
-    pub prop_id: i32,
-}
-
-#[async_trait]
-impl PropVal for PvDate {
-    async fn get_or_init(db: &PgPool, query: &PvGetQuery) -> Self
-    where
-        Self: Sized,
-    {
-        Self::get(db, query).await.unwrap_or(Self {
-            page_id: query.page_id,
-            prop_id: query.prop_id,
-            value: None,
-        })
-    }
-    fn get_page_id(&self) -> i32 {
-        self.page_id
-    }
-    fn get_prop_id(&self) -> i32 {
-        self.prop_id
-    }
 }
 
 #[derive(Debug)]
@@ -258,14 +101,16 @@ impl FilterType {
             FilterType::IsEmpty(_) => 7,
         }
     }
-    pub fn get_supported_filter_types(prop_type: PropValTypes) -> Vec<Self> {
+    pub fn get_supported_filter_types(
+        prop_type: great_enum_refactor::models::ValueType,
+    ) -> Vec<Self> {
         match prop_type {
-            PropValTypes::Bool => vec![
+            great_enum_refactor::models::ValueType::Bool => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Neq("Does not Equal".into()),
                 FilterType::IsEmpty("Is Empty".into()),
             ],
-            PropValTypes::Int => vec![
+            great_enum_refactor::models::ValueType::Int => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Gt("Does not Equal".into()),
                 FilterType::Neq("Is Greater Than".into()),
@@ -274,7 +119,7 @@ impl FilterType {
                 FilterType::NotInRng("Is Not Inside Range".into()),
                 FilterType::IsEmpty("Is Empty".into()),
             ],
-            PropValTypes::Float => vec![
+            great_enum_refactor::models::ValueType::Float => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Gt("Does not Equal".into()),
                 FilterType::Neq("Is Greater Than".into()),
@@ -283,7 +128,7 @@ impl FilterType {
                 FilterType::NotInRng("Is Not Inside Range".into()),
                 FilterType::IsEmpty("Is Empty".into()),
             ],
-            PropValTypes::Date => vec![
+            great_enum_refactor::models::ValueType::Date => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Gt("Does not Equal".into()),
                 FilterType::Neq("Is Greater Than".into()),
@@ -292,7 +137,6 @@ impl FilterType {
                 FilterType::NotInRng("Is Not Inside Range".into()),
                 FilterType::IsEmpty("Is Empty".into()),
             ],
-            _ => todo!(),
         }
     }
 }

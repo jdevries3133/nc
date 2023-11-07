@@ -5,7 +5,7 @@ use super::{
     db_ops::{DbModel, FilterDb},
     errors::ServerError,
     great_enum_refactor, htmx, models,
-    models::{AppState, PropVal},
+    models::AppState,
     pw,
     routes::Route,
     session,
@@ -147,7 +147,7 @@ pub async fn new_bool_propval_form(
     great_enum_refactor::models::PropVal {
         page_id,
         prop_id,
-        value: great_enum_refactor::models::Value::Int(0),
+        value: great_enum_refactor::models::Value::Bool(false),
     }
     .render()
 }
@@ -174,10 +174,10 @@ pub async fn save_pv_bool(
 pub async fn new_int_propval_form(
     Path((page_id, prop_id)): Path<(i32, i32)>,
 ) -> impl IntoResponse {
-    models::PvInt {
+    great_enum_refactor::models::PropVal {
         page_id,
         prop_id,
-        value: Some(0),
+        value: great_enum_refactor::models::Value::Int(0),
     }
     .render()
 }
@@ -203,36 +203,30 @@ pub async fn save_pv_int(
 pub async fn new_float_propval_form(
     Path((page_id, prop_id)): Path<(i32, i32)>,
 ) -> impl IntoResponse {
-    models::PvFloat {
+    great_enum_refactor::models::PropVal {
         page_id,
         prop_id,
-        value: Some(0.0),
+        value: great_enum_refactor::models::Value::Float(0.0),
     }
     .render()
 }
 
 #[derive(Deserialize)]
 pub struct PvFloatForm {
-    value: Option<f64>,
+    value: f64,
 }
 pub async fn save_pv_float(
     State(AppState { db }): State<AppState>,
     Path((page_id, prop_id)): Path<(i32, i32)>,
     Form(PvFloatForm { value }): Form<PvFloatForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let mut existing = models::PvFloat::get_or_init(
-        &db,
-        &db_ops::PvGetQuery { prop_id, page_id },
-    )
-    .await;
-
-    if let Some(v) = value {
-        if Some(v) != existing.value {
-            existing.value = Some(v);
-            existing.save(&db).await?;
-        }
+    let pv = great_enum_refactor::models::PropVal {
+        page_id,
+        prop_id,
+        value: great_enum_refactor::models::Value::Float(value),
     };
-    Ok(existing.render())
+    pv.save(&db).await?;
+    Ok(pv.render())
 }
 
 pub async fn new_date_propval_form(

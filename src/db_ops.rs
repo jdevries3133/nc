@@ -1,4 +1,4 @@
-use super::{config, config::PROP_SET_MAX, models, models::PropVal, pw};
+use super::{config, config::PROP_SET_MAX, great_enum_refactor, models, pw};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use futures::join;
@@ -46,263 +46,6 @@ pub trait DbModel<GetQuery, ListQuery>: Sync + Send {
     /// for recovering from deletion will vary based on the object type,
     /// which is why the delete method consumes `self`.
     async fn delete(self, _db: &PgPool) -> Result<()>;
-}
-
-pub struct PvGetQuery {
-    pub page_id: i32,
-    pub prop_id: i32,
-}
-
-/// We are generally going to want to get all the props for a small set of
-/// pages. For typical display purposes, we'd be gathering all prop values for
-/// a set of 100 pages at a time.
-///
-/// Later, we can add `prop_ids: Vec<i32>` here as well, which would basically
-/// allow the user to select a subset of columns, but we don't need that for
-/// now.
-pub struct PvListQuery {
-    pub page_ids: Vec<i32>,
-}
-
-#[derive(Copy, Clone)]
-struct PvBoolQres {
-    page_id: i32,
-    prop_id: i32,
-    value: bool,
-}
-impl PvBoolQres {
-    fn into_pv_bool(self) -> models::PvBool {
-        models::PvBool {
-            page_id: self.page_id,
-            prop_id: self.prop_id,
-            value: Some(self.value),
-        }
-    }
-}
-
-#[async_trait]
-impl DbModel<PvGetQuery, PvListQuery> for models::PvBool {
-    async fn get(db: &PgPool, query: &PvGetQuery) -> Result<Self> {
-        let res = query_as!(
-            PvBoolQres,
-            "select page_id, prop_id, value from propval_bool
-            where page_id = $1 and prop_id = $2",
-            query.page_id,
-            query.prop_id
-        )
-        .fetch_one(db)
-        .await?;
-
-        Ok(res.into_pv_bool())
-    }
-    async fn list(db: &PgPool, query: &PvListQuery) -> Result<Vec<Self>> {
-        let res = query_as!(
-            PvBoolQres,
-            "select page_id, prop_id, value from propval_bool
-            where page_id = any($1)",
-            &query.page_ids
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(res.iter().map(|r| r.into_pv_bool()).collect())
-    }
-    async fn save(&self, db: &PgPool) -> Result<()> {
-        query!(
-            "insert into propval_bool (value, page_id, prop_id) values ($1, $2, $3)
-            on conflict (page_id, prop_id)
-            do update set value = $1",
-            self.value,
-            self.page_id,
-            self.prop_id
-        )
-        .execute(db)
-        .await?;
-        Ok(())
-    }
-    async fn delete(self, _db: &PgPool) -> Result<()> {
-        todo!()
-    }
-}
-
-struct PvIntQres {
-    page_id: i32,
-    prop_id: i32,
-    value: i64,
-}
-impl PvIntQres {
-    fn into_pv_int(self) -> models::PvInt {
-        models::PvInt {
-            page_id: self.page_id,
-            prop_id: self.prop_id,
-            value: Some(self.value),
-        }
-    }
-}
-
-#[async_trait]
-impl DbModel<PvGetQuery, PvListQuery> for models::PvInt {
-    async fn get(db: &PgPool, query: &PvGetQuery) -> Result<Self> {
-        let res = query_as!(
-            PvIntQres,
-            "select page_id, prop_id, value from propval_int
-            where page_id = $1 and prop_id = $2",
-            query.page_id,
-            query.prop_id
-        )
-        .fetch_one(db)
-        .await?;
-
-        Ok(res.into_pv_int())
-    }
-    async fn list(db: &PgPool, query: &PvListQuery) -> Result<Vec<Self>> {
-        let mut res = query_as!(
-            PvIntQres,
-            "select page_id, prop_id, value from propval_int
-            where page_id = any($1)",
-            &query.page_ids
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(res.drain(..).map(|r| r.into_pv_int()).collect())
-    }
-    async fn save(&self, db: &PgPool) -> Result<()> {
-        query!(
-            "insert into propval_int (value, page_id, prop_id) values ($1, $2, $3)
-            on conflict (page_id, prop_id)
-            do update set value = $1",
-            self.value,
-            self.page_id,
-            self.prop_id
-        )
-        .execute(db)
-        .await?;
-        Ok(())
-    }
-    async fn delete(self, _db: &PgPool) -> Result<()> {
-        todo!()
-    }
-}
-
-struct PvFloatQres {
-    page_id: i32,
-    prop_id: i32,
-    value: f64,
-}
-impl PvFloatQres {
-    fn into_pv_float(self) -> models::PvFloat {
-        models::PvFloat {
-            page_id: self.page_id,
-            prop_id: self.prop_id,
-            value: Some(self.value),
-        }
-    }
-}
-
-#[async_trait]
-impl DbModel<PvGetQuery, PvListQuery> for models::PvFloat {
-    async fn get(db: &PgPool, query: &PvGetQuery) -> Result<Self> {
-        let res = query_as!(
-            PvFloatQres,
-            "select page_id, prop_id, value from propval_float
-            where page_id = $1 and prop_id = $2",
-            query.page_id,
-            query.prop_id
-        )
-        .fetch_one(db)
-        .await?;
-
-        Ok(res.into_pv_float())
-    }
-    async fn list(db: &PgPool, query: &PvListQuery) -> Result<Vec<Self>> {
-        let mut res = query_as!(
-            PvFloatQres,
-            "select page_id, prop_id, value from propval_float
-            where page_id = any($1)",
-            &query.page_ids
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(res.drain(..).map(|r| r.into_pv_float()).collect())
-    }
-    async fn save(&self, db: &PgPool) -> Result<()> {
-        query!(
-            "insert into propval_float (value, page_id, prop_id) values ($1, $2, $3)
-            on conflict (page_id, prop_id)
-            do update set value = $1",
-            self.value,
-            self.page_id,
-            self.prop_id
-        )
-        .execute(db)
-        .await?;
-        Ok(())
-    }
-    async fn delete(self, _db: &PgPool) -> Result<()> {
-        todo!()
-    }
-}
-
-struct PvDateQres {
-    page_id: i32,
-    prop_id: i32,
-    value: chrono::NaiveDate,
-}
-impl PvDateQres {
-    fn into_pv_date(self) -> models::PvDate {
-        models::PvDate {
-            page_id: self.page_id,
-            prop_id: self.prop_id,
-            value: Some(self.value),
-        }
-    }
-}
-
-#[async_trait]
-impl DbModel<PvGetQuery, PvListQuery> for models::PvDate {
-    async fn get(db: &PgPool, query: &PvGetQuery) -> Result<Self> {
-        let res = query_as!(
-            PvDateQres,
-            "select page_id, prop_id, value from propval_date
-            where page_id = $1 and prop_id = $2",
-            query.page_id,
-            query.prop_id
-        )
-        .fetch_one(db)
-        .await?;
-
-        Ok(res.into_pv_date())
-    }
-    async fn list(db: &PgPool, query: &PvListQuery) -> Result<Vec<Self>> {
-        let mut res = query_as!(
-            PvDateQres,
-            "select page_id, prop_id, value from propval_date
-            where page_id = any($1)",
-            &query.page_ids
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(res.drain(..).map(|r| r.into_pv_date()).collect())
-    }
-    async fn save(&self, db: &PgPool) -> Result<()> {
-        query!(
-            "insert into propval_date (value, page_id, prop_id) values ($1, $2, $3)
-            on conflict (page_id, prop_id)
-            do update set value = $1",
-            self.value,
-            self.page_id,
-            self.prop_id
-        )
-        .execute(db)
-        .await?;
-        Ok(())
-    }
-    async fn delete(self, _db: &PgPool) -> Result<()> {
-        todo!()
-    }
 }
 
 pub struct GetPageQuery {
@@ -438,7 +181,9 @@ impl QresProp {
             collection_id: self.collection_id,
             name: self.name,
             order: self.order,
-            type_id: models::propval_type_from_int(self.type_id),
+            type_id: great_enum_refactor::models::ValueType::from_int(
+                self.type_id,
+            ),
         }
     }
 }
@@ -1566,13 +1311,10 @@ pub async fn list_pages(
 
     for prop in &collection_prop_set[..] {
         let table_name = match prop.type_id {
-            models::PropValTypes::Int => "propval_int",
-            models::PropValTypes::Bool => "propval_bool",
-            models::PropValTypes::Float => "propval_float",
-            models::PropValTypes::Date => "propval_date",
-            _ => {
-                todo!()
-            }
+            great_enum_refactor::models::ValueType::Int => "propval_int",
+            great_enum_refactor::models::ValueType::Bool => "propval_bool",
+            great_enum_refactor::models::ValueType::Float => "propval_float",
+            great_enum_refactor::models::ValueType::Date => "propval_date",
         };
         query.push(format!(
             "left join {table} as prop{prop_id}
@@ -1719,68 +1461,63 @@ pub async fn list_pages(
             let id: i32 = row.get("id");
             let title: String = row.get("title");
             let collection_id: i32 = row.get("collection_id");
-            let props: Vec<Box<dyn PropVal>> = collection_prop_set
+            let props: Vec<models::PvOrType> = collection_prop_set
                 .iter()
                 .map(|prop| {
                     let prop_alias = format!("prop{}", prop.id);
                     match prop.type_id {
-                        models::PropValTypes::Int => {
-                            let value = if let Ok(value) =
+                        great_enum_refactor::models::ValueType::Int => {
+                            if let Ok(value) =
                                 row.try_get(&prop_alias as &str)
                             {
-                                Some(value)
+                                models::PvOrType::Pv(great_enum_refactor::models::PropVal {
+                                    page_id: id,
+                                    prop_id: prop.id,
+                                    value: great_enum_refactor::models::Value::Int(value)
+                                })
                             } else {
-                                None
-                            };
-                            Box::new(models::PvInt {
-                                page_id: id,
-                                prop_id: prop.id,
-                                value,
-                            }) as _
+                                models::PvOrType::Tp(great_enum_refactor::models::ValueType::Int, id)
+                            }
                         }
-                        models::PropValTypes::Bool => {
-                            let value = if let Ok(value) =
+                        great_enum_refactor::models::ValueType::Bool => {
+                            if let Ok(value) =
                                 row.try_get(&prop_alias as &str)
                             {
-                                Some(value)
+                                models::PvOrType::Pv(great_enum_refactor::models::PropVal {
+                                    page_id: id,
+                                    prop_id: prop.id,
+                                    value: great_enum_refactor::models::Value::Bool(value)
+                                })
                             } else {
-                                None
-                            };
-                            Box::new(models::PvBool {
-                                page_id: id,
-                                prop_id: prop.id,
-                                value,
-                            }) as _
+                                models::PvOrType::Tp(great_enum_refactor::models::ValueType::Bool, id)
+                            }
                         }
-                        models::PropValTypes::Float => {
-                            let value = if let Ok(value) =
+                        great_enum_refactor::models::ValueType::Float => {
+                            if let Ok(value) =
                                 row.try_get(&prop_alias as &str)
                             {
-                                Some(value)
+                                models::PvOrType::Pv(great_enum_refactor::models::PropVal {
+                                    page_id: id,
+                                    prop_id: prop.id,
+                                    value: great_enum_refactor::models::Value::Float(value)
+                                })
                             } else {
-                                None
-                            };
-                            Box::new(models::PvFloat {
-                                page_id: id,
-                                prop_id: prop.id,
-                                value,
-                            }) as _
+                                models::PvOrType::Tp(great_enum_refactor::models::ValueType::Float, id)
+                            }
                         }
-                        models::PropValTypes::Date => {
-                            let value = if let Ok(value) =
+                        great_enum_refactor::models::ValueType::Date => {
+                            if let Ok(value) =
                                 row.try_get(&prop_alias as &str)
                             {
-                                Some(value)
+                                models::PvOrType::Pv(great_enum_refactor::models::PropVal {
+                                    page_id: id,
+                                    prop_id: prop.id,
+                                    value: great_enum_refactor::models::Value::Date(value)
+                                })
                             } else {
-                                None
-                            };
-                            Box::new(models::PvDate {
-                                page_id: id,
-                                prop_id: prop.id,
-                                value,
-                            }) as _
+                                models::PvOrType::Tp(great_enum_refactor::models::ValueType::Date, id)
+                            }
                         }
-                        _ => todo!(),
                     }
                 })
                 .collect();
@@ -1856,7 +1593,9 @@ pub async fn get_prop_set(
                 collection_id: p.collection_id,
                 name: p.name,
                 order: p.order,
-                type_id: models::propval_type_from_int(p.type_id),
+                type_id: great_enum_refactor::models::ValueType::from_int(
+                    p.type_id,
+                ),
             })
             .collect())
     }

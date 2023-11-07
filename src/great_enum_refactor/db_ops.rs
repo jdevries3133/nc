@@ -1,7 +1,7 @@
 use super::{
     super::{
         db_ops::{DbModel, GetPropQuery},
-        models::{Prop, PropValTypes},
+        models::Prop,
     },
     models,
 };
@@ -10,28 +10,15 @@ use async_trait::async_trait;
 use futures::join;
 use sqlx::{query, query_as, PgPool};
 
-/// If the data-type is not known, we need to first query the `prop` table to
-/// learn the data-type of the prop before we can know which `propval_*` table
-/// needs to be queried to get the value. For PropVal queries, the caller can
-/// provide `ValueType` if it is known, and this will save us a round-trip
-/// to the database.
-#[derive(Clone, Copy)]
-pub enum ValueType {
-    Bool,
-    Int,
-    Float,
-    Date,
-}
-
 pub struct PvGetQuery {
     pub page_id: i32,
     pub prop_id: i32,
-    pub data_type: Option<ValueType>,
+    pub data_type: Option<models::ValueType>,
 }
 
 pub struct PvListQuery {
     pub page_ids: Vec<i32>,
-    pub data_type: Option<ValueType>,
+    pub data_type: Option<models::ValueType>,
 }
 
 struct Qres<T> {
@@ -51,17 +38,11 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                 // I'm just going to map this type from v1 into a type from v2 in the
                 // hopes that it keeps both versions more separated as I work through
                 // this refactor.
-                match prop.type_id {
-                    PropValTypes::Bool => ValueType::Bool,
-                    PropValTypes::Int => ValueType::Int,
-                    PropValTypes::Float => ValueType::Float,
-                    PropValTypes::Date => ValueType::Date,
-                    _ => todo!(),
-                }
+                prop.type_id
             }
         };
         let value = match val_type {
-            ValueType::Bool => {
+            models::ValueType::Bool => {
                 let value = query_as!(
                     Qres::<bool>,
                     "select page_id, prop_id, value
@@ -74,7 +55,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                 .await?;
                 models::Value::Bool(value.value)
             }
-            ValueType::Int => {
+            models::ValueType::Int => {
                 let value = query_as!(
                     Qres::<i64>,
                     "select page_id, prop_id, value
@@ -87,7 +68,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                 .await?;
                 models::Value::Int(value.value)
             }
-            ValueType::Float => {
+            models::ValueType::Float => {
                 let value = query_as!(
                     Qres::<f64>,
                     "select page_id, prop_id, value
@@ -100,7 +81,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                 .await?;
                 models::Value::Float(value.value)
             }
-            ValueType::Date => {
+            models::ValueType::Date => {
                 let value = query_as!(
                     Qres::<chrono::NaiveDate>,
                     "select page_id, prop_id, value
