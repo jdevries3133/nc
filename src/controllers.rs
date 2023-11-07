@@ -144,12 +144,12 @@ pub async fn collection_prop_order(
 pub async fn new_bool_propval_form(
     Path((page_id, prop_id)): Path<(i32, i32)>,
 ) -> impl IntoResponse {
-    let pvb = great_enum_refactor::models::PropVal {
+    great_enum_refactor::models::PropVal {
         page_id,
         prop_id,
-        value: great_enum_refactor::models::Value::Bool(false),
-    };
-    pvb.render()
+        value: great_enum_refactor::models::Value::Int(0),
+    }
+    .render()
 }
 
 #[derive(Deserialize)]
@@ -184,25 +184,19 @@ pub async fn new_int_propval_form(
 
 #[derive(Deserialize)]
 pub struct PvIntForm {
-    value: Option<i64>,
+    value: i64,
 }
 pub async fn save_pv_int(
     State(AppState { db }): State<AppState>,
     Path((page_id, prop_id)): Path<(i32, i32)>,
     Form(PvIntForm { value }): Form<PvIntForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let mut existing = models::PvInt::get_or_init(
-        &db,
-        &db_ops::PvGetQuery { prop_id, page_id },
-    )
-    .await;
-
-    if let Some(v) = value {
-        if Some(v) != existing.value {
-            existing.value = Some(v);
-            existing.save(&db).await?;
-        }
+    let existing = great_enum_refactor::models::PropVal {
+        page_id,
+        prop_id,
+        value: great_enum_refactor::models::Value::Int(value),
     };
+    existing.save(&db).await?;
     Ok(existing.render())
 }
 

@@ -7,6 +7,7 @@ use super::{
 };
 use anyhow::Result;
 use async_trait::async_trait;
+use futures::join;
 use sqlx::{query, query_as, PgPool};
 
 /// If the data-type is not known, we need to first query the `prop` table to
@@ -83,16 +84,48 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
             prop_id: row.prop_id,
             value: models::Value::Bool(row.value),
         })
-        .fetch_all(db)
-        .await?;
+        .fetch_all(db);
 
-        Ok(bools)
+        let ints = query_as!(
+            Qres::<i64>,
+            "select page_id, prop_id, value
+            from propval_int
+            where page_id = ANY($1)",
+            &query.page_ids
+        )
+        .map(|row| models::PropVal {
+            page_id: row.page_id,
+            prop_id: row.prop_id,
+            value: models::Value::Int(row.value),
+        })
+        .fetch_all(db);
+
+        let (bools, ints) = join!(bools, ints);
+
+        let bools = bools?;
+        let ints = ints?;
+
+        let mut all_propvals = Vec::with_capacity(bools.len() + ints.len());
+        all_propvals.extend_from_slice(&bools);
+        all_propvals.extend_from_slice(&ints);
+
+        Ok(all_propvals)
     }
     async fn save(&self, db: &PgPool) -> Result<()> {
         match self.value {
             models::Value::Bool(val) => {
                 query!(
                     "insert into propval_bool (value, page_id, prop_id) values ($1, $2, $3)
+                    on conflict (page_id, prop_id)
+                    do update set value = $1",
+                    val,
+                    self.page_id,
+                    self.prop_id
+                ).execute(db).await?
+            },
+            models::Value::Int(val) => {
+                query!(
+                    "insert into propval_int (value, page_id, prop_id) values ($1, $2, $3)
                     on conflict (page_id, prop_id)
                     do update set value = $1",
                     val,

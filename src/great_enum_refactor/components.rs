@@ -22,6 +22,21 @@ impl Component for models::PropVal {
                     "#
                 )
             }
+            models::Value::Int(val) => {
+                let route =
+                    Route::PageIntProp(Some((self.page_id, self.prop_id)));
+                format!(
+                    r#"
+                            <input
+                                class="rounded text-sm w-24 justify-self-center"
+                                hx-post="{route}"
+                                name="value"
+                                type="number"
+                                value="{val}"
+                            />
+                        "#
+                )
+            }
         }
     }
 }

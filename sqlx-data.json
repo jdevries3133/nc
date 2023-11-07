@@ -422,6 +422,38 @@
     },
     "query": "\n            update collection set\n                sort_by_prop_id = $1,\n                sort_type_id = $2\n            where id = $3\n            "
   },
+  "53599c598963b1d6e85c251ffa6c7e5275b26f87aeba1a62538352364da8a09b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "page_id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "prop_id",
+          "ordinal": 1,
+          "type_info": "Int4"
+        },
+        {
+          "name": "value",
+          "ordinal": 2,
+          "type_info": "Int8"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Int4Array"
+        ]
+      }
+    },
+    "query": "select page_id, prop_id, value\n            from propval_int\n            where page_id = ANY($1)"
+  },
   "5ad87dbc505f24172a0d98aef5baa72eed5214391bfbd1c991f67b357f8eb8e5": {
     "describe": {
       "columns": [
@@ -921,6 +953,20 @@
       }
     },
     "query": "delete from filter_float_range where id = $1"
+  },
+  "9294add2145e498de7419ad69d6b87396b4c18dd142d341864c69d494c409860": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int4",
+          "Int4"
+        ]
+      }
+    },
+    "query": "insert into propval_int (value, page_id, prop_id) values ($1, $2, $3)\n                    on conflict (page_id, prop_id)\n                    do update set value = $1"
   },
   "9778028288b975abf83e4e78c3b27848d382cc383bd74d2d03d41664cb8b6e19": {
     "describe": {
