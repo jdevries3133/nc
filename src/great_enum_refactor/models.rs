@@ -3,6 +3,7 @@ pub enum Value {
     Bool(bool),
     Int(i64),
     Float(f64),
+    Date(chrono::NaiveDate),
 }
 
 #[derive(Debug, Clone)]

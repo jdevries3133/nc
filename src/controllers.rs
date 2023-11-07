@@ -211,17 +211,6 @@ pub async fn new_float_propval_form(
     .render()
 }
 
-pub async fn new_date_propval_form(
-    Path((page_id, prop_id)): Path<(i32, i32)>,
-) -> impl IntoResponse {
-    models::PvDate {
-        page_id,
-        prop_id,
-        value: Some(chrono::Local::now().date_naive()),
-    }
-    .render()
-}
-
 #[derive(Deserialize)]
 pub struct PvFloatForm {
     value: Option<f64>,
@@ -246,27 +235,34 @@ pub async fn save_pv_float(
     Ok(existing.render())
 }
 
+pub async fn new_date_propval_form(
+    Path((page_id, prop_id)): Path<(i32, i32)>,
+) -> impl IntoResponse {
+    great_enum_refactor::models::PropVal {
+        page_id,
+        prop_id,
+        value: great_enum_refactor::models::Value::Date(
+            chrono::Local::now().date_naive(),
+        ),
+    }
+    .render()
+}
+
 #[derive(Deserialize)]
 pub struct PvDateForm {
-    value: Option<chrono::NaiveDate>,
+    value: chrono::NaiveDate,
 }
 pub async fn save_pv_date(
     State(AppState { db }): State<AppState>,
     Path((page_id, prop_id)): Path<(i32, i32)>,
     Form(PvDateForm { value }): Form<PvDateForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let mut existing = models::PvDate::get_or_init(
-        &db,
-        &db_ops::PvGetQuery { prop_id, page_id },
-    )
-    .await;
-
-    if let Some(v) = value {
-        if Some(v) != existing.value {
-            existing.value = Some(v);
-            existing.save(&db).await?;
-        }
+    let existing = great_enum_refactor::models::PropVal {
+        page_id,
+        prop_id,
+        value: great_enum_refactor::models::Value::Date(value),
     };
+    existing.save(&db).await?;
     Ok(existing.render())
 }
 

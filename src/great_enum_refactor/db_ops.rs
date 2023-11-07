@@ -20,6 +20,7 @@ pub enum ValueType {
     Bool,
     Int,
     Float,
+    Date,
 }
 
 pub struct PvGetQuery {
@@ -54,6 +55,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                     PropValTypes::Bool => ValueType::Bool,
                     PropValTypes::Int => ValueType::Int,
                     PropValTypes::Float => ValueType::Float,
+                    PropValTypes::Date => ValueType::Date,
                     _ => todo!(),
                 }
             }
@@ -98,6 +100,19 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                 .await?;
                 models::Value::Float(value.value)
             }
+            ValueType::Date => {
+                let value = query_as!(
+                    Qres::<chrono::NaiveDate>,
+                    "select page_id, prop_id, value
+                    from propval_date
+                    where page_id = $1 and prop_id = $2",
+                    query.page_id,
+                    query.prop_id
+                )
+                .fetch_one(db)
+                .await?;
+                models::Value::Date(value.value)
+            }
         };
         Ok(models::PropVal {
             page_id: query.page_id,
@@ -134,14 +149,48 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
         })
         .fetch_all(db);
 
-        let (bools, ints) = join!(bools, ints);
+        let floats = query_as!(
+            Qres::<f64>,
+            "select page_id, prop_id, value
+            from propval_float
+            where page_id = ANY($1)",
+            &query.page_ids
+        )
+        .map(|row| models::PropVal {
+            page_id: row.page_id,
+            prop_id: row.prop_id,
+            value: models::Value::Float(row.value),
+        })
+        .fetch_all(db);
+
+        let dates = query_as!(
+            Qres::<chrono::NaiveDate>,
+            "select page_id, prop_id, value
+            from propval_date
+            where page_id = ANY($1)",
+            &query.page_ids
+        )
+        .map(|row| models::PropVal {
+            page_id: row.page_id,
+            prop_id: row.prop_id,
+            value: models::Value::Date(row.value),
+        })
+        .fetch_all(db);
+
+        let (bools, ints, floats, dates) = join!(bools, ints, floats, dates);
 
         let bools = bools?;
         let ints = ints?;
+        let floats = floats?;
+        let dates = dates?;
 
-        let mut all_propvals = Vec::with_capacity(bools.len() + ints.len());
+        let mut all_propvals = Vec::with_capacity(
+            bools.len() + ints.len() + floats.len() + dates.len(),
+        );
         all_propvals.extend_from_slice(&bools);
         all_propvals.extend_from_slice(&ints);
+        all_propvals.extend_from_slice(&floats);
+        all_propvals.extend_from_slice(&dates);
 
         Ok(all_propvals)
     }
@@ -170,6 +219,16 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
             models::Value::Float(val) => {
                 query!(
                     "insert into propval_float (value, page_id, prop_id) values ($1, $2, $3)
+                    on conflict (page_id, prop_id)
+                    do update set value = $1",
+                    val,
+                    self.page_id,
+                    self.prop_id
+                ).execute(db).await?
+            },
+            models::Value::Date(val) => {
+                query!(
+                    "insert into propval_date (value, page_id, prop_id) values ($1, $2, $3)
                     on conflict (page_id, prop_id)
                     do update set value = $1",
                     val,
