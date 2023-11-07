@@ -1,7 +1,5 @@
-use super::{
-    super::{components::Component, models::Value, routes::Route},
-    models,
-};
+use super::models;
+use crate::{components::Component, models::Value, routes::Route};
 
 impl Component for models::PropVal {
     fn render(&self) -> String {

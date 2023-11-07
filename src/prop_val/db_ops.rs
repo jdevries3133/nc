@@ -1,9 +1,7 @@
-use super::{
-    super::{
-        db_ops::{DbModel, GetPropQuery},
-        models::{Prop, Value, ValueType},
-    },
-    models,
+use super::models;
+use crate::{
+    db_ops::{DbModel, GetPropQuery},
+    models::{Prop, Value, ValueType},
 };
 use anyhow::Result;
 use async_trait::async_trait;

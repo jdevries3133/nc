@@ -1,4 +1,4 @@
-use super::super::models::Value;
+use crate::models::Value;
 
 #[derive(Debug, Clone)]
 pub struct PropVal {
