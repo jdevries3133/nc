@@ -1,12 +1,12 @@
 use super::{
-    super::{components::Component, routes::Route},
+    super::{components::Component, models::Value, routes::Route},
     models,
 };
 
 impl Component for models::PropVal {
     fn render(&self) -> String {
         match self.value {
-            models::Value::Bool(val) => {
+            Value::Bool(val) => {
                 let route =
                     Route::PageBoolProp(Some((self.page_id, self.prop_id)));
                 let checked_state = if val { "checked" } else { "" };
@@ -22,7 +22,7 @@ impl Component for models::PropVal {
                     "#
                 )
             }
-            models::Value::Int(val) => {
+            Value::Int(val) => {
                 let route =
                     Route::PageIntProp(Some((self.page_id, self.prop_id)));
                 format!(
@@ -37,7 +37,7 @@ impl Component for models::PropVal {
                     "#
                 )
             }
-            models::Value::Float(val) => {
+            Value::Float(val) => {
                 let route =
                     Route::PageFloatProp(Some((self.page_id, self.prop_id)));
                 format!(
@@ -53,7 +53,7 @@ impl Component for models::PropVal {
                     "#
                 )
             }
-            models::Value::Date(val) => {
+            Value::Date(val) => {
                 let route =
                     Route::PageDateProp(Some((self.page_id, self.prop_id)));
                 format!(

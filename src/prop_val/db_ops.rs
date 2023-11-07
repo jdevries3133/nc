@@ -1,7 +1,7 @@
 use super::{
     super::{
         db_ops::{DbModel, GetPropQuery},
-        models::Prop,
+        models::{Prop, Value, ValueType},
     },
     models,
 };
@@ -13,12 +13,12 @@ use sqlx::{query, query_as, PgPool};
 pub struct PvGetQuery {
     pub page_id: i32,
     pub prop_id: i32,
-    pub data_type: Option<models::ValueType>,
+    pub data_type: Option<ValueType>,
 }
 
 pub struct PvListQuery {
     pub page_ids: Vec<i32>,
-    pub data_type: Option<models::ValueType>,
+    pub data_type: Option<ValueType>,
 }
 
 struct Qres<T> {
@@ -42,7 +42,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
             }
         };
         let value = match val_type {
-            models::ValueType::Bool => {
+            ValueType::Bool => {
                 let value = query_as!(
                     Qres::<bool>,
                     "select page_id, prop_id, value
@@ -53,9 +53,9 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                 )
                 .fetch_one(db)
                 .await?;
-                models::Value::Bool(value.value)
+                Value::Bool(value.value)
             }
-            models::ValueType::Int => {
+            ValueType::Int => {
                 let value = query_as!(
                     Qres::<i64>,
                     "select page_id, prop_id, value
@@ -66,9 +66,9 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                 )
                 .fetch_one(db)
                 .await?;
-                models::Value::Int(value.value)
+                Value::Int(value.value)
             }
-            models::ValueType::Float => {
+            ValueType::Float => {
                 let value = query_as!(
                     Qres::<f64>,
                     "select page_id, prop_id, value
@@ -79,9 +79,9 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                 )
                 .fetch_one(db)
                 .await?;
-                models::Value::Float(value.value)
+                Value::Float(value.value)
             }
-            models::ValueType::Date => {
+            ValueType::Date => {
                 let value = query_as!(
                     Qres::<chrono::NaiveDate>,
                     "select page_id, prop_id, value
@@ -92,7 +92,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                 )
                 .fetch_one(db)
                 .await?;
-                models::Value::Date(value.value)
+                Value::Date(value.value)
             }
         };
         Ok(models::PropVal {
@@ -112,7 +112,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
         .map(|row| models::PropVal {
             page_id: row.page_id,
             prop_id: row.prop_id,
-            value: models::Value::Bool(row.value),
+            value: Value::Bool(row.value),
         })
         .fetch_all(db);
 
@@ -126,7 +126,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
         .map(|row| models::PropVal {
             page_id: row.page_id,
             prop_id: row.prop_id,
-            value: models::Value::Int(row.value),
+            value: Value::Int(row.value),
         })
         .fetch_all(db);
 
@@ -140,7 +140,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
         .map(|row| models::PropVal {
             page_id: row.page_id,
             prop_id: row.prop_id,
-            value: models::Value::Float(row.value),
+            value: Value::Float(row.value),
         })
         .fetch_all(db);
 
@@ -154,7 +154,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
         .map(|row| models::PropVal {
             page_id: row.page_id,
             prop_id: row.prop_id,
-            value: models::Value::Date(row.value),
+            value: Value::Date(row.value),
         })
         .fetch_all(db);
 
@@ -177,7 +177,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
     }
     async fn save(&self, db: &PgPool) -> Result<()> {
         match self.value {
-            models::Value::Bool(val) => {
+            Value::Bool(val) => {
                 query!(
                     "insert into propval_bool (value, page_id, prop_id) values ($1, $2, $3)
                     on conflict (page_id, prop_id)
@@ -187,7 +187,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                     self.prop_id
                 ).execute(db).await?
             },
-            models::Value::Int(val) => {
+            Value::Int(val) => {
                 query!(
                     "insert into propval_int (value, page_id, prop_id) values ($1, $2, $3)
                     on conflict (page_id, prop_id)
@@ -197,7 +197,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                     self.prop_id
                 ).execute(db).await?
             },
-            models::Value::Float(val) => {
+            Value::Float(val) => {
                 query!(
                     "insert into propval_float (value, page_id, prop_id) values ($1, $2, $3)
                     on conflict (page_id, prop_id)
@@ -207,7 +207,7 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
                     self.prop_id
                 ).execute(db).await?
             },
-            models::Value::Date(val) => {
+            Value::Date(val) => {
                 query!(
                     "insert into propval_date (value, page_id, prop_id) values ($1, $2, $3)
                     on conflict (page_id, prop_id)

@@ -147,7 +147,7 @@ pub async fn new_bool_propval_form(
     prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: prop_val::models::Value::Bool(false),
+        value: models::Value::Bool(false),
     }
     .render()
 }
@@ -165,7 +165,7 @@ pub async fn save_pv_bool(
     let pvb = prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: prop_val::models::Value::Bool(value.is_some()),
+        value: models::Value::Bool(value.is_some()),
     };
     pvb.save(&db).await?;
     Ok(pvb.render())
@@ -177,7 +177,7 @@ pub async fn new_int_propval_form(
     prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: prop_val::models::Value::Int(0),
+        value: models::Value::Int(0),
     }
     .render()
 }
@@ -194,7 +194,7 @@ pub async fn save_pv_int(
     let existing = prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: prop_val::models::Value::Int(value),
+        value: models::Value::Int(value),
     };
     existing.save(&db).await?;
     Ok(existing.render())
@@ -206,7 +206,7 @@ pub async fn new_float_propval_form(
     prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: prop_val::models::Value::Float(0.0),
+        value: models::Value::Float(0.0),
     }
     .render()
 }
@@ -223,7 +223,7 @@ pub async fn save_pv_float(
     let pv = prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: prop_val::models::Value::Float(value),
+        value: models::Value::Float(value),
     };
     pv.save(&db).await?;
     Ok(pv.render())
@@ -235,7 +235,7 @@ pub async fn new_date_propval_form(
     prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: prop_val::models::Value::Date(chrono::Local::now().date_naive()),
+        value: models::Value::Date(chrono::Local::now().date_naive()),
     }
     .render()
 }
@@ -252,7 +252,7 @@ pub async fn save_pv_date(
     let existing = prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: prop_val::models::Value::Date(value),
+        value: models::Value::Date(value),
     };
     existing.save(&db).await?;
     Ok(existing.render())

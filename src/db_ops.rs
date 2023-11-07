@@ -181,7 +181,7 @@ impl QresProp {
             collection_id: self.collection_id,
             name: self.name,
             order: self.order,
-            type_id: prop_val::models::ValueType::from_int(self.type_id),
+            type_id: models::ValueType::from_int(self.type_id),
         }
     }
 }
@@ -1309,10 +1309,10 @@ pub async fn list_pages(
 
     for prop in &collection_prop_set[..] {
         let table_name = match prop.type_id {
-            prop_val::models::ValueType::Int => "propval_int",
-            prop_val::models::ValueType::Bool => "propval_bool",
-            prop_val::models::ValueType::Float => "propval_float",
-            prop_val::models::ValueType::Date => "propval_date",
+            models::ValueType::Int => "propval_int",
+            models::ValueType::Bool => "propval_bool",
+            models::ValueType::Float => "propval_float",
+            models::ValueType::Date => "propval_date",
         };
         query.push(format!(
             "left join {table} as prop{prop_id}
@@ -1464,78 +1464,67 @@ pub async fn list_pages(
                 .map(|prop| {
                     let prop_alias = format!("prop{}", prop.id);
                     match prop.type_id {
-                        prop_val::models::ValueType::Int => {
+                        models::ValueType::Int => {
                             if let Ok(value) = row.try_get(&prop_alias as &str)
                             {
                                 models::PvOrType::Pv(
                                     prop_val::models::PropVal {
                                         page_id: id,
                                         prop_id: prop.id,
-                                        value: prop_val::models::Value::Int(
-                                            value,
-                                        ),
+                                        value: models::Value::Int(value),
+                                    },
+                                )
+                            } else {
+                                models::PvOrType::Tp(models::ValueType::Int, id)
+                            }
+                        }
+                        models::ValueType::Bool => {
+                            if let Ok(value) = row.try_get(&prop_alias as &str)
+                            {
+                                models::PvOrType::Pv(
+                                    prop_val::models::PropVal {
+                                        page_id: id,
+                                        prop_id: prop.id,
+                                        value: models::Value::Bool(value),
                                     },
                                 )
                             } else {
                                 models::PvOrType::Tp(
-                                    prop_val::models::ValueType::Int,
+                                    models::ValueType::Bool,
                                     id,
                                 )
                             }
                         }
-                        prop_val::models::ValueType::Bool => {
+                        models::ValueType::Float => {
                             if let Ok(value) = row.try_get(&prop_alias as &str)
                             {
                                 models::PvOrType::Pv(
                                     prop_val::models::PropVal {
                                         page_id: id,
                                         prop_id: prop.id,
-                                        value: prop_val::models::Value::Bool(
-                                            value,
-                                        ),
+                                        value: models::Value::Float(value),
                                     },
                                 )
                             } else {
                                 models::PvOrType::Tp(
-                                    prop_val::models::ValueType::Bool,
+                                    models::ValueType::Float,
                                     id,
                                 )
                             }
                         }
-                        prop_val::models::ValueType::Float => {
+                        models::ValueType::Date => {
                             if let Ok(value) = row.try_get(&prop_alias as &str)
                             {
                                 models::PvOrType::Pv(
                                     prop_val::models::PropVal {
                                         page_id: id,
                                         prop_id: prop.id,
-                                        value: prop_val::models::Value::Float(
-                                            value,
-                                        ),
+                                        value: models::Value::Date(value),
                                     },
                                 )
                             } else {
                                 models::PvOrType::Tp(
-                                    prop_val::models::ValueType::Float,
-                                    id,
-                                )
-                            }
-                        }
-                        prop_val::models::ValueType::Date => {
-                            if let Ok(value) = row.try_get(&prop_alias as &str)
-                            {
-                                models::PvOrType::Pv(
-                                    prop_val::models::PropVal {
-                                        page_id: id,
-                                        prop_id: prop.id,
-                                        value: prop_val::models::Value::Date(
-                                            value,
-                                        ),
-                                    },
-                                )
-                            } else {
-                                models::PvOrType::Tp(
-                                    prop_val::models::ValueType::Date,
+                                    models::ValueType::Date,
                                     id,
                                 )
                             }
@@ -1615,7 +1604,7 @@ pub async fn get_prop_set(
                 collection_id: p.collection_id,
                 name: p.name,
                 order: p.order,
-                type_id: prop_val::models::ValueType::from_int(p.type_id),
+                type_id: models::ValueType::from_int(p.type_id),
             })
             .collect())
     }

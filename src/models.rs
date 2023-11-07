@@ -3,10 +3,38 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
+#[derive(Debug, Clone, Copy)]
+pub enum ValueType {
+    Bool,
+    Int,
+    Float,
+    Date,
+}
+
+impl ValueType {
+    pub fn from_int(int: i32) -> Self {
+        match int {
+            1 => Self::Bool,
+            2 => Self::Int,
+            3 => Self::Float,
+            6 => Self::Date,
+            _ => panic!("{int} is not a valid ValueType"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Value {
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    Date(chrono::NaiveDate),
+}
+
 #[derive(Debug, Clone)]
 pub struct Prop {
     pub id: i32,
-    pub type_id: prop_val::models::ValueType,
+    pub type_id: ValueType,
     pub collection_id: i32,
     pub name: String,
     pub order: i16,
@@ -19,7 +47,7 @@ pub struct Prop {
 pub enum PvOrType {
     Pv(prop_val::models::PropVal),
     /// second item is `prop_id`
-    Tp(prop_val::models::ValueType, i32),
+    Tp(ValueType, i32),
 }
 
 #[derive(Debug)]
@@ -101,16 +129,14 @@ impl FilterType {
             FilterType::IsEmpty(_) => 7,
         }
     }
-    pub fn get_supported_filter_types(
-        prop_type: prop_val::models::ValueType,
-    ) -> Vec<Self> {
+    pub fn get_supported_filter_types(prop_type: ValueType) -> Vec<Self> {
         match prop_type {
-            prop_val::models::ValueType::Bool => vec![
+            ValueType::Bool => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Neq("Does not Equal".into()),
                 FilterType::IsEmpty("Is Empty".into()),
             ],
-            prop_val::models::ValueType::Int => vec![
+            ValueType::Int => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Gt("Does not Equal".into()),
                 FilterType::Neq("Is Greater Than".into()),
@@ -119,7 +145,7 @@ impl FilterType {
                 FilterType::NotInRng("Is Not Inside Range".into()),
                 FilterType::IsEmpty("Is Empty".into()),
             ],
-            prop_val::models::ValueType::Float => vec![
+            ValueType::Float => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Gt("Does not Equal".into()),
                 FilterType::Neq("Is Greater Than".into()),
@@ -128,7 +154,7 @@ impl FilterType {
                 FilterType::NotInRng("Is Not Inside Range".into()),
                 FilterType::IsEmpty("Is Empty".into()),
             ],
-            prop_val::models::ValueType::Date => vec![
+            ValueType::Date => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Gt("Does not Equal".into()),
                 FilterType::Neq("Is Greater Than".into()),
