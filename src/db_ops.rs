@@ -1,4 +1,4 @@
-use super::{config, config::PROP_SET_MAX, great_enum_refactor, models, pw};
+use super::{config, config::PROP_SET_MAX, models, prop_val, pw};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use futures::join;
@@ -181,9 +181,7 @@ impl QresProp {
             collection_id: self.collection_id,
             name: self.name,
             order: self.order,
-            type_id: great_enum_refactor::models::ValueType::from_int(
-                self.type_id,
-            ),
+            type_id: prop_val::models::ValueType::from_int(self.type_id),
         }
     }
 }
@@ -1311,10 +1309,10 @@ pub async fn list_pages(
 
     for prop in &collection_prop_set[..] {
         let table_name = match prop.type_id {
-            great_enum_refactor::models::ValueType::Int => "propval_int",
-            great_enum_refactor::models::ValueType::Bool => "propval_bool",
-            great_enum_refactor::models::ValueType::Float => "propval_float",
-            great_enum_refactor::models::ValueType::Date => "propval_date",
+            prop_val::models::ValueType::Int => "propval_int",
+            prop_val::models::ValueType::Bool => "propval_bool",
+            prop_val::models::ValueType::Float => "propval_float",
+            prop_val::models::ValueType::Date => "propval_date",
         };
         query.push(format!(
             "left join {table} as prop{prop_id}
@@ -1466,56 +1464,80 @@ pub async fn list_pages(
                 .map(|prop| {
                     let prop_alias = format!("prop{}", prop.id);
                     match prop.type_id {
-                        great_enum_refactor::models::ValueType::Int => {
-                            if let Ok(value) =
-                                row.try_get(&prop_alias as &str)
+                        prop_val::models::ValueType::Int => {
+                            if let Ok(value) = row.try_get(&prop_alias as &str)
                             {
-                                models::PvOrType::Pv(great_enum_refactor::models::PropVal {
-                                    page_id: id,
-                                    prop_id: prop.id,
-                                    value: great_enum_refactor::models::Value::Int(value)
-                                })
+                                models::PvOrType::Pv(
+                                    prop_val::models::PropVal {
+                                        page_id: id,
+                                        prop_id: prop.id,
+                                        value: prop_val::models::Value::Int(
+                                            value,
+                                        ),
+                                    },
+                                )
                             } else {
-                                models::PvOrType::Tp(great_enum_refactor::models::ValueType::Int, id)
+                                models::PvOrType::Tp(
+                                    prop_val::models::ValueType::Int,
+                                    id,
+                                )
                             }
                         }
-                        great_enum_refactor::models::ValueType::Bool => {
-                            if let Ok(value) =
-                                row.try_get(&prop_alias as &str)
+                        prop_val::models::ValueType::Bool => {
+                            if let Ok(value) = row.try_get(&prop_alias as &str)
                             {
-                                models::PvOrType::Pv(great_enum_refactor::models::PropVal {
-                                    page_id: id,
-                                    prop_id: prop.id,
-                                    value: great_enum_refactor::models::Value::Bool(value)
-                                })
+                                models::PvOrType::Pv(
+                                    prop_val::models::PropVal {
+                                        page_id: id,
+                                        prop_id: prop.id,
+                                        value: prop_val::models::Value::Bool(
+                                            value,
+                                        ),
+                                    },
+                                )
                             } else {
-                                models::PvOrType::Tp(great_enum_refactor::models::ValueType::Bool, id)
+                                models::PvOrType::Tp(
+                                    prop_val::models::ValueType::Bool,
+                                    id,
+                                )
                             }
                         }
-                        great_enum_refactor::models::ValueType::Float => {
-                            if let Ok(value) =
-                                row.try_get(&prop_alias as &str)
+                        prop_val::models::ValueType::Float => {
+                            if let Ok(value) = row.try_get(&prop_alias as &str)
                             {
-                                models::PvOrType::Pv(great_enum_refactor::models::PropVal {
-                                    page_id: id,
-                                    prop_id: prop.id,
-                                    value: great_enum_refactor::models::Value::Float(value)
-                                })
+                                models::PvOrType::Pv(
+                                    prop_val::models::PropVal {
+                                        page_id: id,
+                                        prop_id: prop.id,
+                                        value: prop_val::models::Value::Float(
+                                            value,
+                                        ),
+                                    },
+                                )
                             } else {
-                                models::PvOrType::Tp(great_enum_refactor::models::ValueType::Float, id)
+                                models::PvOrType::Tp(
+                                    prop_val::models::ValueType::Float,
+                                    id,
+                                )
                             }
                         }
-                        great_enum_refactor::models::ValueType::Date => {
-                            if let Ok(value) =
-                                row.try_get(&prop_alias as &str)
+                        prop_val::models::ValueType::Date => {
+                            if let Ok(value) = row.try_get(&prop_alias as &str)
                             {
-                                models::PvOrType::Pv(great_enum_refactor::models::PropVal {
-                                    page_id: id,
-                                    prop_id: prop.id,
-                                    value: great_enum_refactor::models::Value::Date(value)
-                                })
+                                models::PvOrType::Pv(
+                                    prop_val::models::PropVal {
+                                        page_id: id,
+                                        prop_id: prop.id,
+                                        value: prop_val::models::Value::Date(
+                                            value,
+                                        ),
+                                    },
+                                )
                             } else {
-                                models::PvOrType::Tp(great_enum_refactor::models::ValueType::Date, id)
+                                models::PvOrType::Tp(
+                                    prop_val::models::ValueType::Date,
+                                    id,
+                                )
                             }
                         }
                     }
@@ -1593,9 +1615,7 @@ pub async fn get_prop_set(
                 collection_id: p.collection_id,
                 name: p.name,
                 order: p.order,
-                type_id: great_enum_refactor::models::ValueType::from_int(
-                    p.type_id,
-                ),
+                type_id: prop_val::models::ValueType::from_int(p.type_id),
             })
             .collect())
     }

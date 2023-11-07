@@ -1,4 +1,4 @@
-use super::great_enum_refactor;
+use super::prop_val;
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -6,7 +6,7 @@ use sqlx::PgPool;
 #[derive(Debug, Clone)]
 pub struct Prop {
     pub id: i32,
-    pub type_id: great_enum_refactor::models::ValueType,
+    pub type_id: prop_val::models::ValueType,
     pub collection_id: i32,
     pub name: String,
     pub order: i16,
@@ -17,9 +17,9 @@ pub struct Prop {
 /// way, we're definitely cooking with enums now, baby.
 #[derive(Debug)]
 pub enum PvOrType {
-    Pv(great_enum_refactor::models::PropVal),
+    Pv(prop_val::models::PropVal),
     /// second item is `prop_id`
-    Tp(great_enum_refactor::models::ValueType, i32),
+    Tp(prop_val::models::ValueType, i32),
 }
 
 #[derive(Debug)]
@@ -102,15 +102,15 @@ impl FilterType {
         }
     }
     pub fn get_supported_filter_types(
-        prop_type: great_enum_refactor::models::ValueType,
+        prop_type: prop_val::models::ValueType,
     ) -> Vec<Self> {
         match prop_type {
-            great_enum_refactor::models::ValueType::Bool => vec![
+            prop_val::models::ValueType::Bool => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Neq("Does not Equal".into()),
                 FilterType::IsEmpty("Is Empty".into()),
             ],
-            great_enum_refactor::models::ValueType::Int => vec![
+            prop_val::models::ValueType::Int => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Gt("Does not Equal".into()),
                 FilterType::Neq("Is Greater Than".into()),
@@ -119,7 +119,7 @@ impl FilterType {
                 FilterType::NotInRng("Is Not Inside Range".into()),
                 FilterType::IsEmpty("Is Empty".into()),
             ],
-            great_enum_refactor::models::ValueType::Float => vec![
+            prop_val::models::ValueType::Float => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Gt("Does not Equal".into()),
                 FilterType::Neq("Is Greater Than".into()),
@@ -128,7 +128,7 @@ impl FilterType {
                 FilterType::NotInRng("Is Not Inside Range".into()),
                 FilterType::IsEmpty("Is Empty".into()),
             ],
-            great_enum_refactor::models::ValueType::Date => vec![
+            prop_val::models::ValueType::Date => vec![
                 FilterType::Eq("Exactly Equals".into()),
                 FilterType::Gt("Does not Equal".into()),
                 FilterType::Neq("Is Greater Than".into()),

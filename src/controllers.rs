@@ -4,9 +4,9 @@ use super::{
     db_ops,
     db_ops::{DbModel, FilterDb},
     errors::ServerError,
-    great_enum_refactor, htmx, models,
+    htmx, models,
     models::AppState,
-    pw,
+    prop_val, pw,
     routes::Route,
     session,
 };
@@ -144,10 +144,10 @@ pub async fn collection_prop_order(
 pub async fn new_bool_propval_form(
     Path((page_id, prop_id)): Path<(i32, i32)>,
 ) -> impl IntoResponse {
-    great_enum_refactor::models::PropVal {
+    prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: great_enum_refactor::models::Value::Bool(false),
+        value: prop_val::models::Value::Bool(false),
     }
     .render()
 }
@@ -162,10 +162,10 @@ pub async fn save_pv_bool(
     Path((page_id, prop_id)): Path<(i32, i32)>,
     Form(PvbForm { value }): Form<PvbForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let pvb = great_enum_refactor::models::PropVal {
+    let pvb = prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: great_enum_refactor::models::Value::Bool(value.is_some()),
+        value: prop_val::models::Value::Bool(value.is_some()),
     };
     pvb.save(&db).await?;
     Ok(pvb.render())
@@ -174,10 +174,10 @@ pub async fn save_pv_bool(
 pub async fn new_int_propval_form(
     Path((page_id, prop_id)): Path<(i32, i32)>,
 ) -> impl IntoResponse {
-    great_enum_refactor::models::PropVal {
+    prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: great_enum_refactor::models::Value::Int(0),
+        value: prop_val::models::Value::Int(0),
     }
     .render()
 }
@@ -191,10 +191,10 @@ pub async fn save_pv_int(
     Path((page_id, prop_id)): Path<(i32, i32)>,
     Form(PvIntForm { value }): Form<PvIntForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let existing = great_enum_refactor::models::PropVal {
+    let existing = prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: great_enum_refactor::models::Value::Int(value),
+        value: prop_val::models::Value::Int(value),
     };
     existing.save(&db).await?;
     Ok(existing.render())
@@ -203,10 +203,10 @@ pub async fn save_pv_int(
 pub async fn new_float_propval_form(
     Path((page_id, prop_id)): Path<(i32, i32)>,
 ) -> impl IntoResponse {
-    great_enum_refactor::models::PropVal {
+    prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: great_enum_refactor::models::Value::Float(0.0),
+        value: prop_val::models::Value::Float(0.0),
     }
     .render()
 }
@@ -220,10 +220,10 @@ pub async fn save_pv_float(
     Path((page_id, prop_id)): Path<(i32, i32)>,
     Form(PvFloatForm { value }): Form<PvFloatForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let pv = great_enum_refactor::models::PropVal {
+    let pv = prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: great_enum_refactor::models::Value::Float(value),
+        value: prop_val::models::Value::Float(value),
     };
     pv.save(&db).await?;
     Ok(pv.render())
@@ -232,12 +232,10 @@ pub async fn save_pv_float(
 pub async fn new_date_propval_form(
     Path((page_id, prop_id)): Path<(i32, i32)>,
 ) -> impl IntoResponse {
-    great_enum_refactor::models::PropVal {
+    prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: great_enum_refactor::models::Value::Date(
-            chrono::Local::now().date_naive(),
-        ),
+        value: prop_val::models::Value::Date(chrono::Local::now().date_naive()),
     }
     .render()
 }
@@ -251,10 +249,10 @@ pub async fn save_pv_date(
     Path((page_id, prop_id)): Path<(i32, i32)>,
     Form(PvDateForm { value }): Form<PvDateForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let existing = great_enum_refactor::models::PropVal {
+    let existing = prop_val::models::PropVal {
         page_id,
         prop_id,
-        value: great_enum_refactor::models::Value::Date(value),
+        value: prop_val::models::Value::Date(value),
     };
     existing.save(&db).await?;
     Ok(existing.render())

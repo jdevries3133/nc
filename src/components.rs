@@ -3,7 +3,7 @@
 // are and clippy knows more than me, maybe not.
 #![allow(clippy::let_and_return)]
 
-use super::{great_enum_refactor, models, routes::Route};
+use super::{models, prop_val, routes::Route};
 use ammonia::clean;
 use std::fmt::{Display, Write};
 
@@ -207,10 +207,10 @@ impl Component for PageList<'_> {
                         models::PvOrType::Tp(tp, prop_id) => {
                             NullPropvalButton {
                                 post_href: &match tp {
-                                    great_enum_refactor::models::ValueType::Int => Route::PageNewIntProp(Some((page.id, *prop_id))).as_string(),
-                                    great_enum_refactor::models::ValueType::Bool => Route::PageNewBoolProp(Some((page.id, *prop_id))).as_string(),
-                                    great_enum_refactor::models::ValueType::Float => Route::PageNewFloatProp(Some((page.id, *prop_id))).as_string(),
-                                    great_enum_refactor::models::ValueType::Date => Route::PageNewDateProp(Some((page.id, *prop_id))).as_string(),
+                                    prop_val::models::ValueType::Int => Route::PageNewIntProp(Some((page.id, *prop_id))).as_string(),
+                                    prop_val::models::ValueType::Bool => Route::PageNewBoolProp(Some((page.id, *prop_id))).as_string(),
+                                    prop_val::models::ValueType::Float => Route::PageNewFloatProp(Some((page.id, *prop_id))).as_string(),
+                                    prop_val::models::ValueType::Date => Route::PageNewDateProp(Some((page.id, *prop_id))).as_string(),
                                 }
                             }.render()
                         }
@@ -1496,10 +1496,10 @@ impl Component for ChoosePropForFilter<'_> {
                 let prop_name = clean(&p.name);
                 let href = Route::PropNewFilterTypeSelect(Some(prop_id));
                 let type_string = match p.type_id {
-                    great_enum_refactor::models::ValueType::Int => "integer",
-                    great_enum_refactor::models::ValueType::Bool => "checkbox",
-                    great_enum_refactor::models::ValueType::Float => "percent",
-                    great_enum_refactor::models::ValueType::Date => "date",
+                    prop_val::models::ValueType::Int => "integer",
+                    prop_val::models::ValueType::Bool => "checkbox",
+                    prop_val::models::ValueType::Float => "percent",
+                    prop_val::models::ValueType::Date => "date",
                 };
                 acc.push_str(&format!(
                     r#"
@@ -1578,7 +1578,7 @@ impl Component for AddFilterButtonPlaceholder {
 
 fn get_slug(
     filter_type: &models::FilterType,
-    prop_type: &great_enum_refactor::models::ValueType,
+    prop_type: &prop_val::models::ValueType,
 ) -> String {
     let filter_type_id = filter_type.get_int_repr();
     match filter_type {
@@ -1587,31 +1587,31 @@ fn get_slug(
         | models::FilterType::Gt(_)
         | models::FilterType::Eq(_)
         | models::FilterType::IsEmpty(_) => match prop_type {
-            great_enum_refactor::models::ValueType::Bool => {
+            prop_val::models::ValueType::Bool => {
                 format!("new-bool-filter?type_id={filter_type_id}")
             }
-            great_enum_refactor::models::ValueType::Int => {
+            prop_val::models::ValueType::Int => {
                 format!("new-int-filter?type_id={filter_type_id}")
             }
-            great_enum_refactor::models::ValueType::Float => {
+            prop_val::models::ValueType::Float => {
                 format!("new-float-filter?type_id={filter_type_id}")
             }
-            great_enum_refactor::models::ValueType::Date => {
+            prop_val::models::ValueType::Date => {
                 format!("new-date-filter?type_id={filter_type_id}")
             }
         },
         models::FilterType::InRng(_) | models::FilterType::NotInRng(_) => {
             match prop_type {
-                great_enum_refactor::models::ValueType::Bool => {
+                prop_val::models::ValueType::Bool => {
                     panic!("in-rng and not-in-rng not supported for bool")
                 }
-                great_enum_refactor::models::ValueType::Int => {
+                prop_val::models::ValueType::Int => {
                     format!("new-int-rng-filter?type_id={filter_type_id}")
                 }
-                great_enum_refactor::models::ValueType::Float => {
+                prop_val::models::ValueType::Float => {
                     format!("new-float-rng-filter?type_id={filter_type_id}")
                 }
-                great_enum_refactor::models::ValueType::Date => {
+                prop_val::models::ValueType::Date => {
                     format!("new-date-rng-filter?type_id={filter_type_id}")
                 }
             }
@@ -1622,7 +1622,7 @@ fn get_slug(
 pub struct NewFilterTypeOptions<'a> {
     pub options: &'a Vec<models::FilterType>,
     pub prop_id: i32,
-    pub prop_type: &'a great_enum_refactor::models::ValueType,
+    pub prop_type: &'a prop_val::models::ValueType,
 }
 impl Component for NewFilterTypeOptions<'_> {
     fn render(&self) -> String {
