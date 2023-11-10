@@ -35,7 +35,11 @@ resource "random_password" "secret_key" {
 
 
 data "external" "git_describe" {
-  program = ["sh", "-c", "echo '{\"output\": \"'\"$(git describe --tags)\"'\"}'"]
+  program = [
+    "sh",
+    "-c",
+    "echo '{\"output\": \"'\"$(if [[ ! -z $GITLAB_SHA ]]; then echo $GITLAB_SHA; else git rev-parse HEAD; fi)\"'\"}'"
+  ]
 }
 
 module "basic-deployment" {

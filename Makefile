@@ -5,7 +5,11 @@ DB_CONTAINER_NAME := "nc_db"
 # The registry is presumed to be docker.io, which is the implicit default
 DOCKER_ACCOUNT=jdevries3133
 CONTAINER_NAME=nc
-TAG?=$(shell git describe --tags)
+ifdef GITHUB_SHA
+	TAG=$(GITHUB_SHA)
+else
+	TAG=$(shell git rev-parse HEAD)
+endif
 CONTAINER_QUALNAME=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME)
 CONTAINER_EXACT_REF=$(DOCKER_ACCOUNT)/$(CONTAINER_NAME):$(TAG)
 

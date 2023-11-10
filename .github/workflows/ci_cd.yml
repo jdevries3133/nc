@@ -40,8 +40,6 @@ jobs:
     environment: Kubernetes
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
@@ -78,8 +76,6 @@ jobs:
     environment: Kubernetes
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: setup kubectl
         run: |
