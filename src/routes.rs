@@ -1,15 +1,17 @@
+//! All possible routes with their params are defined in a big enum.
+
 use super::{controllers, models};
 use axum::routing::{delete, get, post, Router};
 
 /// This enum contains all of the route strings in the application. This
-/// solves several problems:
+/// solves several problems.
 ///
 /// 1. Maintaining a single source of truth for route paths, even if it has
 ///    multiple controllers for various HTTP methods
 /// 2. Making it easier to refactor routing without needing to keep the axum
 ///    router and paths referenced in routers in sync.
-/// 3. Making it easier to jump from a component to the handlers in a route
-///    it references and visa versa.
+/// 3. Making it easier to jump from a component to the handlers in a route it
+///    references and visa versa.
 /// 4. Further decoupling the app from the underlying HTTP.
 /// 5. Allowing documentation on a route, which is super useful for quick
 ///    reference when authoring components.
@@ -302,6 +304,10 @@ impl std::fmt::Display for Route {
     }
 }
 
+/// In [crate::main], protected routes are registered in a router with
+/// [crate::middlware::auth] middleware. This causes any requesters who are not
+/// authenticated to be redirected to the login page before the request handlers
+/// are called.
 pub fn get_protected_routes() -> Router<models::AppState> {
     Router::new()
         .route(
@@ -554,6 +560,8 @@ pub fn get_protected_routes() -> Router<models::AppState> {
         )
 }
 
+/// In [crate::main], these routes are not protected by any authentication, so
+/// any requester can access these routes.
 pub fn get_public_routes() -> Router<models::AppState> {
     Router::new()
         .route(&Route::Root.as_string(), get(controllers::root))

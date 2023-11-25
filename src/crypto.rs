@@ -1,3 +1,7 @@
+//! Password hashing! Note that this module doesn't have any of the
+//! cryptographic code for [crate::session], which I'm now realizing doesn't
+//! really make sense, does it?
+
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use std::env;

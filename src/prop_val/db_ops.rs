@@ -33,9 +33,9 @@ impl DbModel<PvGetQuery, PvListQuery> for models::PropVal {
             None => {
                 let prop =
                     Prop::get(db, &GetPropQuery { id: query.prop_id }).await?;
-                // I'm just going to map this type from v1 into a type from v2 in the
-                // hopes that it keeps both versions more separated as I work through
-                // this refactor.
+                // I'm just going to map this type from v1 into a type from v2
+                // in the hopes that it keeps both versions more
+                // separated as I work through this refactor.
                 prop.type_id
             }
         };

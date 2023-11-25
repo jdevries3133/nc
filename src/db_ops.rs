@@ -1,9 +1,11 @@
-use super::{config, config::PROP_SET_MAX, models, prop_val, pw};
+//! Database operations; squirrel code lives here.
+
+use super::{config, config::PROP_SET_MAX, filter, models, prop_val, pw};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use futures::join;
 use sqlx::{
-    postgres::{PgPool, Postgres},
+    postgres::{PgPool, PgPoolOptions, Postgres},
     query, query_as,
     query_builder::QueryBuilder,
     Row,
@@ -13,6 +15,18 @@ use sqlx::{
 /// returning (id).
 struct Id {
     id: i32,
+}
+
+pub async fn create_pg_pool() -> Result<sqlx::Pool<sqlx::Postgres>> {
+    let db_url = &std::env::var("DATABASE_URL")
+        .expect("database url to be defined in the environment")[..];
+
+    Ok(PgPoolOptions::new()
+        // Postgres default max connections is 100, and we'll take 'em
+        // https://www.postgresql.org/docs/current/runtime-config-connection.html
+        .max_connections(80)
+        .connect(db_url)
+        .await?)
 }
 
 #[async_trait]
@@ -208,6 +222,9 @@ impl DbModel<GetPropQuery, ListPropQuery> for models::Prop {
         );
 
         if let Some(ref ids) = query.exact_ids {
+            if ids.is_empty() {
+                bail!("do not pass an empty ID vec")
+            };
             builder.push("where id in (");
             let mut sep = builder.separated(",");
             for id in ids {
@@ -261,999 +278,22 @@ impl DbModel<GetPropQuery, ListPropQuery> for models::Prop {
     }
 }
 
-#[async_trait]
-pub trait FilterDb: DbModel<GetFilterQuery, ListFilterQuery> {
-    /// Create a filter with the default value and persist it in the database
-    /// before returning it to the caller.
-    async fn create(
-        db: &PgPool,
-        prop_id: i32,
-        r#type: models::FilterType,
-    ) -> Result<Self>
-    where
-        Self: Sized;
-}
-
-#[async_trait]
-impl FilterDb for models::FilterBool {
-    async fn create(
-        db: &PgPool,
-        prop_id: i32,
-        r#type: models::FilterType,
-    ) -> Result<Self> {
-        let Id { id } = query_as!(
-            Id,
-            "insert into filter_bool (type_id, prop_id, value) values
-            ($1, $2, $3)
-        returning (id)
-        ",
-            r#type.get_int_repr(),
-            prop_id,
-            false
-        )
-        .fetch_one(db)
-        .await?;
-
-        Ok(models::FilterBool {
-            id,
-            prop_id,
-            r#type,
-            value: false,
-        })
-    }
-}
-
-#[async_trait]
-impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterBool {
-    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            type_name: String,
-            prop_id: i32,
-            value: bool,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                ft.name type_name,
-                f.prop_id,
-                f.value
-            from filter_bool f
-            join filter_type ft on f.type_id = ft.id
-            where f.id = $1",
-            query.id
-        )
-        .fetch_one(db)
-        .await?;
-
-        let filter_type =
-            models::FilterType::new(res.type_id, res.type_name.clone());
-
-        Ok(Self {
-            id: res.id,
-            prop_id: res.prop_id,
-            value: res.value,
-            r#type: filter_type,
-        })
-    }
-    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            type_name: String,
-            prop_id: i32,
-            value: bool,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                ft.name type_name,
-                f.prop_id,
-                f.value
-            from filter_bool f
-            join filter_type ft on f.type_id = ft.id
-            join property p on p.id = f.prop_id
-            where p.collection_id = $1",
-            query.collection_id
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(res
-            .iter()
-            .map(|r| {
-                let filter_type =
-                    models::FilterType::new(r.type_id, r.type_name.clone());
-                Self {
-                    id: r.id,
-                    prop_id: r.prop_id,
-                    value: r.value,
-                    r#type: filter_type,
-                }
-            })
-            .collect())
-    }
-    async fn save(&self, db: &PgPool) -> Result<()> {
-        query!(
-            "update filter_bool set value = $1, type_id = $2 where id = $3",
-            self.value,
-            self.r#type.get_int_repr(),
-            self.id
-        )
-        .execute(db)
-        .await?;
-
-        Ok(())
-    }
-    async fn delete(self, db: &PgPool) -> Result<()> {
-        query!("delete from filter_bool where id = $1", self.id)
-            .execute(db)
-            .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl FilterDb for models::FilterInt {
-    async fn create(
-        db: &PgPool,
-        prop_id: i32,
-        r#type: models::FilterType,
-    ) -> Result<Self> {
-        let Id { id } = query_as!(
-            Id,
-            "insert into filter_int (type_id, prop_id, value) values
-            ($1, $2, $3)
-            returning (id)
-        ",
-            r#type.get_int_repr(),
-            prop_id,
-            0
-        )
-        .fetch_one(db)
-        .await?;
-
-        Ok(models::FilterInt {
-            id,
-            prop_id,
-            r#type,
-            value: 0,
-        })
-    }
-}
-
-#[async_trait]
-impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterInt {
-    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            prop_id: i32,
-            value: i64,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                f.prop_id,
-                f.value
-            from filter_int f
-            join filter_type ft on f.type_id = ft.id
-            where f.id = $1",
-            query.id
-        )
-        .fetch_one(db)
-        .await?;
-
-        let filter_type = models::FilterType::new(res.type_id, "".into());
-
-        Ok(Self {
-            id: res.id,
-            prop_id: res.prop_id,
-            value: res.value,
-            r#type: filter_type,
-        })
-    }
-    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            type_name: String,
-            prop_id: i32,
-            value: i64,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                ft.name type_name,
-                f.prop_id,
-                f.value
-            from filter_int f
-            join filter_type ft on f.type_id = ft.id
-            join property p on p.id = f.prop_id
-            where p.collection_id = $1",
-            query.collection_id
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(res
-            .iter()
-            .map(|r| {
-                let filter_type =
-                    models::FilterType::new(r.type_id, r.type_name.clone());
-                Self {
-                    id: r.id,
-                    prop_id: r.prop_id,
-                    value: r.value,
-                    r#type: filter_type,
-                }
-            })
-            .collect())
-    }
-    async fn save(&self, db: &PgPool) -> Result<()> {
-        query!(
-            "update filter_int set value = $1, type_id = $2 where id = $3",
-            self.value,
-            self.r#type.get_int_repr(),
-            self.id
-        )
-        .execute(db)
-        .await?;
-
-        Ok(())
-    }
-    async fn delete(self, db: &PgPool) -> Result<()> {
-        query!("delete from filter_int where id = $1", self.id)
-            .execute(db)
-            .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl FilterDb for models::FilterIntRng {
-    async fn create(
-        db: &PgPool,
-        prop_id: i32,
-        r#type: models::FilterType,
-    ) -> Result<Self> {
-        let Id { id } = query_as!(
-        Id,
-        r#"insert into filter_int_range (type_id, prop_id, start, "end") values
-            ($1, $2, $3, $4)
-        returning (id)
-        "#,
-        r#type.get_int_repr(),
-        prop_id,
-        0,
-        10
-    )
-    .fetch_one(db)
-    .await?;
-
-        Ok(models::FilterIntRng {
-            id,
-            prop_id,
-            r#type,
-            start: 0,
-            end: 10,
-        })
-    }
-}
-
-#[async_trait]
-impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterIntRng {
-    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            type_name: String,
-            prop_id: i32,
-            start: i64,
-            end: i64,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                ft.name type_name,
-                f.prop_id,
-                f.start,
-                f.end
-            from filter_int_range f
-            join filter_type ft on f.type_id = ft.id
-            where f.id = $1",
-            query.id
-        )
-        .fetch_one(db)
-        .await?;
-
-        let filter_type =
-            models::FilterType::new(res.type_id, res.type_name.clone());
-
-        Ok(Self {
-            id: res.id,
-            prop_id: res.prop_id,
-            start: res.start,
-            end: res.end,
-            r#type: filter_type,
-        })
-    }
-    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            type_name: String,
-            prop_id: i32,
-            start: i64,
-            end: i64,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                ft.name type_name,
-                f.prop_id,
-                f.start,
-                f.end
-            from filter_int_range f
-            join filter_type ft on f.type_id = ft.id
-            join property p on p.id = f.prop_id
-            where p.collection_id = $1",
-            query.collection_id
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(res
-            .iter()
-            .map(|r| {
-                let filter_type =
-                    models::FilterType::new(r.type_id, r.type_name.clone());
-                Self {
-                    id: r.id,
-                    prop_id: r.prop_id,
-                    start: r.start,
-                    end: r.end,
-                    r#type: filter_type,
-                }
-            })
-            .collect())
-    }
-    async fn save(&self, db: &PgPool) -> Result<()> {
-        query!(
-            r#"update filter_int_range
-            set start = $1, "end" = $2, type_id = $3
-            where id = $4"#,
-            self.start,
-            self.end,
-            self.r#type.get_int_repr(),
-            self.id
-        )
-        .execute(db)
-        .await?;
-
-        Ok(())
-    }
-    async fn delete(self, db: &PgPool) -> Result<()> {
-        query!("delete from filter_int_range where id = $1", self.id)
-            .execute(db)
-            .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl FilterDb for models::FilterFloat {
-    async fn create(
-        db: &PgPool,
-        prop_id: i32,
-        r#type: models::FilterType,
-    ) -> Result<Self> {
-        let Id { id } = query_as!(
-            Id,
-            "insert into filter_float (type_id, prop_id, value) values
-            ($1, $2, $3)
-            returning (id)
-        ",
-            r#type.get_int_repr(),
-            prop_id,
-            0.0
-        )
-        .fetch_one(db)
-        .await?;
-
-        Ok(models::FilterFloat {
-            id,
-            prop_id,
-            r#type,
-            value: 0.0,
-        })
-    }
-}
-
-#[async_trait]
-impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterFloat {
-    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            prop_id: i32,
-            value: f64,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                f.prop_id,
-                f.value
-            from filter_float f
-            join filter_type ft on f.type_id = ft.id
-            where f.id = $1",
-            query.id
-        )
-        .fetch_one(db)
-        .await?;
-
-        let filter_type = models::FilterType::new(res.type_id, "".into());
-
-        Ok(Self {
-            id: res.id,
-            prop_id: res.prop_id,
-            value: res.value,
-            r#type: filter_type,
-        })
-    }
-    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            type_name: String,
-            prop_id: i32,
-            value: f64,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                ft.name type_name,
-                f.prop_id,
-                f.value
-            from filter_float f
-            join filter_type ft on f.type_id = ft.id
-            join property p on p.id = f.prop_id
-            where p.collection_id = $1",
-            query.collection_id
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(res
-            .iter()
-            .map(|r| {
-                let filter_type =
-                    models::FilterType::new(r.type_id, r.type_name.clone());
-                Self {
-                    id: r.id,
-                    prop_id: r.prop_id,
-                    value: r.value,
-                    r#type: filter_type,
-                }
-            })
-            .collect())
-    }
-    async fn save(&self, db: &PgPool) -> Result<()> {
-        query!(
-            "update filter_float set value = $1, type_id = $2 where id = $3",
-            self.value,
-            self.r#type.get_int_repr(),
-            self.id
-        )
-        .execute(db)
-        .await?;
-
-        Ok(())
-    }
-    async fn delete(self, db: &PgPool) -> Result<()> {
-        query!("delete from filter_float where id = $1", self.id)
-            .execute(db)
-            .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl FilterDb for models::FilterFloatRng {
-    async fn create(
-        db: &PgPool,
-        prop_id: i32,
-        r#type: models::FilterType,
-    ) -> Result<Self> {
-        let Id { id } = query_as!(
-        Id,
-        r#"insert into filter_float_range (type_id, prop_id, start, "end") values
-            ($1, $2, $3, $4)
-        returning (id)
-        "#,
-        r#type.get_int_repr(),
-        prop_id,
-        0.0,
-        10.0
-    )
-    .fetch_one(db)
-    .await?;
-
-        Ok(models::FilterFloatRng {
-            id,
-            prop_id,
-            r#type,
-            start: 0.0,
-            end: 10.0,
-        })
-    }
-}
-
-#[async_trait]
-impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterFloatRng {
-    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            type_name: String,
-            prop_id: i32,
-            start: f64,
-            end: f64,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                ft.name type_name,
-                f.prop_id,
-                f.start,
-                f.end
-            from filter_float_range f
-            join filter_type ft on f.type_id = ft.id
-            where f.id = $1",
-            query.id
-        )
-        .fetch_one(db)
-        .await?;
-
-        let filter_type =
-            models::FilterType::new(res.type_id, res.type_name.clone());
-
-        Ok(Self {
-            id: res.id,
-            prop_id: res.prop_id,
-            start: res.start,
-            end: res.end,
-            r#type: filter_type,
-        })
-    }
-    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            type_name: String,
-            prop_id: i32,
-            start: f64,
-            end: f64,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                ft.name type_name,
-                f.prop_id,
-                f.start,
-                f.end
-            from filter_float_range f
-            join filter_type ft on f.type_id = ft.id
-            join property p on p.id = f.prop_id
-            where p.collection_id = $1",
-            query.collection_id
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(res
-            .iter()
-            .map(|r| {
-                let filter_type =
-                    models::FilterType::new(r.type_id, r.type_name.clone());
-                Self {
-                    id: r.id,
-                    prop_id: r.prop_id,
-                    start: r.start,
-                    end: r.end,
-                    r#type: filter_type,
-                }
-            })
-            .collect())
-    }
-    async fn save(&self, db: &PgPool) -> Result<()> {
-        query!(
-            r#"update filter_float_range
-            set start = $1, "end" = $2, type_id = $3
-            where id = $4"#,
-            self.start,
-            self.end,
-            self.r#type.get_int_repr(),
-            self.id
-        )
-        .execute(db)
-        .await?;
-
-        Ok(())
-    }
-    async fn delete(self, db: &PgPool) -> Result<()> {
-        query!("delete from filter_float_range where id = $1", self.id)
-            .execute(db)
-            .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl FilterDb for models::FilterDate {
-    async fn create(
-        db: &PgPool,
-        prop_id: i32,
-        r#type: models::FilterType,
-    ) -> Result<Self> {
-        let Id { id } = query_as!(
-            Id,
-            "insert into filter_date (type_id, prop_id, value) values
-            ($1, $2, $3)
-            returning (id)
-        ",
-            r#type.get_int_repr(),
-            prop_id,
-            chrono::Local::now().date_naive()
-        )
-        .fetch_one(db)
-        .await?;
-
-        Ok(models::FilterDate {
-            id,
-            prop_id,
-            r#type,
-            value: chrono::Local::now().date_naive(),
-        })
-    }
-}
-
-#[async_trait]
-impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterDate {
-    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            prop_id: i32,
-            value: chrono::NaiveDate,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                f.prop_id,
-                f.value
-            from filter_date f
-            join filter_type ft on f.type_id = ft.id
-            where f.id = $1",
-            query.id
-        )
-        .fetch_one(db)
-        .await?;
-
-        let filter_type = models::FilterType::new(res.type_id, "".into());
-
-        Ok(Self {
-            id: res.id,
-            prop_id: res.prop_id,
-            value: res.value,
-            r#type: filter_type,
-        })
-    }
-    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            type_name: String,
-            prop_id: i32,
-            value: chrono::NaiveDate,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                ft.name type_name,
-                f.prop_id,
-                f.value
-            from filter_date f
-            join filter_type ft on f.type_id = ft.id
-            join property p on p.id = f.prop_id
-            where p.collection_id = $1",
-            query.collection_id
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(res
-            .iter()
-            .map(|r| {
-                let filter_type =
-                    models::FilterType::new(r.type_id, r.type_name.clone());
-                Self {
-                    id: r.id,
-                    prop_id: r.prop_id,
-                    value: r.value,
-                    r#type: filter_type,
-                }
-            })
-            .collect())
-    }
-    async fn save(&self, db: &PgPool) -> Result<()> {
-        query!(
-            "update filter_date set value = $1, type_id = $2 where id = $3",
-            self.value,
-            self.r#type.get_int_repr(),
-            self.id
-        )
-        .execute(db)
-        .await?;
-
-        Ok(())
-    }
-    async fn delete(self, db: &PgPool) -> Result<()> {
-        query!("delete from filter_date where id = $1", self.id)
-            .execute(db)
-            .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl FilterDb for models::FilterDateRng {
-    async fn create(
-        db: &PgPool,
-        prop_id: i32,
-        r#type: models::FilterType,
-    ) -> Result<Self> {
-        let start =
-            (chrono::Local::now() - chrono::Duration::days(10)).date_naive();
-        let end = chrono::Local::now().date_naive();
-        let Id { id } = query_as!(
-        Id,
-        r#"insert into filter_date_range (type_id, prop_id, start, "end") values
-            ($1, $2, $3, $4)
-        returning (id)
-        "#,
-        r#type.get_int_repr(),
-        prop_id,
-        start,
-        end
-    )
-    .fetch_one(db)
-    .await?;
-
-        Ok(models::FilterDateRng {
-            id,
-            prop_id,
-            r#type,
-            start,
-            end,
-        })
-    }
-}
-
-#[async_trait]
-impl DbModel<GetFilterQuery, ListFilterQuery> for models::FilterDateRng {
-    async fn get(db: &PgPool, query: &GetFilterQuery) -> Result<Self> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            type_name: String,
-            prop_id: i32,
-            start: chrono::NaiveDate,
-            end: chrono::NaiveDate,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                ft.name type_name,
-                f.prop_id,
-                f.start,
-                f.end
-            from filter_date_range f
-            join filter_type ft on f.type_id = ft.id
-            where f.id = $1",
-            query.id
-        )
-        .fetch_one(db)
-        .await?;
-
-        let filter_type =
-            models::FilterType::new(res.type_id, res.type_name.clone());
-
-        Ok(Self {
-            id: res.id,
-            prop_id: res.prop_id,
-            start: res.start,
-            end: res.end,
-            r#type: filter_type,
-        })
-    }
-    async fn list(db: &PgPool, query: &ListFilterQuery) -> Result<Vec<Self>> {
-        struct Qres {
-            id: i32,
-            type_id: i32,
-            type_name: String,
-            prop_id: i32,
-            start: chrono::NaiveDate,
-            end: chrono::NaiveDate,
-        }
-        let res = query_as!(
-            Qres,
-            "select
-                f.id,
-                ft.id type_id,
-                ft.name type_name,
-                f.prop_id,
-                f.start,
-                f.end
-            from filter_date_range f
-            join filter_type ft on f.type_id = ft.id
-            join property p on p.id = f.prop_id
-            where p.collection_id = $1",
-            query.collection_id
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(res
-            .iter()
-            .map(|r| {
-                let filter_type =
-                    models::FilterType::new(r.type_id, r.type_name.clone());
-                Self {
-                    id: r.id,
-                    prop_id: r.prop_id,
-                    start: r.start,
-                    end: r.end,
-                    r#type: filter_type,
-                }
-            })
-            .collect())
-    }
-    async fn save(&self, db: &PgPool) -> Result<()> {
-        query!(
-            r#"update filter_date_range
-            set start = $1, "end" = $2, type_id = $3
-            where id = $4"#,
-            self.start,
-            self.end,
-            self.r#type.get_int_repr(),
-            self.id
-        )
-        .execute(db)
-        .await?;
-
-        Ok(())
-    }
-    async fn delete(self, db: &PgPool) -> Result<()> {
-        query!("delete from filter_date_range where id = $1", self.id)
-            .execute(db)
-            .await?;
-
-        Ok(())
-    }
-}
-
-pub async fn get_filters(
-    db: &PgPool,
-    collection_id: i32,
-) -> Result<(
-    Vec<models::FilterBool>,
-    Vec<models::FilterInt>,
-    Vec<models::FilterIntRng>,
-    Vec<models::FilterFloat>,
-    Vec<models::FilterFloatRng>,
-    Vec<models::FilterDate>,
-    Vec<models::FilterDateRng>,
-)> {
-    let filter_query = ListFilterQuery { collection_id };
-    let (
-        filter_bool,
-        filter_int,
-        filter_int_rng,
-        filter_float,
-        filter_float_rng,
-        filter_date,
-        filter_date_rng,
-    ) = join!(
-        models::FilterBool::list(db, &filter_query),
-        models::FilterInt::list(db, &filter_query),
-        models::FilterIntRng::list(db, &filter_query),
-        models::FilterFloat::list(db, &filter_query),
-        models::FilterFloatRng::list(db, &filter_query),
-        models::FilterDate::list(db, &filter_query),
-        models::FilterDateRng::list(db, &filter_query)
-    );
-    let filter_bool = filter_bool?;
-    let filter_int = filter_int?;
-    let filter_int_rng = filter_int_rng?;
-    let filter_float = filter_float?;
-    let filter_float_rng = filter_float_rng?;
-    let filter_date = filter_date?;
-    let filter_date_rng = filter_date_rng?;
-
-    Ok((
-        filter_bool,
-        filter_int,
-        filter_int_rng,
-        filter_float,
-        filter_float_rng,
-        filter_date,
-        filter_date_rng,
-    ))
-}
-
 async fn get_page_list_ctx(
     db: &PgPool,
     collection_id: i32,
 ) -> Result<(
-    Vec<models::FilterBool>,
-    Vec<models::FilterInt>,
-    Vec<models::FilterIntRng>,
-    Vec<models::FilterFloat>,
-    Vec<models::FilterFloatRng>,
-    Vec<models::FilterDate>,
-    Vec<models::FilterDateRng>,
+    Vec<filter::models::Filter>,
     Vec<models::Prop>,
     Option<models::CollectionSort>,
 )> {
     let sort_query = GetSortQuery { collection_id };
+    let filter_query = filter::db_ops::ListFilterQuery { collection_id };
     let (filters, collection_prop_set, sort_details) = join!(
-        get_filters(db, collection_id),
+        filter::models::Filter::list(db, &filter_query),
         get_prop_set(db, collection_id),
         models::CollectionSort::get(db, &sort_query)
     );
-    let (
-        filter_bool,
-        filter_int,
-        filter_int_rng,
-        filter_float,
-        filter_float_rng,
-        filter_date,
-        filter_date_rng,
-    ) = filters?;
+    let filters = filters?;
     let collection_prop_set = collection_prop_set?;
 
     // Implicitly treating error as not-found here
@@ -1263,17 +303,7 @@ async fn get_page_list_ctx(
         None
     };
 
-    Ok((
-        filter_bool,
-        filter_int,
-        filter_int_rng,
-        filter_float,
-        filter_float_rng,
-        filter_date,
-        filter_date_rng,
-        collection_prop_set,
-        sort_details,
-    ))
+    Ok((filters, collection_prop_set, sort_details))
 }
 
 pub async fn list_pages(
@@ -1281,17 +311,8 @@ pub async fn list_pages(
     collection_id: i32,
     page_number: i32,
 ) -> Result<(Vec<models::Page>, Vec<models::Prop>)> {
-    let (
-        filter_bool,
-        filter_int,
-        filter_int_rng,
-        filter_float,
-        filter_float_rng,
-        filter_date,
-        filter_date_rng,
-        collection_prop_set,
-        sort_details,
-    ) = get_page_list_ctx(db, collection_id).await?;
+    let (filters, collection_prop_set, sort_details) =
+        get_page_list_ctx(db, collection_id).await?;
 
     let page_size = 100;
     let offset = page_number * page_size;
@@ -1323,120 +344,65 @@ pub async fn list_pages(
         ));
     }
 
-    if !(filter_bool.is_empty()
-        && filter_int.is_empty()
-        && filter_int_rng.is_empty()
-        && filter_float.is_empty()
-        && filter_float_rng.is_empty()
-        && filter_date.is_empty()
-        && filter_date_rng.is_empty())
-    {
+    if !filters.is_empty() {
         query.push("where ");
 
         let mut sep = query.separated(" and ");
-        for filter in &filter_bool[..] {
+        for filter in &filters[..] {
             let prop_id = filter.prop_id;
-            if let models::FilterType::IsEmpty(..) = filter.r#type {
-                sep.push(format!("prop{prop_id}.value is null"));
-            } else {
-                let operator = &filter.r#type.get_operator_str();
-                let value = if filter.value { "true" } else { "false " };
-                // The value here is a boolean, not a user-input string, so I think that
-                // direct interpolation without binding is safe.
-                sep.push(format!("prop{prop_id}.value {operator} {value} "));
+            match filter.r#type {
+                filter::models::FilterType::Eq
+                | filter::models::FilterType::Neq
+                | filter::models::FilterType::Lt
+                | filter::models::FilterType::Gt => {
+                    if let filter::models::FilterValue::Single(val) =
+                        &filter.value
+                    {
+                        let operator = &filter.r#type.get_operator_str();
+                        let value = val.as_sql();
+                        // The value here is a boolean, not a user-input string,
+                        // so I think that direct
+                        // interpolation without binding
+                        // is safe.
+                        sep.push(format!(
+                            "prop{prop_id}.value {operator} {value} "
+                        ));
+                    } else {
+                        panic!("these filter types should not have ranged value types");
+                    }
+                }
+                filter::models::FilterType::IsEmpty => {
+                    sep.push(format!("prop{prop_id}.value is null"));
+                }
+                filter::models::FilterType::InRng => {
+                    if let filter::models::FilterValue::Range(v1, v2) =
+                        &filter.value
+                    {
+                        let v1 = v1.as_sql();
+                        let v2 = v2.as_sql();
+                        sep.push(format!(
+                            "prop{prop_id}.value > {v1} and prop{prop_id}.value < {v2} "
+                        ));
+                    } else {
+                        panic!("these filter types should not have singular value types");
+                    }
+                }
+                filter::models::FilterType::NotInRng => {
+                    if let filter::models::FilterValue::Range(v1, v2) =
+                        &filter.value
+                    {
+                        let v1 = v1.as_sql();
+                        let v2 = v2.as_sql();
+                        sep.push(format!(
+                            "prop{prop_id}.value < {v1} and prop{prop_id}.value > {v2} "
+                        ));
+                    } else {
+                        panic!("these filter types should not have singular value types");
+                    }
+                }
             }
         }
-        for filter in &filter_int[..] {
-            let prop_id = filter.prop_id;
-            if let models::FilterType::IsEmpty(..) = filter.r#type {
-                sep.push(format!("prop{prop_id}.value is null"));
-            } else {
-                let operator = &filter.r#type.get_operator_str();
-                let value = filter.value;
-                // The value here is a boolean, not a user-input string, so I think that
-                // direct interpolation without binding is safe.
-                sep.push(format!("prop{prop_id}.value {operator} {value} "));
-            }
-        }
-        for filter in &filter_int_rng[..] {
-            let prop_id = filter.prop_id;
-            let start = filter.start;
-            let end = filter.end;
-            match &filter.r#type {
-                models::FilterType::InRng(..) => {
-                    // The value here is a boolean, not a user-input string, so I think that
-                    // direct interpolation without binding is safe.
-                    sep.push(format!("prop{prop_id}.value > {start} "));
-                    sep.push(format!("prop{prop_id}.value < {end} "));
-                }
-                models::FilterType::NotInRng(..) => {
-                    sep.push(format!("prop{prop_id}.value < {start} "));
-                    sep.push(format!("prop{prop_id}.value > {end} "));
-                }
-                ty => panic!("type {ty:?} not supported for int range filters"),
-            };
-        }
-        for filter in &filter_float[..] {
-            let prop_id = filter.prop_id;
-            if let models::FilterType::IsEmpty(..) = filter.r#type {
-                sep.push(format!("prop{prop_id}.value is null"));
-            } else {
-                let operator = &filter.r#type.get_operator_str();
-                let value = filter.value;
-                // The value here is a boolean, not a user-input string, so I think that
-                // direct interpolation without binding is safe.
-                sep.push(format!("prop{prop_id}.value {operator} {value} "));
-            }
-        }
-        for filter in &filter_float_rng[..] {
-            let prop_id = filter.prop_id;
-            let start = filter.start;
-            let end = filter.end;
-            match &filter.r#type {
-                models::FilterType::InRng(..) => {
-                    // The value here is a boolean, not a user-input string, so I think that
-                    // direct interpolation without binding is safe.
-                    sep.push(format!("prop{prop_id}.value > {start} "));
-                    sep.push(format!("prop{prop_id}.value < {end} "));
-                }
-                models::FilterType::NotInRng(..) => {
-                    sep.push(format!("prop{prop_id}.value < {start} "));
-                    sep.push(format!("prop{prop_id}.value > {end} "));
-                }
-                ty => panic!("type {ty:?} not supported for int range filters"),
-            };
-        }
-        for filter in &filter_date[..] {
-            let prop_id = filter.prop_id;
-            if let models::FilterType::IsEmpty(..) = filter.r#type {
-                sep.push(format!("prop{prop_id}.value is null"));
-            } else {
-                let operator = &filter.r#type.get_operator_str();
-                let value = filter.value.to_string();
-                // The value here is a boolean, not a user-input string, so I think that
-                // direct interpolation without binding is safe.
-                sep.push(format!("prop{prop_id}.value {operator} '{value}' "));
-            }
-        }
-        for filter in &filter_date_rng[..] {
-            let prop_id = filter.prop_id;
-            let start = filter.start;
-            let end = filter.end;
-            match &filter.r#type {
-                models::FilterType::InRng(..) => {
-                    // The value here is a boolean, not a user-input string, so I think that
-                    // direct interpolation without binding is safe.
-                    sep.push(format!("prop{prop_id}.value > {start} "));
-                    sep.push(format!("prop{prop_id}.value < {end} "));
-                }
-                models::FilterType::NotInRng(..) => {
-                    sep.push(format!("prop{prop_id}.value < {start} "));
-                    sep.push(format!("prop{prop_id}.value > {end} "));
-                }
-                ty => panic!("type {ty:?} not supported for int range filters"),
-            };
-        }
-    }
+    };
 
     if let Some(sort) = sort_details {
         if let Some(ty) = sort.r#type {
@@ -1494,7 +460,7 @@ pub async fn list_pages(
                             } else {
                                 models::PvOrType::Tp(
                                     models::ValueType::Bool,
-                                    id,
+                                    prop.id,
                                 )
                             }
                         }
@@ -1511,7 +477,7 @@ pub async fn list_pages(
                             } else {
                                 models::PvOrType::Tp(
                                     models::ValueType::Float,
-                                    id,
+                                    prop.id,
                                 )
                             }
                         }
@@ -1528,7 +494,7 @@ pub async fn list_pages(
                             } else {
                                 models::PvOrType::Tp(
                                     models::ValueType::Date,
-                                    id,
+                                    prop.id,
                                 )
                             }
                         }
@@ -1611,53 +577,6 @@ pub async fn get_prop_set(
             })
             .collect())
     }
-}
-
-pub struct GetFilterQuery {
-    pub id: i32,
-}
-
-pub struct ListFilterQuery {
-    pub collection_id: i32,
-}
-
-pub async fn does_collection_have_capacity_for_additional_filters(
-    db: &PgPool,
-    collection_id: i32,
-) -> Result<bool> {
-    struct Qres {
-        cnt: Option<i64>,
-    }
-    let res = query_as!(
-        Qres,
-        "select count(1) cnt from property p
-        left join filter_bool fb on p.id = fb.prop_id
-        left join filter_int fi on p.id = fi.prop_id
-        left join filter_int_range fri on p.id = fri.prop_id
-        left join filter_float ffl on p.id = ffl.prop_id
-        left join filter_float_range fflr on p.id = fflr.prop_id
-        left join filter_date fd on p.id = fd.prop_id
-        left join filter_date_range fdr on p.id = fdr.prop_id
-        where
-            p.collection_id = $1
-            and fb.id is null
-            and fi.id is null
-            and fri.id is null
-            and ffl.id is null
-            and fflr.id is null
-            and fd.id is null
-            and fdr.id is null
-        ",
-        collection_id
-    )
-    .fetch_one(db)
-    .await?;
-
-    let count = res
-        .cnt
-        .expect("idk... why would count(1) not return a count? WTF");
-
-    Ok(count > 0)
 }
 
 pub struct GetSortQuery {

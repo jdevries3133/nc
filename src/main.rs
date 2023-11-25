@@ -1,8 +1,9 @@
+//! A notion clone!
+
 use anyhow::Result;
 use axum::{middleware::from_fn, Router};
 use dotenvy::dotenv;
-use sqlx::{self, postgres::PgPoolOptions};
-use std::{env, net::SocketAddr};
+use std::net::SocketAddr;
 
 mod auth;
 mod components;
@@ -11,6 +12,7 @@ mod controllers;
 mod crypto;
 mod db_ops;
 mod errors;
+mod filter;
 mod htmx;
 mod middleware;
 mod models;
@@ -19,11 +21,15 @@ mod pw;
 mod routes;
 mod session;
 
+/// The Notion Clone entrypoint. Note that I envision this binary some day
+/// becoming a CLI to support the prod backfill operations from our propval
+/// system. See also [DESIGN.md on
+/// GitHub](https://github.com/jdevries3133/nc/blob/main/DESIGN.md#page-props-can-backfill-the-database).
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
 
-    let db = create_pg_pool().await?;
+    let db = db_ops::create_pg_pool().await?;
     sqlx::migrate!().run(&db).await?;
     let state = models::AppState { db };
     let routes = routes::get_protected_routes()
@@ -46,16 +52,4 @@ async fn main() -> Result<()> {
         .unwrap();
 
     Ok(())
-}
-
-async fn create_pg_pool() -> Result<sqlx::Pool<sqlx::Postgres>> {
-    let db_url = &env::var("DATABASE_URL")
-        .expect("database url to be defined in the environment")[..];
-
-    Ok(PgPoolOptions::new()
-        // Postgres default max connections is 100, and we'll take 'em
-        // https://www.postgresql.org/docs/current/runtime-config-connection.html
-        .max_connections(80)
-        .connect(db_url)
-        .await?)
 }
