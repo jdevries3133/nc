@@ -103,6 +103,23 @@ async fn get_primitive_filter(
                 value: models::FilterValue::Single(Value::Date(res.value)),
             }
         }
+        ValueType::Datetime => {
+            let res = query_as!(
+                Qres::<chrono::DateTime<chrono::Utc>>,
+                "select id, type_id, prop_id, value
+                        from filter_datetime f
+                        where f.id = $1",
+                id
+            )
+            .fetch_one(db)
+            .await?;
+            models::Filter {
+                id: res.id,
+                prop_id: res.prop_id,
+                r#type: models::FilterType::from_int(res.type_id),
+                value: models::FilterValue::Single(Value::Datetime(res.value)),
+            }
+        }
     })
 }
 
@@ -635,6 +652,31 @@ pub async fn create_filter(
                     r#type: filter_type,
                     value: models::FilterValue::Single(Value::Float(0.0)),
                 }
+            },
+            ValueType::Datetime => {
+                let now = chrono::Utc::now();
+                let new_id = query_as!(
+                    Qres,
+                    "insert into filter_datetime
+                    (type_id, prop_id, value)
+                    values
+                    ($1, $2, $3)
+                    returning id
+                    ",
+                    filter_type.get_int_repr(),
+                    prop_id,
+                    now
+                )
+                .fetch_one(db)
+                .await?
+                .id;
+                models::Filter {
+                    id: new_id,
+                    prop_id,
+                    r#type: filter_type,
+                    value: models::FilterValue::Single(Value::Datetime(now)),
+                }
+
             }
         },
         models::FilterType::InRng | models::FilterType::NotInRng => {
@@ -721,6 +763,36 @@ pub async fn create_filter(
                         value: models::FilterValue::Range(
                             Value::Float(0.0),
                             Value::Float(10.0),
+                        ),
+                    }
+                }
+                ValueType::Datetime => {
+                    let start = (chrono::Utc::now()
+                        - chrono::Duration::days(10))
+                    .date_naive();
+                    let end = chrono::Utc::now().date_naive();
+                    let new_id = query_as!(
+                        Qres,
+                        r#"insert into filter_datetime_range
+                        values
+                            ($1, $2, $3, $4)
+                        returning id
+                        "#,
+                        filter_type.get_int_repr(),
+                        prop_id,
+                        start,
+                        end
+                    )
+                    .fetch_one(db)
+                    .await?
+                    .id;
+                    models::Filter {
+                        id: new_id,
+                        prop_id,
+                        r#type: filter_type,
+                        value: models::FilterValue::Range(
+                            Value::Datetime(start),
+                            Value::Datetime(end),
                         ),
                     }
                 }

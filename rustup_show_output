@@ -1,0 +1,23 @@
+Default host: aarch64-apple-darwin
+rustup home:  /Users/johndevries/.rustup
+
+installed toolchains
+--------------------
+
+stable-aarch64-apple-darwin
+nightly-aarch64-apple-darwin (default)
+1.58-aarch64-apple-darwin
+
+installed targets for active toolchain
+--------------------------------------
+
+aarch64-apple-darwin
+wasm32-unknown-unknown
+x86_64-unknown-linux-musl
+
+active toolchain
+----------------
+
+nightly-aarch64-apple-darwin (default)
+rustc 1.75.0-nightly (0f44eb32f 2023-11-09)
+

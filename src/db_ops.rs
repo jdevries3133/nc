@@ -334,6 +334,7 @@ pub async fn list_pages(
             models::ValueType::Bool => "propval_bool",
             models::ValueType::Float => "propval_float",
             models::ValueType::Date => "propval_date",
+            models::ValueType::Datetime => "propval_datetime"
         };
         query.push(format!(
             "left join {table} as prop{prop_id}
@@ -494,6 +495,23 @@ pub async fn list_pages(
                             } else {
                                 models::PvOrType::Tp(
                                     models::ValueType::Date,
+                                    prop.id,
+                                )
+                            }
+                        }
+                        models::ValueType::Datetime => {
+                            if let Ok(value) = row.try_get(&prop_alias as &str)
+                            {
+                                models::PvOrType::Pv(
+                                    prop_val::models::PropVal {
+                                        page_id: id,
+                                        prop_id: prop.id,
+                                        value: models::Value::Datetime(value),
+                                    },
+                                )
+                            } else {
+                                models::PvOrType::Tp(
+                                    models::ValueType::Datetime,
                                     prop.id,
                                 )
                             }

@@ -11,6 +11,7 @@ pub enum ValueType {
     Int,
     Float,
     Date,
+    Datetime
 }
 
 impl ValueType {
@@ -20,6 +21,7 @@ impl ValueType {
             2 => Self::Int,
             3 => Self::Float,
             6 => Self::Date,
+            7 => Self::Datetime,
             _ => panic!("{int} is not a valid ValueType"),
         }
     }
@@ -29,6 +31,7 @@ impl ValueType {
             Value::Bool(_) => Self::Bool,
             Value::Date(_) => Self::Date,
             Value::Float(_) => Self::Float,
+            Value::Datetime(_) => Self::Datetime
         }
     }
 }
@@ -39,6 +42,7 @@ pub enum Value {
     Int(i64),
     Float(f64),
     Date(chrono::NaiveDate),
+    Datetime(chrono::DateTime<chrono::Utc>)
 }
 
 impl Value {
@@ -59,6 +63,7 @@ impl Value {
                 }
             }
             Self::Date(val) => format!(r#"'{val}'"#),
+            Self::Datetime(val) => format!(r#"'{val}'"#),
             Self::Float(val) => format!("{val}"),
         }
     }
