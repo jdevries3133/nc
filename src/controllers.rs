@@ -68,7 +68,7 @@ pub async fn get_htmx_js() -> impl IntoResponse {
         HeaderValue::from_str("Cache-Control: public, max-age=31536000")
             .expect("we can set cache control header"),
     );
-    (headers, include_str!("./htmx-1.9.6.vendor.js"))
+    (headers, include_str!("./htmx-1.9.9.vendor.js"))
 }
 
 pub async fn get_collection(

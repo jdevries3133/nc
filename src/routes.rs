@@ -293,7 +293,7 @@ impl Route {
             Self::Ping => "/ping".into(),
             Self::Register => "/authentication/register".into(),
             Self::Login => "/authentication/login".into(),
-            Self::Htmx => "/static/htmx-1.9.6".into(),
+            Self::Htmx => "/static/htmx-1.9.9".into(),
         }
     }
 }
