@@ -1,7 +1,7 @@
 use super::{
     auth, components, components::Component, db_ops, db_ops::DbModel,
-    errors::ServerError, filter as new_iltfer, htmx, models, models::AppState,
-    prop_val, pw, routes::Route, session,
+    errors::ServerError, filter, htmx, models, models::AppState, prop_val, pw,
+    routes::Route, session,
 };
 use anyhow::Result;
 use axum::{
@@ -514,14 +514,14 @@ pub async fn get_filter_toolbar(
     State(AppState { db }): State<AppState>,
     Path(collection_id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filters = new_iltfer::models::Filter::list(
+    let filters = filter::models::Filter::list(
         &db,
-        &new_iltfer::db_ops::ListFilterQuery { collection_id },
+        &filter::db_ops::ListFilterQuery { collection_id },
     )
     .await?;
     if filters.is_empty() {
         let get_prop_name = |_: i32| panic!("no props");
-        Ok(new_iltfer::components::FilterToolbar {
+        Ok(filter::components::FilterToolbar {
             filters,
             collection_id,
             get_prop_name: &get_prop_name,
@@ -547,7 +547,7 @@ pub async fn get_filter_toolbar(
                 .expect("you lookup a prop that exists")
                 .name as &str
         };
-        Ok(new_iltfer::components::FilterToolbar {
+        Ok(filter::components::FilterToolbar {
             filters,
             collection_id,
             get_prop_name: &get_prop_name,
@@ -558,19 +558,19 @@ pub async fn get_filter_toolbar(
 
 // This needs to be async because axum requires route handlers to be async.
 pub async fn hide_filter_toolbar(Path(collection_id): Path<i32>) -> String {
-    new_iltfer::components::FilterToolbarPlaceholder { collection_id }.render()
+    filter::components::FilterToolbarPlaceholder { collection_id }.render()
 }
 
 pub async fn get_bool_filter_chip(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Bool,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -578,7 +578,7 @@ pub async fn get_bool_filter_chip(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterChip {
+    Ok(filter::components::FilterChip {
         collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
@@ -590,12 +590,12 @@ pub async fn get_bool_filter_form(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Bool,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -603,7 +603,7 @@ pub async fn get_bool_filter_form(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterForm {
+    Ok(filter::components::FilterForm {
         filter,
         prop_name: &related_prop.name,
     }
@@ -653,12 +653,12 @@ pub async fn handle_bool_form_submit(
     Path(id): Path<i32>,
     Form(form): Form<BoolForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Bool,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -667,27 +667,27 @@ pub async fn handle_bool_form_submit(
             .await?;
     let mut headers = HeaderMap::new();
     let new_filter = if form.value == "true" {
-        new_iltfer::models::Filter {
+        filter::models::Filter {
             id: filter.id,
-            r#type: new_iltfer::models::FilterType::Eq,
+            r#type: filter::models::FilterType::Eq,
             prop_id: filter.prop_id,
-            value: new_iltfer::models::FilterValue::Single(
-                models::Value::Bool(true),
-            ),
+            value: filter::models::FilterValue::Single(models::Value::Bool(
+                true,
+            )),
         }
     } else if form.value == "false" {
-        new_iltfer::models::Filter {
+        filter::models::Filter {
             id: filter.id,
-            r#type: new_iltfer::models::FilterType::Eq,
+            r#type: filter::models::FilterType::Eq,
             prop_id: filter.prop_id,
-            value: new_iltfer::models::FilterValue::Single(
-                models::Value::Bool(false),
-            ),
+            value: filter::models::FilterValue::Single(models::Value::Bool(
+                false,
+            )),
         }
     } else if form.value == "is-empty" {
-        new_iltfer::models::Filter {
+        filter::models::Filter {
             id: filter.id,
-            r#type: new_iltfer::models::FilterType::IsEmpty,
+            r#type: filter::models::FilterType::IsEmpty,
             prop_id: filter.prop_id,
             // We'll keep the same value as before when we're getting marked
             // as 'is-empty'
@@ -707,7 +707,7 @@ pub async fn handle_bool_form_submit(
     Ok((
         StatusCode::OK,
         headers,
-        new_iltfer::components::FilterChip {
+        filter::components::FilterChip {
             collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
@@ -720,12 +720,12 @@ pub async fn get_int_filter_chip(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Int,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -733,7 +733,7 @@ pub async fn get_int_filter_chip(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterChip {
+    Ok(filter::components::FilterChip {
         collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
@@ -745,12 +745,12 @@ pub async fn get_float_filter_chip(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Float,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -758,7 +758,7 @@ pub async fn get_float_filter_chip(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterChip {
+    Ok(filter::components::FilterChip {
         collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
@@ -770,12 +770,12 @@ pub async fn get_date_filter_chip(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Date,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -783,7 +783,7 @@ pub async fn get_date_filter_chip(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterChip {
+    Ok(filter::components::FilterChip {
         collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
@@ -795,12 +795,12 @@ pub async fn get_date_rng_filter_chip(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Date,
-            variant: new_iltfer::db_ops::Variant::Ranged,
+            variant: filter::db_ops::Variant::Ranged,
         },
     )
     .await?;
@@ -808,7 +808,7 @@ pub async fn get_date_rng_filter_chip(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterChip {
+    Ok(filter::components::FilterChip {
         collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
@@ -820,12 +820,12 @@ pub async fn get_float_rng_filter_chip(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Float,
-            variant: new_iltfer::db_ops::Variant::Ranged,
+            variant: filter::db_ops::Variant::Ranged,
         },
     )
     .await?;
@@ -833,7 +833,7 @@ pub async fn get_float_rng_filter_chip(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterForm {
+    Ok(filter::components::FilterForm {
         filter,
         prop_name: &related_prop.name,
     }
@@ -844,12 +844,12 @@ pub async fn get_int_filter_form(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Int,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -857,7 +857,7 @@ pub async fn get_int_filter_form(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterForm {
+    Ok(filter::components::FilterForm {
         filter,
         prop_name: &related_prop.name,
     }
@@ -868,12 +868,12 @@ pub async fn get_float_filter_form(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Float,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -881,7 +881,7 @@ pub async fn get_float_filter_form(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterForm {
+    Ok(filter::components::FilterForm {
         filter,
         prop_name: &related_prop.name,
     }
@@ -892,12 +892,12 @@ pub async fn get_float_rng_filter_form(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Float,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -905,7 +905,7 @@ pub async fn get_float_rng_filter_form(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterForm {
+    Ok(filter::components::FilterForm {
         filter,
         prop_name: &related_prop.name,
     }
@@ -916,12 +916,12 @@ pub async fn get_date_filter_form(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Date,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -929,7 +929,7 @@ pub async fn get_date_filter_form(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterForm {
+    Ok(filter::components::FilterForm {
         filter,
         prop_name: &related_prop.name,
     }
@@ -940,12 +940,12 @@ pub async fn get_date_rng_filter_form(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Date,
-            variant: new_iltfer::db_ops::Variant::Ranged,
+            variant: filter::db_ops::Variant::Ranged,
         },
     )
     .await?;
@@ -953,7 +953,7 @@ pub async fn get_date_rng_filter_form(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterForm {
+    Ok(filter::components::FilterForm {
         filter,
         prop_name: &related_prop.name,
     }
@@ -970,12 +970,12 @@ pub async fn handle_int_form_submit(
     Path(id): Path<i32>,
     Form(form): Form<IntForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Int,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -983,12 +983,12 @@ pub async fn handle_int_form_submit(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
     let mut headers = HeaderMap::new();
-    let form_type = new_iltfer::models::FilterType::from_int(form.r#type);
-    let new_filter = new_iltfer::models::Filter {
+    let form_type = filter::models::FilterType::from_int(form.r#type);
+    let new_filter = filter::models::Filter {
         id: filter.id,
         prop_id: filter.prop_id,
         r#type: form_type,
-        value: new_iltfer::models::FilterValue::Single(models::Value::Int(
+        value: filter::models::FilterValue::Single(models::Value::Int(
             form.value,
         )),
     };
@@ -997,7 +997,7 @@ pub async fn handle_int_form_submit(
 
     Ok((
         headers,
-        new_iltfer::components::FilterChip {
+        filter::components::FilterChip {
             collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
@@ -1016,12 +1016,12 @@ pub async fn handle_float_form_submit(
     Path(id): Path<i32>,
     Form(form): Form<FloatForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Float,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -1029,12 +1029,12 @@ pub async fn handle_float_form_submit(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
     let mut headers = HeaderMap::new();
-    let form_type = new_iltfer::models::FilterType::from_int(form.r#type);
-    let new_filter = new_iltfer::models::Filter {
+    let form_type = filter::models::FilterType::from_int(form.r#type);
+    let new_filter = filter::models::Filter {
         id: filter.id,
         prop_id: filter.prop_id,
         r#type: form_type,
-        value: new_iltfer::models::FilterValue::Single(models::Value::Float(
+        value: filter::models::FilterValue::Single(models::Value::Float(
             form.value,
         )),
     };
@@ -1043,7 +1043,7 @@ pub async fn handle_float_form_submit(
 
     Ok((
         headers,
-        new_iltfer::components::FilterChip {
+        filter::components::FilterChip {
             collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
@@ -1062,12 +1062,12 @@ pub async fn handle_date_form_submit(
     Path(id): Path<i32>,
     Form(form): Form<DateForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Date,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -1075,12 +1075,12 @@ pub async fn handle_date_form_submit(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
     let mut headers = HeaderMap::new();
-    let form_type = new_iltfer::models::FilterType::from_int(form.r#type);
-    let new_filter = new_iltfer::models::Filter {
+    let form_type = filter::models::FilterType::from_int(form.r#type);
+    let new_filter = filter::models::Filter {
         id: filter.id,
         prop_id: filter.prop_id,
         r#type: form_type,
-        value: new_iltfer::models::FilterValue::Single(models::Value::Date(
+        value: filter::models::FilterValue::Single(models::Value::Date(
             form.value,
         )),
     };
@@ -1089,7 +1089,7 @@ pub async fn handle_date_form_submit(
 
     Ok((
         headers,
-        new_iltfer::components::FilterChip {
+        filter::components::FilterChip {
             collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
@@ -1109,12 +1109,12 @@ pub async fn handle_float_rng_form_submit(
     Path(id): Path<i32>,
     Form(form): Form<FloatRngForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Float,
-            variant: new_iltfer::db_ops::Variant::Ranged,
+            variant: filter::db_ops::Variant::Ranged,
         },
     )
     .await?;
@@ -1122,12 +1122,12 @@ pub async fn handle_float_rng_form_submit(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
     let mut headers = HeaderMap::new();
-    let form_type = new_iltfer::models::FilterType::from_int(form.r#type);
-    let new_filter = new_iltfer::models::Filter {
+    let form_type = filter::models::FilterType::from_int(form.r#type);
+    let new_filter = filter::models::Filter {
         id: filter.id,
         prop_id: filter.prop_id,
         r#type: form_type,
-        value: new_iltfer::models::FilterValue::Range(
+        value: filter::models::FilterValue::Range(
             models::Value::Float(form.start),
             models::Value::Float(form.end),
         ),
@@ -1137,7 +1137,7 @@ pub async fn handle_float_rng_form_submit(
 
     Ok((
         headers,
-        new_iltfer::components::FilterChip {
+        filter::components::FilterChip {
             collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
@@ -1150,12 +1150,12 @@ pub async fn get_int_rng_filter_chip(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Int,
-            variant: new_iltfer::db_ops::Variant::Ranged,
+            variant: filter::db_ops::Variant::Ranged,
         },
     )
     .await?;
@@ -1163,7 +1163,7 @@ pub async fn get_int_rng_filter_chip(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterChip {
+    Ok(filter::components::FilterChip {
         collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
@@ -1182,12 +1182,12 @@ pub async fn handle_date_rng_form_submit(
     Path(id): Path<i32>,
     Form(form): Form<DateRngForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Date,
-            variant: new_iltfer::db_ops::Variant::Ranged,
+            variant: filter::db_ops::Variant::Ranged,
         },
     )
     .await?;
@@ -1195,12 +1195,12 @@ pub async fn handle_date_rng_form_submit(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
     let mut headers = HeaderMap::new();
-    let form_type = new_iltfer::models::FilterType::from_int(form.r#type);
-    let new_filter = new_iltfer::models::Filter {
+    let form_type = filter::models::FilterType::from_int(form.r#type);
+    let new_filter = filter::models::Filter {
         id: filter.id,
         prop_id: filter.prop_id,
         r#type: form_type,
-        value: new_iltfer::models::FilterValue::Range(
+        value: filter::models::FilterValue::Range(
             models::Value::Date(form.start),
             models::Value::Date(form.end),
         ),
@@ -1210,7 +1210,7 @@ pub async fn handle_date_rng_form_submit(
 
     Ok((
         headers,
-        new_iltfer::components::FilterChip {
+        filter::components::FilterChip {
             collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
@@ -1223,12 +1223,12 @@ pub async fn get_int_rng_filter_form(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = &new_iltfer::models::Filter::get(
+    let filter = &filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Int,
-            variant: new_iltfer::db_ops::Variant::Ranged,
+            variant: filter::db_ops::Variant::Ranged,
         },
     )
     .await?;
@@ -1236,7 +1236,7 @@ pub async fn get_int_rng_filter_form(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
 
-    Ok(new_iltfer::components::FilterForm {
+    Ok(filter::components::FilterForm {
         filter,
         prop_name: &related_prop.name,
     }
@@ -1254,12 +1254,12 @@ pub async fn handle_int_rng_form_submit(
     Path(id): Path<i32>,
     Form(form): Form<IntRngForm>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Int,
-            variant: new_iltfer::db_ops::Variant::Ranged,
+            variant: filter::db_ops::Variant::Ranged,
         },
     )
     .await?;
@@ -1267,12 +1267,12 @@ pub async fn handle_int_rng_form_submit(
         models::Prop::get(&db, &db_ops::GetPropQuery { id: filter.prop_id })
             .await?;
     let mut headers = HeaderMap::new();
-    let form_type = new_iltfer::models::FilterType::from_int(form.r#type);
-    let new_filter = new_iltfer::models::Filter {
+    let form_type = filter::models::FilterType::from_int(form.r#type);
+    let new_filter = filter::models::Filter {
         id: filter.id,
         prop_id: filter.prop_id,
         r#type: form_type,
-        value: new_iltfer::models::FilterValue::Range(
+        value: filter::models::FilterValue::Range(
             models::Value::Int(form.start),
             models::Value::Int(form.end),
         ),
@@ -1282,7 +1282,7 @@ pub async fn handle_int_rng_form_submit(
 
     Ok((
         headers,
-        new_iltfer::components::FilterChip {
+        filter::components::FilterChip {
             collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
@@ -1304,9 +1304,9 @@ pub async fn choose_prop_for_filter(
         },
     )
     .await?;
-    let filters = new_iltfer::models::Filter::list(
+    let filters = filter::models::Filter::list(
         &db,
-        &new_iltfer::db_ops::ListFilterQuery { collection_id },
+        &filter::db_ops::ListFilterQuery { collection_id },
     )
     .await?;
     let mut props_with_filter = HashSet::new();
@@ -1318,7 +1318,7 @@ pub async fn choose_prop_for_filter(
         .filter(|p| !props_with_filter.contains(&p.id))
         .collect();
 
-    Ok(new_iltfer::components::ChoosePropForFilter { props: &props }.render())
+    Ok(filter::components::ChoosePropForFilter { props: &props }.render())
 }
 
 pub async fn new_filter_type_select(
@@ -1327,10 +1327,9 @@ pub async fn new_filter_type_select(
 ) -> Result<impl IntoResponse, ServerError> {
     let prop =
         models::Prop::get(&db, &db_ops::GetPropQuery { id: prop_id }).await?;
-    let options = new_iltfer::models::FilterType::get_supported_filter_types(
-        prop.type_id,
-    );
-    Ok(new_iltfer::components::NewFilterTypeOptions {
+    let options =
+        filter::models::FilterType::get_supported_filter_types(prop.type_id);
+    Ok(filter::components::NewFilterTypeOptions {
         options: &options,
         prop_id,
         prop_type: prop.type_id,
@@ -1349,14 +1348,14 @@ pub async fn create_new_bool_filter(
     Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
 ) -> Result<impl IntoResponse, ServerError> {
     let r#type = if let Some(type_id) = type_id {
-        new_iltfer::models::FilterType::from_int(type_id)
+        filter::models::FilterType::from_int(type_id)
     } else {
-        new_iltfer::models::FilterType::Eq
+        filter::models::FilterType::Eq
     };
     let query = db_ops::GetPropQuery { id: prop_id };
     let (prop, filter) = join!(
         models::Prop::get(&db, &query),
-        new_iltfer::db_ops::create_filter(
+        filter::db_ops::create_filter(
             &db,
             prop_id,
             r#type,
@@ -1370,18 +1369,18 @@ pub async fn create_new_bool_filter(
     let headers = reload_table(headers);
 
     let has_capacity =
-        new_iltfer::db_ops::does_collection_have_capacity_for_additional_filters(
+        filter::db_ops::does_collection_have_capacity_for_additional_filters(
             &db,
             related_prop.collection_id,
         )
         .await?;
     let add_filter_button = if has_capacity {
-        new_iltfer::components::AddFilterButton {
+        filter::components::AddFilterButton {
             collection_id: related_prop.collection_id,
         }
         .render()
     } else {
-        new_iltfer::components::AddFilterButtonPlaceholder {
+        filter::components::AddFilterButtonPlaceholder {
             collection_id: related_prop.collection_id,
         }
         .render()
@@ -1392,7 +1391,7 @@ pub async fn create_new_bool_filter(
         [
             r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
-            &new_iltfer::components::FilterForm {
+            &filter::components::FilterForm {
                 filter: &filter,
                 prop_name: &related_prop.name,
             }
@@ -1408,14 +1407,14 @@ pub async fn create_new_int_filter(
     Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
 ) -> Result<impl IntoResponse, ServerError> {
     let r#type = if let Some(type_id) = type_id {
-        new_iltfer::models::FilterType::from_int(type_id)
+        filter::models::FilterType::from_int(type_id)
     } else {
-        new_iltfer::models::FilterType::Eq
+        filter::models::FilterType::Eq
     };
     let query = db_ops::GetPropQuery { id: prop_id };
     let (prop, filter) = join!(
         models::Prop::get(&db, &query),
-        new_iltfer::db_ops::create_filter(
+        filter::db_ops::create_filter(
             &db,
             prop_id,
             r#type,
@@ -1429,18 +1428,18 @@ pub async fn create_new_int_filter(
     let headers = reload_table(headers);
 
     let has_capacity =
-        new_iltfer::db_ops::does_collection_have_capacity_for_additional_filters(
+        filter::db_ops::does_collection_have_capacity_for_additional_filters(
             &db,
             related_prop.collection_id,
         )
         .await?;
     let add_filter_button = if has_capacity {
-        new_iltfer::components::AddFilterButton {
+        filter::components::AddFilterButton {
             collection_id: related_prop.collection_id,
         }
         .render()
     } else {
-        new_iltfer::components::AddFilterButtonPlaceholder {
+        filter::components::AddFilterButtonPlaceholder {
             collection_id: related_prop.collection_id,
         }
         .render()
@@ -1451,7 +1450,7 @@ pub async fn create_new_int_filter(
         [
             r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
-            &new_iltfer::components::FilterForm {
+            &filter::components::FilterForm {
                 filter: &filter,
                 prop_name: &related_prop.name,
             }
@@ -1468,14 +1467,14 @@ pub async fn create_new_int_rng_filter(
     Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
 ) -> Result<impl IntoResponse, ServerError> {
     let r#type = if let Some(type_id) = type_id {
-        new_iltfer::models::FilterType::from_int(type_id)
+        filter::models::FilterType::from_int(type_id)
     } else {
-        new_iltfer::models::FilterType::InRng
+        filter::models::FilterType::InRng
     };
     let query = db_ops::GetPropQuery { id: prop_id };
     let (prop, filter) = join!(
         models::Prop::get(&db, &query),
-        new_iltfer::db_ops::create_filter(
+        filter::db_ops::create_filter(
             &db,
             prop_id,
             r#type,
@@ -1489,18 +1488,18 @@ pub async fn create_new_int_rng_filter(
     let headers = reload_table(headers);
 
     let has_capacity =
-        new_iltfer::db_ops::does_collection_have_capacity_for_additional_filters(
+        filter::db_ops::does_collection_have_capacity_for_additional_filters(
             &db,
             related_prop.collection_id,
         )
         .await?;
     let add_filter_button = if has_capacity {
-        new_iltfer::components::AddFilterButton {
+        filter::components::AddFilterButton {
             collection_id: related_prop.collection_id,
         }
         .render()
     } else {
-        new_iltfer::components::AddFilterButtonPlaceholder {
+        filter::components::AddFilterButtonPlaceholder {
             collection_id: related_prop.collection_id,
         }
         .render()
@@ -1511,7 +1510,7 @@ pub async fn create_new_int_rng_filter(
         [
             r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
-            &new_iltfer::components::FilterForm {
+            &filter::components::FilterForm {
                 filter: &filter,
                 prop_name: &related_prop.name,
             }
@@ -1528,14 +1527,14 @@ pub async fn create_new_float_filter(
     Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
 ) -> Result<impl IntoResponse, ServerError> {
     let r#type = if let Some(type_id) = type_id {
-        new_iltfer::models::FilterType::from_int(type_id)
+        filter::models::FilterType::from_int(type_id)
     } else {
-        new_iltfer::models::FilterType::Eq
+        filter::models::FilterType::Eq
     };
     let query = db_ops::GetPropQuery { id: prop_id };
     let (prop, filter) = join!(
         models::Prop::get(&db, &query),
-        new_iltfer::db_ops::create_filter(
+        filter::db_ops::create_filter(
             &db,
             prop_id,
             r#type,
@@ -1549,18 +1548,18 @@ pub async fn create_new_float_filter(
     let headers = reload_table(headers);
 
     let has_capacity =
-        new_iltfer::db_ops::does_collection_have_capacity_for_additional_filters(
+        filter::db_ops::does_collection_have_capacity_for_additional_filters(
             &db,
             related_prop.collection_id,
         )
         .await?;
     let add_filter_button = if has_capacity {
-        new_iltfer::components::AddFilterButton {
+        filter::components::AddFilterButton {
             collection_id: related_prop.collection_id,
         }
         .render()
     } else {
-        new_iltfer::components::AddFilterButtonPlaceholder {
+        filter::components::AddFilterButtonPlaceholder {
             collection_id: related_prop.collection_id,
         }
         .render()
@@ -1571,7 +1570,7 @@ pub async fn create_new_float_filter(
         [
             r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
-            &new_iltfer::components::FilterForm {
+            &filter::components::FilterForm {
                 filter: &filter,
                 prop_name: &related_prop.name,
             }
@@ -1588,14 +1587,14 @@ pub async fn create_new_float_rng_filter(
     Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
 ) -> Result<impl IntoResponse, ServerError> {
     let r#type = if let Some(type_id) = type_id {
-        new_iltfer::models::FilterType::from_int(type_id)
+        filter::models::FilterType::from_int(type_id)
     } else {
-        new_iltfer::models::FilterType::InRng
+        filter::models::FilterType::InRng
     };
     let query = db_ops::GetPropQuery { id: prop_id };
     let (prop, filter) = join!(
         models::Prop::get(&db, &query),
-        new_iltfer::db_ops::create_filter(
+        filter::db_ops::create_filter(
             &db,
             prop_id,
             r#type,
@@ -1609,18 +1608,18 @@ pub async fn create_new_float_rng_filter(
     let headers = reload_table(headers);
 
     let has_capacity =
-        new_iltfer::db_ops::does_collection_have_capacity_for_additional_filters(
+        filter::db_ops::does_collection_have_capacity_for_additional_filters(
             &db,
             related_prop.collection_id,
         )
         .await?;
     let add_filter_button = if has_capacity {
-        new_iltfer::components::AddFilterButton {
+        filter::components::AddFilterButton {
             collection_id: related_prop.collection_id,
         }
         .render()
     } else {
-        new_iltfer::components::AddFilterButtonPlaceholder {
+        filter::components::AddFilterButtonPlaceholder {
             collection_id: related_prop.collection_id,
         }
         .render()
@@ -1631,7 +1630,7 @@ pub async fn create_new_float_rng_filter(
         [
             r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
-            &new_iltfer::components::FilterForm {
+            &filter::components::FilterForm {
                 filter: &filter,
                 prop_name: &related_prop.name,
             }
@@ -1648,14 +1647,14 @@ pub async fn create_new_date_filter(
     Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
 ) -> Result<impl IntoResponse, ServerError> {
     let r#type = if let Some(type_id) = type_id {
-        new_iltfer::models::FilterType::from_int(type_id)
+        filter::models::FilterType::from_int(type_id)
     } else {
-        new_iltfer::models::FilterType::Eq
+        filter::models::FilterType::Eq
     };
     let query = db_ops::GetPropQuery { id: prop_id };
     let (prop, filter) = join!(
         models::Prop::get(&db, &query),
-        new_iltfer::db_ops::create_filter(
+        filter::db_ops::create_filter(
             &db,
             prop_id,
             r#type,
@@ -1669,18 +1668,18 @@ pub async fn create_new_date_filter(
     let headers = reload_table(headers);
 
     let has_capacity =
-        new_iltfer::db_ops::does_collection_have_capacity_for_additional_filters(
+        filter::db_ops::does_collection_have_capacity_for_additional_filters(
             &db,
             related_prop.collection_id,
         )
         .await?;
     let add_filter_button = if has_capacity {
-        new_iltfer::components::AddFilterButton {
+        filter::components::AddFilterButton {
             collection_id: related_prop.collection_id,
         }
         .render()
     } else {
-        new_iltfer::components::AddFilterButtonPlaceholder {
+        filter::components::AddFilterButtonPlaceholder {
             collection_id: related_prop.collection_id,
         }
         .render()
@@ -1691,7 +1690,7 @@ pub async fn create_new_date_filter(
         [
             r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
-            &new_iltfer::components::FilterForm {
+            &filter::components::FilterForm {
                 filter: &filter,
                 prop_name: &related_prop.name,
             }
@@ -1708,14 +1707,14 @@ pub async fn create_new_date_rng_filter(
     Query(NewFilterQuery { type_id }): Query<NewFilterQuery>,
 ) -> Result<impl IntoResponse, ServerError> {
     let r#type = if let Some(type_id) = type_id {
-        new_iltfer::models::FilterType::from_int(type_id)
+        filter::models::FilterType::from_int(type_id)
     } else {
-        new_iltfer::models::FilterType::InRng
+        filter::models::FilterType::InRng
     };
     let query = db_ops::GetPropQuery { id: prop_id };
     let (prop, filter) = join!(
         models::Prop::get(&db, &query),
-        new_iltfer::db_ops::create_filter(
+        filter::db_ops::create_filter(
             &db,
             prop_id,
             r#type,
@@ -1729,18 +1728,18 @@ pub async fn create_new_date_rng_filter(
     let headers = reload_table(headers);
 
     let has_capacity =
-        new_iltfer::db_ops::does_collection_have_capacity_for_additional_filters(
+        filter::db_ops::does_collection_have_capacity_for_additional_filters(
             &db,
             related_prop.collection_id,
         )
         .await?;
     let add_filter_button = if has_capacity {
-        new_iltfer::components::AddFilterButton {
+        filter::components::AddFilterButton {
             collection_id: related_prop.collection_id,
         }
         .render()
     } else {
-        new_iltfer::components::AddFilterButtonPlaceholder {
+        filter::components::AddFilterButtonPlaceholder {
             collection_id: related_prop.collection_id,
         }
         .render()
@@ -1751,7 +1750,7 @@ pub async fn create_new_date_rng_filter(
         [
             r#"<div class="flex flex-row gap-2">"#,
             &add_filter_button,
-            &new_iltfer::components::FilterForm {
+            &filter::components::FilterForm {
                 filter: &filter,
                 prop_name: &related_prop.name,
             }
@@ -1770,20 +1769,18 @@ pub async fn get_add_filter_button(
     Path(collection_id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
     let does_it_tho =
-        new_iltfer::db_ops::does_collection_have_capacity_for_additional_filters(
+        filter::db_ops::does_collection_have_capacity_for_additional_filters(
             &db,
             collection_id,
         )
         .await?;
 
     if does_it_tho {
-        Ok(new_iltfer::components::AddFilterButton { collection_id }.render())
+        Ok(filter::components::AddFilterButton { collection_id }.render())
     } else {
         Ok(
-            new_iltfer::components::AddFilterButtonPlaceholder {
-                collection_id,
-            }
-            .render(),
+            filter::components::AddFilterButtonPlaceholder { collection_id }
+                .render(),
         )
     }
 }
@@ -1792,12 +1789,12 @@ pub async fn delete_bool_filter(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Bool,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -1814,12 +1811,12 @@ pub async fn delete_int_filter(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Int,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -1836,12 +1833,12 @@ pub async fn delete_int_rng_filter(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Int,
-            variant: new_iltfer::db_ops::Variant::Ranged,
+            variant: filter::db_ops::Variant::Ranged,
         },
     )
     .await?;
@@ -1858,12 +1855,12 @@ pub async fn delete_float_filter(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Float,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -1880,12 +1877,12 @@ pub async fn delete_float_rng_filter(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Bool,
-            variant: new_iltfer::db_ops::Variant::Ranged,
+            variant: filter::db_ops::Variant::Ranged,
         },
     )
     .await?;
@@ -1902,12 +1899,12 @@ pub async fn delete_date_filter(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Date,
-            variant: new_iltfer::db_ops::Variant::Single,
+            variant: filter::db_ops::Variant::Single,
         },
     )
     .await?;
@@ -1924,12 +1921,12 @@ pub async fn delete_date_rng_filter(
     State(AppState { db }): State<AppState>,
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, ServerError> {
-    let filter = new_iltfer::models::Filter::get(
+    let filter = filter::models::Filter::get(
         &db,
-        &new_iltfer::db_ops::GetFilterQuery {
+        &filter::db_ops::GetFilterQuery {
             id,
             value_type: models::ValueType::Date,
-            variant: new_iltfer::db_ops::Variant::Ranged,
+            variant: filter::db_ops::Variant::Ranged,
         },
     )
     .await?;

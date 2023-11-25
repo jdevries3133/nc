@@ -7,7 +7,7 @@
 #![allow(clippy::let_and_return)]
 
 use super::{models, routes::Route};
-use crate::filter::components as new_iflter;
+use crate::filter::components as filter_component;
 use ammonia::clean;
 use std::fmt::{Display, Write};
 
@@ -145,12 +145,13 @@ impl Component for Collection {
         }
         .render();
         let filter_icon = HoverIcon {
-            children: Box::new(new_iflter::FilterIcon {}),
+            children: Box::new(filter_component::FilterIcon {}),
             tooltip_text: "View Filters",
         }
         .render();
         let filter_toolbar_placeholder =
-            new_iflter::FilterToolbarPlaceholder { collection_id: id }.render();
+            filter_component::FilterToolbarPlaceholder { collection_id: id }
+                .render();
         let sort_icon = HoverIcon {
             children: Box::new(SortIcon { collection_id: id }),
             tooltip_text: "Configure Sorting",
