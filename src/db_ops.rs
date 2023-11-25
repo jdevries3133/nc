@@ -1475,7 +1475,10 @@ pub async fn list_pages(
                                     },
                                 )
                             } else {
-                                models::PvOrType::Tp(models::ValueType::Int, id)
+                                models::PvOrType::Tp(
+                                    models::ValueType::Int,
+                                    prop.id,
+                                )
                             }
                         }
                         models::ValueType::Bool => {
