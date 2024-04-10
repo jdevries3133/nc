@@ -153,7 +153,7 @@ impl Component for Collection {
             filter_component::FilterToolbarPlaceholder { collection_id: id }
                 .render();
         let sort_icon = HoverIcon {
-            children: Box::new(SortIcon { collection_id: id }),
+            children: Box::new(SortIcon {}),
             tooltip_text: "Configure Sorting",
         }
         .render();
@@ -561,15 +561,6 @@ impl Component for Chevron {
     }
 }
 
-struct ArrowLeftRight;
-impl Component for ArrowLeftRight {
-    fn render(&self) -> String {
-        r#"<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-        </svg>"#.into()
-    }
-}
-
 struct Text<'a, T: Display> {
     inner_text: &'a T,
 }
@@ -638,9 +629,7 @@ impl Component for Div<'_> {
     }
 }
 
-pub struct SortIcon {
-    pub collection_id: i32,
-}
+pub struct SortIcon;
 impl Component for SortIcon {
     fn render(&self) -> String {
         r##"

@@ -579,7 +579,6 @@ pub async fn get_bool_filter_chip(
             .await?;
 
     Ok(filter::components::FilterChip {
-        collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
     }
@@ -708,7 +707,6 @@ pub async fn handle_bool_form_submit(
         StatusCode::OK,
         headers,
         filter::components::FilterChip {
-            collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
         }
@@ -734,7 +732,6 @@ pub async fn get_int_filter_chip(
             .await?;
 
     Ok(filter::components::FilterChip {
-        collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
     }
@@ -759,7 +756,6 @@ pub async fn get_float_filter_chip(
             .await?;
 
     Ok(filter::components::FilterChip {
-        collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
     }
@@ -784,7 +780,6 @@ pub async fn get_date_filter_chip(
             .await?;
 
     Ok(filter::components::FilterChip {
-        collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
     }
@@ -809,7 +804,6 @@ pub async fn get_date_rng_filter_chip(
             .await?;
 
     Ok(filter::components::FilterChip {
-        collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
     }
@@ -998,7 +992,6 @@ pub async fn handle_int_form_submit(
     Ok((
         headers,
         filter::components::FilterChip {
-            collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
         }
@@ -1044,7 +1037,6 @@ pub async fn handle_float_form_submit(
     Ok((
         headers,
         filter::components::FilterChip {
-            collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
         }
@@ -1090,7 +1082,6 @@ pub async fn handle_date_form_submit(
     Ok((
         headers,
         filter::components::FilterChip {
-            collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
         }
@@ -1138,7 +1129,6 @@ pub async fn handle_float_rng_form_submit(
     Ok((
         headers,
         filter::components::FilterChip {
-            collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
         }
@@ -1164,7 +1154,6 @@ pub async fn get_int_rng_filter_chip(
             .await?;
 
     Ok(filter::components::FilterChip {
-        collection_id: related_prop.collection_id,
         filter,
         prop_name: &related_prop.name,
     }
@@ -1211,7 +1200,6 @@ pub async fn handle_date_rng_form_submit(
     Ok((
         headers,
         filter::components::FilterChip {
-            collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
         }
@@ -1283,7 +1271,6 @@ pub async fn handle_int_rng_form_submit(
     Ok((
         headers,
         filter::components::FilterChip {
-            collection_id: related_prop.collection_id,
             filter: &new_filter,
             prop_name: &related_prop.name,
         }

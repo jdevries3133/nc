@@ -67,7 +67,6 @@ impl Component for FilterToolbar<'_> {
                 acc.push_str(
                     &FilterChip {
                         filter: f,
-                        collection_id: self.collection_id,
                         prop_name,
                     }
                     .render(),
@@ -97,7 +96,6 @@ const FILTER_CONTAINER_STYLE: &str = "max-w-sm text-sm border border-slate-600 b
 pub struct FilterChip<'a> {
     pub filter: &'a models::Filter,
     pub prop_name: &'a str,
-    pub collection_id: i32,
 }
 impl Component for FilterChip<'_> {
     fn render(&self) -> String {

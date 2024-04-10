@@ -16,7 +16,6 @@ pub struct PvGetQuery {
 
 pub struct PvListQuery {
     pub page_ids: Vec<i32>,
-    pub data_type: Option<ValueType>,
 }
 
 struct Qres<T> {

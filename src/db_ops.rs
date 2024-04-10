@@ -66,10 +66,7 @@ pub struct GetPageQuery {
     pub id: i32,
 }
 
-pub struct ListPageQuery {
-    pub collection_id: i32,
-    pub page_number: i32,
-}
+pub struct ListPageQuery;
 
 #[async_trait]
 impl DbModel<GetPageQuery, ListPageQuery> for models::Page {
