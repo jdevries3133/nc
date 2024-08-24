@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select f.id, f.prop_id, f.type_id, f.start, f.end\n            from filter_date_range f\n            join property p on p.id = f.prop_id\n            where p.collection_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "prop_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "type_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "start",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 4,
+        "name": "end",
+        "type_info": "Date"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3613d9887db431a81730c5297a215e90e87b4a4b0bad5d7aad082888003ddd9e"
+}

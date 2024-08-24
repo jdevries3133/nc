@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select content, page_id from page_content where page_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "page_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "b0212d86a6ad360b8ddc3fdd1ff67c22ce0bdd7524feaec79587d1b0bc052bcd"
+}

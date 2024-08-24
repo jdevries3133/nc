@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select id, type_id, prop_id, start, \"end\"\n                from filter_int_range f\n                where f.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "type_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "prop_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "start",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "end",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d681996953bbf30f7c2cc2182d718ae7935232d50e2cc1e1d325242831f0a37f"
+}

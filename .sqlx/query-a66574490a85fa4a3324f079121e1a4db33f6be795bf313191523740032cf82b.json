@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into filter_date\n                    (type_id, prop_id, value)\n                    values\n                    ($1, $2, $3)\n                    returning id\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a66574490a85fa4a3324f079121e1a4db33f6be795bf313191523740032cf82b"
+}

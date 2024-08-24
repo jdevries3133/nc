@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update filter_int_range\n                        set type_id = $1, start = $2, \"end\" = $3\n                        where id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int8",
+        "Int8",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "688109ab8ad203b9fd65d0275b97175352c02ba02081a042b3bdbb8d91a3eff9"
+}

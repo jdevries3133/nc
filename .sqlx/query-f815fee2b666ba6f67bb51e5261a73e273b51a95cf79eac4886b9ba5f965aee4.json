@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into filter_float\n                    (type_id, prop_id, value)\n                    values\n                    ($1, $2, $3)\n                    returning id\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f815fee2b666ba6f67bb51e5261a73e273b51a95cf79eac4886b9ba5f965aee4"
+}

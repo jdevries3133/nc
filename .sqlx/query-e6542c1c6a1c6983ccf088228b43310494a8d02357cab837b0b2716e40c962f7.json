@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into propval_date (value, page_id, prop_id) values ($1, $2, $3)\n                    on conflict (page_id, prop_id)\n                    do update set value = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e6542c1c6a1c6983ccf088228b43310494a8d02357cab837b0b2716e40c962f7"
+}

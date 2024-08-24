@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update filter_float_range\n                        set type_id = $1, start = $2, \"end\" = $3\n                        where id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Float8",
+        "Float8",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9310898494ddcefa6f1c02a9ecaeb62d366ffd11a14f653033c7db0c02de8af9"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from filter_int_range where id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c4fecadf6ab92864e9277ad5ed9a3ff20d3af01eff0da80cdb06ba5821e85be3"
+}

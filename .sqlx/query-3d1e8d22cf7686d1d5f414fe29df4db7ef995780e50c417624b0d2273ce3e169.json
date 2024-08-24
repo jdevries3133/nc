@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into page_content (page_id, content) values ($1, $2)\n            on conflict (page_id)\n            do update set content = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3d1e8d22cf7686d1d5f414fe29df4db7ef995780e50c417624b0d2273ce3e169"
+}

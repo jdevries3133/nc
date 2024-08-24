@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update filter_date set type_id = $1, value = $2\n                        where id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Date",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e7e0637987646aa04e52616c47e11f52c4ffea14a873b639bed27926928d0ecb"
+}

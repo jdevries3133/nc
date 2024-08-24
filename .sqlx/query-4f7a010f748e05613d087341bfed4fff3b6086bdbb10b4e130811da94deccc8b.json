@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            update collection set\n                sort_by_prop_id = $1,\n                sort_type_id = $2\n            where id = $3\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4f7a010f748e05613d087341bfed4fff3b6086bdbb10b4e130811da94deccc8b"
+}

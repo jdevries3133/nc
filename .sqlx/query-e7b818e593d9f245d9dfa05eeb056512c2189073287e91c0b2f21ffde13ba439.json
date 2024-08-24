@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select f.id, f.prop_id, f.type_id, f.value\n            from filter_float f\n            join property p on p.id = f.prop_id\n            where p.collection_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "prop_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "type_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "value",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e7b818e593d9f245d9dfa05eeb056512c2189073287e91c0b2f21ffde13ba439"
+}

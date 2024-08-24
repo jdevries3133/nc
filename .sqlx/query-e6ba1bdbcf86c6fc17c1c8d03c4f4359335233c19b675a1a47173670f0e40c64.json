@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select page_id, prop_id, value\n            from propval_date\n            where page_id = ANY($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "page_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "prop_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "value",
+        "type_info": "Date"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e6ba1bdbcf86c6fc17c1c8d03c4f4359335233c19b675a1a47173670f0e40c64"
+}

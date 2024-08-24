@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select f.id, f.prop_id, f.type_id, f.start, f.end\n            from filter_int_range f\n            join property p on p.id = f.prop_id\n            where p.collection_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "prop_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "type_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "start",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "end",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "205474f875f6df2484b076c328c0ec5b1e954d2f3ca2bda33f7f27c8e9eb9003"
+}

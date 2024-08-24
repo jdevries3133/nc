@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into propval_float (value, page_id, prop_id) values ($1, $2, $3)\n                    on conflict (page_id, prop_id)\n                    do update set value = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "22ce8a7704c2c5c1a500ec78e9d0a90b9385aad43b7784fd04d20ccc50122cb0"
+}

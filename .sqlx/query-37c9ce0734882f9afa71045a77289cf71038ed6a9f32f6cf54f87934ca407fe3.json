@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select name from collection where id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "37c9ce0734882f9afa71045a77289cf71038ed6a9f32f6cf54f87934ca407fe3"
+}

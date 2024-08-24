@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select f.id, f.prop_id, f.type_id, f.start, f.end\n            from filter_float_range f\n            join property p on p.id = f.prop_id\n            where p.collection_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "prop_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "type_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "start",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "end",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e2f8b9ab119364917566c130014b2e48ad9f0894901dd6bff3fca4439159dc3b"
+}

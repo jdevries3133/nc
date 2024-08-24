@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select page_id, prop_id, value\n                    from propval_float\n                    where page_id = $1 and prop_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "page_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "prop_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "value",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3e477455889f228a337885f244a24c9da437e7ae23d016d0fcaa374f2e9a305a"
+}

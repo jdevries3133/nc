@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update filter_bool set type_id = $1, value = $2\n                        where id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Bool",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "38175d0c972234ea3a3ed12b2df533976980c6e8e4f903271fd721dfedb5510a"
+}

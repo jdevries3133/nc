@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into filter_bool\n                    (type_id, prop_id, value)\n                    values\n                    ($1, $2, $3)\n                    returning id\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f8ccdf5968c9896bb5d6acb1680fc3d406e05b108abf0591ea34ed583b04cecd"
+}

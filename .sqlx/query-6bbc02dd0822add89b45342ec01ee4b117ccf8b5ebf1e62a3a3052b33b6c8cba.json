@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update page set title = $1 where id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6bbc02dd0822add89b45342ec01ee4b117ccf8b5ebf1e62a3a3052b33b6c8cba"
+}
